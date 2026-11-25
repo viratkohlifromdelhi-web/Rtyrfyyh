@@ -3,21 +3,21 @@
 @theme {
   --font-display: "Fraunces", Georgia, "Times New Roman", serif;
   --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --color-cream: #FFFDF9;
-  --color-blush: #FFF2F5;
-  --color-blush-soft: #FCE4EC;
-  --color-rose-gold: #C8848E;
-  --color-rose-gold-light: #E8B9BE;
-  --color-berry: #4A122C;
-  --color-berry-deep: #350B1F;
-  --color-berry-soft: #6D2143;
+  --color-cream: #FFFDF8;
+  --color-pink-pastel: #FFE4F0;
+  --color-lavender: #EBE3FF;
+  --color-butter: #FFE898;
+  --color-plum: #3B1535;
+  --color-plum-soft: #57214F;
 }
 
 @layer base {
   html {
     font-family: var(--font-sans);
     background-color: var(--color-cream);
-    color: #3B1325;
+    color: #3B1535;
+    scroll-padding-top: 4.5rem;
+    overflow-x: hidden;
   }
 
   h1, h2, h3, .font-display {
@@ -25,13 +25,13 @@
   }
 }
 
-/* Whimsical living animations (compositor-only: transform & opacity) */
+/* Playful living animations (compositor-only: transform & opacity) */
 @keyframes float-gentle {
   0%, 100% {
     transform: translate3d(0, 0, 0) rotate(0deg);
   }
   50% {
-    transform: translate3d(0, -10px, 0) rotate(2deg);
+    transform: translate3d(0, -9px, 0) rotate(2deg);
   }
 }
 
@@ -40,18 +40,18 @@
     transform: translate3d(0, 0, 0) rotate(0deg);
   }
   50% {
-    transform: translate3d(0, -12px, 0) rotate(-3deg);
+    transform: translate3d(0, -11px, 0) rotate(-2.5deg);
   }
 }
 
 @keyframes twinkle {
   0%, 100% {
-    opacity: 0.35;
-    transform: scale(0.85) rotate(0deg);
+    opacity: 0.4;
+    transform: scale(0.84) rotate(0deg);
   }
   50% {
     opacity: 1;
-    transform: scale(1.15) rotate(12deg);
+    transform: scale(1.18) rotate(14deg);
   }
 }
 
@@ -61,14 +61,44 @@
     opacity: 0;
   }
   12% {
-    opacity: 0.65;
+    opacity: 0.42;
   }
   88% {
-    opacity: 0.55;
+    opacity: 0.34;
   }
   100% {
-    transform: translate3d(24px, 108vh, 0) rotate(320deg);
+    transform: translate3d(20px, 108vh, 0) rotate(320deg);
     opacity: 0;
+  }
+}
+
+@keyframes gift-wiggle {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  15% {
+    transform: rotate(-4.5deg) scale(1.03);
+  }
+  30% {
+    transform: rotate(4.5deg) scale(1.03);
+  }
+  45% {
+    transform: rotate(-3deg) scale(1.02);
+  }
+  60% {
+    transform: rotate(2.5deg) scale(1.01);
+  }
+  75% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes crown-hop {
+  0%, 100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(4deg);
   }
 }
 
@@ -101,7 +131,7 @@
   }
   100% {
     opacity: 0;
-    transform: translate3d(8px, -36px, 0) scale(1.5);
+    transform: translate3d(8px, -34px, 0) scale(1.5);
   }
 }
 
@@ -114,17 +144,17 @@
   }
 }
 
-@keyframes heart-shower {
+@keyframes sparkle-pop {
   0% {
     opacity: 1;
-    transform: translate3d(0, 0, 0) scale(0.5) rotate(0deg);
+    transform: translate3d(0, 0, 0) scale(0.45) rotate(0deg);
   }
   65% {
     opacity: 0.95;
   }
   100% {
     opacity: 0;
-    transform: translate3d(var(--hx, 0px), var(--hy, -90px), 0) scale(1.15) rotate(var(--hr, 20deg));
+    transform: translate3d(var(--sx, 0px), var(--sy, -80px), 0) scale(1.2) rotate(var(--sr, 25deg));
   }
 }
 
@@ -139,30 +169,53 @@
   }
 }
 
-@keyframes shimmer-sweep {
+@keyframes dramatic-reveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.65) rotate(-5deg);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.06) rotate(1.5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes calendar-glow {
   0%, 100% {
-    opacity: 0.45;
+    box-shadow: 0 0 0 0 rgba(255, 232, 152, 0.75), 0 8px 20px -6px rgba(196, 61, 130, 0.45);
   }
   50% {
-    opacity: 0.95;
+    box-shadow: 0 0 0 6px rgba(255, 228, 240, 0.9), 0 12px 26px -4px rgba(196, 61, 130, 0.55);
   }
 }
 
 .animate-float-gentle {
-  animation: float-gentle 5.5s ease-in-out infinite;
+  animation: float-gentle 5.2s ease-in-out infinite;
 }
 
 .animate-float-reverse {
-  animation: float-reverse 6.5s ease-in-out infinite;
+  animation: float-reverse 6.2s ease-in-out infinite;
 }
 
 .animate-twinkle {
-  animation: twinkle 3.2s ease-in-out infinite;
+  animation: twinkle 3s ease-in-out infinite;
 }
 
 .animate-drift-confetti {
   animation: drift-confetti var(--drift-dur, 18s) linear infinite;
   animation-delay: var(--drift-delay, 0s);
+}
+
+.animate-gift-wiggle {
+  animation: gift-wiggle 2.4s ease-in-out infinite;
+}
+
+.animate-crown-hop {
+  animation: crown-hop 1.4s ease-in-out infinite;
 }
 
 .animate-flame {
@@ -190,12 +243,196 @@
   animation: eq-bounce 0.85s ease-in-out 0.3s infinite;
 }
 
-.animate-heart-shower {
-  animation: heart-shower 950ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.animate-sparkle-pop {
+  animation: sparkle-pop 850ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-pop-in {
-  animation: pop-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: pop-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-dramatic-reveal {
+  animation: dramatic-reveal 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-calendar-glow {
+  animation: calendar-glow 2.2s ease-in-out infinite;
+}
+
+/* Chaotic gentle hero emoji float animations (compositor-only) */
+@keyframes emoji-float-a {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(-8deg) scale(1);
+  }
+  33% {
+    transform: translate3d(7px, -14px, 0) rotate(6deg) scale(1.08);
+  }
+  66% {
+    transform: translate3d(-5px, -7px, 0) rotate(-4deg) scale(0.96);
+  }
+}
+
+@keyframes emoji-float-b {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(7deg) scale(1);
+  }
+  50% {
+    transform: translate3d(-9px, -16px, 0) rotate(-10deg) scale(1.1);
+  }
+}
+
+@keyframes emoji-float-c {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(-5deg) scale(0.98);
+  }
+  40% {
+    transform: translate3d(10px, -11px, 0) rotate(9deg) scale(1.06);
+  }
+  75% {
+    transform: translate3d(-4px, -18px, 0) rotate(-7deg) scale(1.02);
+  }
+}
+
+.animate-emoji-a {
+  animation: emoji-float-a var(--emoji-dur, 5.8s) ease-in-out var(--emoji-delay, 0s) infinite;
+}
+
+.animate-emoji-b {
+  animation: emoji-float-b var(--emoji-dur, 6.4s) ease-in-out var(--emoji-delay, 0s) infinite;
+}
+
+.animate-emoji-c {
+  animation: emoji-float-c var(--emoji-dur, 7.1s) ease-in-out var(--emoji-delay, 0s) infinite;
+}
+
+/* Bauni-Meter laser scan & 99% cute glitch animations (compositor-only) */
+@keyframes scanner-laser {
+  0%, 100% {
+    transform: translate3d(0, -56px, 0);
+    opacity: 0.78;
+  }
+  50% {
+    transform: translate3d(0, 56px, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes scanner-ring-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.15;
+  }
+}
+
+@keyframes scanner-glitch {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  15% {
+    transform: translate3d(-6px, -2px, 0) rotate(-1.5deg);
+  }
+  30% {
+    transform: translate3d(6px, 2px, 0) rotate(1.5deg);
+  }
+  45% {
+    transform: translate3d(-5px, 1px, 0) rotate(-1deg);
+  }
+  60% {
+    transform: translate3d(5px, -1px, 0) rotate(1deg);
+  }
+  75% {
+    transform: translate3d(-3px, 0, 0) rotate(-0.5deg);
+  }
+}
+
+/* Wax seal slam with spring bounce (compositor-only) */
+@keyframes wax-slam {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -36px, 0) scale(2.15) rotate(-26deg);
+  }
+  52% {
+    opacity: 1;
+    transform: translate3d(0, 3px, 0) scale(0.88) rotate(-8deg);
+  }
+  74% {
+    opacity: 1;
+    transform: translate3d(0, -3px, 0) scale(1.07) rotate(-13deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(-10deg);
+  }
+}
+
+.animate-scanner-laser {
+  animation: scanner-laser 1.15s ease-in-out infinite;
+}
+
+.animate-scanner-ring {
+  animation: scanner-ring-pulse 1.3s ease-out infinite;
+}
+
+.animate-scanner-glitch {
+  animation: scanner-glitch 440ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.animate-wax-slam {
+  animation: wax-slam 540ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Wheel landing result gentle shake + outcome emoji burst (compositor-only) */
+@keyframes result-shake {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.92);
+  }
+  32% {
+    opacity: 1;
+    transform: translate3d(-5px, -2px, 0) rotate(-1.5deg) scale(1.03);
+  }
+  52% {
+    transform: translate3d(5px, 0, 0) rotate(1.5deg) scale(1.01);
+  }
+  72% {
+    transform: translate3d(-3px, 0, 0) rotate(-0.8deg) scale(1);
+  }
+  88% {
+    transform: translate3d(2px, 0, 0) rotate(0.4deg) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes wheel-emoji-burst {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.45) rotate(0deg);
+  }
+  18% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0.92;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--wx, 0px), var(--wy, -84px), 0) scale(1.18) rotate(var(--wr, 18deg));
+  }
+}
+
+.animate-result-shake {
+  animation: result-shake 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-wheel-emoji-burst {
+  animation: wheel-emoji-burst 1100ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* Letter-by-letter playful bounce */
@@ -208,30 +445,7 @@
 .bouncy-letter:hover,
 .bouncy-letter:focus-visible {
   transform: translateY(-7px) rotate(-5deg) scale(1.12);
-  color: #B7416E;
-}
-
-/* 3D card flip helpers */
-.flip-scene {
-  perspective: 1100px;
-}
-
-.flip-card-inner {
-  transform-style: preserve-3d;
-  transition: transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.flip-card-inner.is-flipped {
-  transform: rotateY(180deg);
-}
-
-.flip-card-face {
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-
-.flip-card-back {
-  transform: rotateY(180deg);
+  color: #C2377E;
 }
 
 /* Scrollbar styling for horizontal mobile cards */
@@ -244,13 +458,8 @@
 }
 
 .cards-scroll::-webkit-scrollbar-thumb {
-  background: rgba(183, 110, 121, 0.3);
+  background: rgba(59, 21, 53, 0.25);
   border-radius: 9999px;
-}
-
-/* Rose gold shimmer text accent */
-.rose-gold-glow {
-  box-shadow: 0 0 0 1px rgba(232, 185, 190, 0.65), 0 12px 32px -8px rgba(232, 185, 190, 0.42);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -258,15 +467,26 @@
   .animate-float-reverse,
   .animate-twinkle,
   .animate-drift-confetti,
+  .animate-gift-wiggle,
+  .animate-crown-hop,
   .animate-flame,
   .animate-eq-1,
   .animate-eq-2,
-  .animate-eq-3 {
+  .animate-eq-3,
+  .animate-calendar-glow,
+  .animate-emoji-a,
+  .animate-emoji-b,
+  .animate-emoji-c,
+  .animate-scanner-laser,
+  .animate-scanner-ring,
+  .animate-scanner-glitch,
+  .animate-wax-slam,
+  .animate-result-shake,
+  .animate-wheel-emoji-burst {
     animation: none !important;
   }
 
-  .bouncy-letter,
-  .flip-card-inner {
+  .bouncy-letter {
     transition-duration: 0.01ms !important;
   }
 }

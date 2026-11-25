@@ -15,13 +15,13 @@ export interface ConfettiParticle {
 }
 
 export const CONFETTI_PALETTE = [
-  '#F48FB1', // pastel blush rose
-  '#E8B4B8', // rose gold
-  '#D98A9C', // dusty pink
-  '#4A122C', // deep berry
-  '#F7D794', // champagne gold
-  '#FDE2E9', // pale petal
-  '#C96480', // warm raspberry
+  '#FF8FC2', // bubblegum pastel pink
+  '#C9A7FF', // playful lavender
+  '#FFE27A', // butter yellow
+  '#3B1535', // deep berry plum
+  '#FFB8D9', // soft pink
+  '#A584F8', // violet pop
+  '#E04D92', // vibrant berry pink
 ];
 
 const SHAPES: ConfettiShape[] = ['rect', 'circle', 'star', 'heart'];
@@ -33,7 +33,7 @@ export function spawnConfettiBurst(params: {
   spreadRad?: number;
   random?: () => number;
 }): ConfettiParticle[] {
-  const count = params.count ?? 68;
+  const count = params.count ?? 64;
   const spreadRad = params.spreadRad ?? Math.PI * 1.4;
   const rand = params.random ?? Math.random;
   const particles: ConfettiParticle[] = [];
@@ -41,7 +41,7 @@ export function spawnConfettiBurst(params: {
   for (let i = 0; i < count; i++) {
     const angle = -Math.PI / 2 + (rand() - 0.5) * spreadRad;
     const speed = 5 + rand() * 11;
-    const maxLife = 75 + Math.floor(rand() * 55);
+    const maxLife = 65 + Math.floor(rand() * 45);
     particles.push({
       x: params.originX,
       y: params.originY,
@@ -63,7 +63,7 @@ export function spawnConfettiBurst(params: {
 export function stepConfettiParticles(
   particles: ConfettiParticle[],
   viewportHeight: number,
-  gravity = 0.26,
+  gravity = 0.27,
   drag = 0.985
 ): ConfettiParticle[] {
   const next: ConfettiParticle[] = [];

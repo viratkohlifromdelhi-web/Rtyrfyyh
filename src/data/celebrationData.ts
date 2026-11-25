@@ -1,191 +1,184 @@
-import type { GuestbookWish } from '../utils/guestbook';
+import type { FriendRankEntry } from '../utils/birthdayMath';
 
-export const CELEBRANT = {
-  name: 'Kiara',
-  age: 24,
-  heroPhoto: '/src/assets/images/hero_besties_polaroid_1795583505452.jpg',
-  heroCaption: 'Kiara & the besties · Golden hour vibes',
-  subtitle:
-    'A sparkling celebration for the absolute best, the group chat favorite, and the sweetest soul.',
+export const ANAMIKA = {
+  fullName: 'Anamika Singh',
+  firstName: 'Anamika',
+  nickname: 'Morgan',
+  age: 17,
+  birthdayLabel: '03 December 2026',
+  birthDateLabel: '03 Dec 2009',
+  heroSubtitle:
+    'Wishing the loudest birthday to my sarcastic lesbian daughter Morgan, certified bauni, and somehow my greatest HG of all time.',
+  polaroidCaption: 'The #1 Homegirl (bachawww status: permanent).',
 };
 
-export interface EventDetail {
+export interface HeroSticker {
+  id: string;
   label: string;
-  value: string;
-  note?: string;
+  bg: string;
+  border: string;
+  rotate: string;
 }
 
-export const EVENT_DETAILS: EventDetail[] = [
+export const HERO_STICKERS: HeroSticker[] = [
   {
-    label: 'When',
-    value: 'Saturday, Nov 28',
-    note: 'Save the date',
+    id: 'sticker-hg',
+    label: '👑 Greatest HG',
+    bg: 'bg-[#FFE898]',
+    border: 'border-[#E6C75A]',
+    rotate: '-rotate-2',
   },
   {
-    label: 'Time',
-    value: '6:00 PM – Late',
-    note: 'Golden hour onward',
+    id: 'sticker-bauni',
+    label: '📏 Certified Bauni',
+    bg: 'bg-[#FFE4F0]',
+    border: 'border-[#F3B5D0]',
+    rotate: 'rotate-2',
   },
   {
-    label: 'Where',
-    value: 'The Rose Conservatory',
-    note: 'Rooftop Garden Salon',
+    id: 'sticker-morgan',
+    label: '🎀 Daughter: Morgan',
+    bg: 'bg-[#EBE3FF]',
+    border: 'border-[#CDBBF9]',
+    rotate: '-rotate-1',
   },
   {
-    label: 'Dress Code',
-    value: 'Cutest outfits + sparkles',
-    note: 'Blush, satin & rose gold',
+    id: 'sticker-bachawww',
+    label: '✨ Bachawww Energy',
+    bg: 'bg-[#FFFDF8]',
+    border: 'border-[#E7D3E3]',
+    rotate: 'rotate-2',
   },
 ];
 
-export interface TimelineSlot {
+export const MODE_MESSAGES = {
+  roast: {
+    badge: 'Roast Mode 🔥',
+    title: 'Certified Bauni & Sarcastic Lesbian Daughter Morgan',
+    body: 'Turning 17 and still operating at maximum bachawww chaos and fun-sized height. Started calling you my lesbian daughter Morgan purely for sarcasm, and honestly you earned the title permanently. Still a certified Gawaar though — happy birthday, bauni!',
+    polaroidNote: 'Bachawww mode active · Zero height gained since Class 8th.',
+  },
+  wholesome: {
+    badge: 'Wholesome Mode 🫶',
+    title: 'Genuinely the Greatest HG Anyone Could Ask For',
+    body: 'Jokes aside for five seconds: you are literally the greatest HG of all time. The one friend I can tell anything to without a second thought, zero judgment, and 100% real loyalty. Wild how one Instagram message turned an old classmate into my #1 person on the friend list.',
+    polaroidNote: 'Greatest HG status · 100% unfiltered trust & best-friend respect.',
+  },
+};
+
+export const FRIEND_LEADERBOARD_BASE: FriendRankEntry[] = [
+  { id: 'friend-1', name: 'Aarav', tag: 'Old school bro' },
+  { id: 'friend-2', name: 'Rohan', tag: 'Late-night gaming squad' },
+  { id: 'friend-3', name: 'Kabir', tag: 'Group chat menace' },
+  { id: 'friend-4', name: 'Dev', tag: 'Day-one homie' },
+  {
+    id: 'anamika-morgan',
+    name: 'Anamika (Morgan)',
+    tag: 'Undisputed #1 Greatest HG',
+    isAnamika: true,
+  },
+];
+
+export interface BackstoryChapter {
   id: string;
-  time: string;
+  chapterLabel: string;
   title: string;
-  subtitle: string;
-  insiderNote: string;
+  period: string;
+  description: string;
+  tag: string;
   highlight?: boolean;
 }
 
-export const TIMELINE_SLOTS: TimelineSlot[] = [
+export const BACKSTORY_CHAPTERS: BackstoryChapter[] = [
   {
-    id: 'slot-600',
-    time: '6:00 PM',
-    title: 'Arrivals & Rose Spritzes',
-    subtitle: 'Pink bubbly welcome on the terrace as the fairy lights flicker on.',
-    insiderNote: 'Grab a signature hibiscus-peach spritz and sign the Polaroid guestbook by the door.',
+    id: 'ch-1',
+    chapterLabel: 'Chapter 1',
+    title: 'Pioneer Academy, Lalganj',
+    period: 'Till Class 8th',
+    description:
+      'We studied together till Class 8th, just normal classmates with zero idea we’d end up here.',
+    tag: 'Origin Story',
   },
   {
-    id: 'slot-615',
-    time: '6:15 PM',
-    title: 'Polaroid Booth & Golden Hour Snaps',
-    subtitle: 'Bestie portraits before the sun dips behind the skyline.',
-    insiderNote: 'Extra instant film packs are stocked — take one for yourself and pin one for Kiara!',
+    id: 'ch-2',
+    chapterLabel: 'Chapter 2',
+    title: 'Different Schools',
+    period: 'The Quiet Arc',
+    description:
+      'I moved to another school, and for a long time we were just old classmates doing our own thing.',
+    tag: 'Plot Pause',
   },
   {
-    id: 'slot-700',
-    time: '7:00 PM',
-    title: 'Candlelight Dinner & Heartfelt Toasts',
-    subtitle: 'Long table feast, peony centerpieces, and the sweetest speeches.',
-    insiderNote: 'Keep tissues nearby — Maya and Priya have been rehearsing their toast all week.',
+    id: 'ch-3',
+    chapterLabel: 'Chapter 3',
+    title: '22 July 2026 — The Instagram Plot Twist',
+    period: '22 July 2026',
+    description:
+      'She messaged me first on Instagram, and literally everything changed.',
+    tag: 'Game Changer',
     highlight: true,
   },
   {
-    id: 'slot-830',
-    time: '8:30 PM',
-    title: 'Cake Cutting & 24 Wishes',
-    subtitle: 'Strawberry-champagne layer cake, sparkler candles, and big wishes.',
-    insiderNote: 'Everyone crowds around the center table for the birthday song chorus!',
+    id: 'ch-4',
+    chapterLabel: 'Now',
+    title: 'Undisputed Greatest HG',
+    period: 'Present Day & Counting',
+    description:
+      'She overtook every single male friend to claim the #1 spot on my friend list—my greatest homegirl who I share everything with without a second thought.',
+    tag: 'Rank #1 Forever',
     highlight: true,
-  },
-  {
-    id: 'slot-915',
-    time: '9:15 PM',
-    title: 'Throwback Karaoke & Dance Floor',
-    subtitle: '2000s pop anthems, glitter mics, and zero judgment.',
-    insiderNote: 'Kiara already claimed the opening duet — add your queue favorites at the DJ stand.',
-  },
-  {
-    id: 'slot-1030',
-    time: '10:30 PM',
-    title: 'Rooftop Sparklers & Late-Night Sweets',
-    subtitle: 'Warm churros, espresso martinis, and midnight rooftop wishes.',
-    insiderNote: 'Cozy pink pashminas are waiting in the basket if the night breeze rolls in.',
   },
 ];
 
-export interface LoveCard {
+export interface StarterPackCard {
   id: string;
-  kind: 'photo' | 'doodle';
-  imageUrl?: string;
-  imageAlt?: string;
-  doodleType?: 'champagne' | 'crown';
-  caption: string;
-  backTitle: string;
-  backNote: string;
-  accentBg: string;
+  icon: 'ribbonCrown' | 'rulerSparkle' | 'rainbowShades' | 'trophy';
+  title: string;
+  description: string;
+  bonusQuip: string;
+  bgClass: string;
+  accentClass: string;
 }
 
-export const WHY_WE_LOVE_CARDS: LoveCard[] = [
+export const MORGAN_STARTER_PACK: StarterPackCard[] = [
   {
-    id: 'love-1',
-    kind: 'photo',
-    imageUrl: '/src/assets/images/card_facetime_besties_1795583505974.jpg',
-    imageAlt: 'Best friends laughing together on a sunlit cream sofa with iced lattes',
-    caption: "She's always down for a chaotic FaceTime or late-night chat.",
-    backTitle: 'Always One Call Away',
-    backNote:
-      'Whether it is a 10-minute outfit emergency or a 2-hour life debrief over iced oat lattes, Kiara picks up on the second ring.',
-    accentBg: 'bg-[#FFF3F6]',
+    id: 'sp-morgan',
+    icon: 'ribbonCrown',
+    title: 'Daughter "Morgan"',
+    description:
+      "Started calling you my daughter just for fun and sarcasm, and now you're stuck with the name forever.",
+    bonusQuip: 'Official legal alias in the group lore: Morgan Singh.',
+    bgClass: 'bg-[#FFE4F0]',
+    accentClass: 'text-[#C2377E]',
   },
   {
-    id: 'love-2',
-    kind: 'doodle',
-    doodleType: 'champagne',
-    caption: 'Can turn any boring Tuesday into a core memory.',
-    backTitle: 'Spontaneous Magic',
-    backNote:
-      'A quick grocery run somehow becomes sunset pastries, playlist sing-alongs, and a photo roll we talk about all year.',
-    accentBg: 'bg-[#FFF7EE]',
+    id: 'sp-bauni',
+    icon: 'rulerSparkle',
+    title: 'Certified Bauni',
+    description:
+      'Fun-sized height, oversized chaos, peak bachawww behavior.',
+    bonusQuip: 'Vertical measurement: compact. Loudness: stadium level.',
+    bgClass: 'bg-[#FFE898]/65',
+    accentClass: 'text-[#8F6500]',
   },
   {
-    id: 'love-3',
-    kind: 'photo',
-    imageUrl: '/src/assets/images/card_kiara_laughing_1795583505648.jpg',
-    imageAlt: 'Kiara laughing joyfully at a candlelit dinner table with blush peonies',
-    caption: 'Her laughter is infectious, from inside jokes to 2 AM gossip.',
-    backTitle: 'Pure Sunshine Energy',
-    backNote:
-      'The second Kiara starts giggling, the entire table loses it. Half our group chat voice notes are just her laughing.',
-    accentBg: 'bg-[#FDF0F5]',
+    id: 'sp-lesbian-icon',
+    icon: 'rainbowShades',
+    title: 'Sarcastic Lesbian Icon',
+    description:
+      'The running joke that never dies—happy birthday to my favorite sarcastic lesbian daughter.',
+    bonusQuip: 'Zero chance this joke ever gets retired. Ever.',
+    bgClass: 'bg-[#EBE3FF]',
+    accentClass: 'text-[#623EA8]',
   },
   {
-    id: 'love-4',
-    kind: 'doodle',
-    doodleType: 'crown',
-    caption: "She makes every single person feel like they're the main character.",
-    backTitle: 'Biggest Cheerleader',
-    backNote:
-      'She remembers the tiny details, celebrates every win like it is an Oscar, and leaves handwritten notes when you need them most.',
-    accentBg: 'bg-[#F8F0FA]',
-  },
-];
-
-export const SEEDED_WISHES: GuestbookWish[] = [
-  {
-    id: 'seed-maya',
-    name: 'Maya',
-    message:
-      'Happy 24th to my forever coffee date and voice-note comedian! May this year be drenched in pink sunsets and main-character moments.',
-    tone: 'blush',
-    createdAt: '2026-11-24T17:20:00.000Z',
-    rotation: -2.1,
-  },
-  {
-    id: 'seed-chloe',
-    name: 'Chloe',
-    message:
-      'Nobody hypes up the group chat like you do. So grateful for every late-night laugh and spontaneous pastry run. Love you endlessly!',
-    tone: 'champagne',
-    createdAt: '2026-11-24T18:05:00.000Z',
-    rotation: 1.7,
-  },
-  {
-    id: 'seed-priya',
-    name: 'Priya',
-    message:
-      '24 looks ridiculously good on you, Kiara! Cannot wait to sing terrible karaoke with you tonight under the rooftop lights.',
-    tone: 'cream',
-    createdAt: '2026-11-24T18:45:00.000Z',
-    rotation: -1.3,
-  },
-  {
-    id: 'seed-tessa',
-    name: 'Tessa',
-    message:
-      'Thank you for always making everyone feel seen, loved, and celebrated. Tonight it is 100% your turn to shine!',
-    tone: 'lavender',
-    createdAt: '2026-11-24T19:12:00.000Z',
-    rotation: 2.0,
+    id: 'sp-hg',
+    icon: 'trophy',
+    title: 'Greatest HG',
+    description:
+      'Beat every single guy friend for the #1 spot. Zero filter, zero second thoughts.',
+    bonusQuip: 'Undefeated, undisputed #1 Homegirl Hall of Fame.',
+    bgClass: 'bg-[#FFF3E0]',
+    accentClass: 'text-[#9B4E15]',
   },
 ];
