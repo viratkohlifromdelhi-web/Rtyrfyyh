@@ -1,0 +1,272 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-cream: #FFFDF9;
+  --color-blush: #FFF2F5;
+  --color-blush-soft: #FCE4EC;
+  --color-rose-gold: #C8848E;
+  --color-rose-gold-light: #E8B9BE;
+  --color-berry: #4A122C;
+  --color-berry-deep: #350B1F;
+  --color-berry-soft: #6D2143;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--color-cream);
+    color: #3B1325;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+/* Whimsical living animations (compositor-only: transform & opacity) */
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0) rotate(2deg);
+  }
+}
+
+@keyframes float-reverse {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(0, -12px, 0) rotate(-3deg);
+  }
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.85) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15) rotate(12deg);
+  }
+}
+
+@keyframes drift-confetti {
+  0% {
+    transform: translate3d(0, -8vh, 0) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.65;
+  }
+  88% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate3d(24px, 108vh, 0) rotate(320deg);
+    opacity: 0;
+  }
+}
+
+@keyframes flame-flicker {
+  0%, 100% {
+    transform: scaleY(1) scaleX(1) rotate(-2deg);
+    opacity: 0.95;
+  }
+  25% {
+    transform: scaleY(1.12) scaleX(0.92) rotate(2.5deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleY(0.94) scaleX(1.06) rotate(-1.5deg);
+    opacity: 0.9;
+  }
+  75% {
+    transform: scaleY(1.08) scaleX(0.95) rotate(1.5deg);
+    opacity: 1;
+  }
+}
+
+@keyframes smoke-wisp {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0) scale(0.6);
+  }
+  25% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(8px, -36px, 0) scale(1.5);
+  }
+}
+
+@keyframes eq-bounce {
+  0%, 100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes heart-shower {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(0.5) rotate(0deg);
+  }
+  65% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--hx, 0px), var(--hy, -90px), 0) scale(1.15) rotate(var(--hr, 20deg));
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes shimmer-sweep {
+  0%, 100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+.animate-float-gentle {
+  animation: float-gentle 5.5s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 6.5s ease-in-out infinite;
+}
+
+.animate-twinkle {
+  animation: twinkle 3.2s ease-in-out infinite;
+}
+
+.animate-drift-confetti {
+  animation: drift-confetti var(--drift-dur, 18s) linear infinite;
+  animation-delay: var(--drift-delay, 0s);
+}
+
+.animate-flame {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: flame-flicker 1.3s ease-in-out infinite;
+}
+
+.animate-smoke {
+  animation: smoke-wisp 1.8s ease-out forwards;
+}
+
+.animate-eq-1 {
+  transform-origin: bottom;
+  animation: eq-bounce 0.75s ease-in-out infinite;
+}
+
+.animate-eq-2 {
+  transform-origin: bottom;
+  animation: eq-bounce 0.6s ease-in-out 0.15s infinite;
+}
+
+.animate-eq-3 {
+  transform-origin: bottom;
+  animation: eq-bounce 0.85s ease-in-out 0.3s infinite;
+}
+
+.animate-heart-shower {
+  animation: heart-shower 950ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pop-in {
+  animation: pop-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Letter-by-letter playful bounce */
+.bouncy-letter {
+  display: inline-block;
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), color 200ms ease;
+  will-change: transform;
+}
+
+.bouncy-letter:hover,
+.bouncy-letter:focus-visible {
+  transform: translateY(-7px) rotate(-5deg) scale(1.12);
+  color: #B7416E;
+}
+
+/* 3D card flip helpers */
+.flip-scene {
+  perspective: 1100px;
+}
+
+.flip-card-inner {
+  transform-style: preserve-3d;
+  transition: transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.flip-card-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.flip-card-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-card-back {
+  transform: rotateY(180deg);
+}
+
+/* Scrollbar styling for horizontal mobile cards */
+.cards-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.cards-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cards-scroll::-webkit-scrollbar-thumb {
+  background: rgba(183, 110, 121, 0.3);
+  border-radius: 9999px;
+}
+
+/* Rose gold shimmer text accent */
+.rose-gold-glow {
+  box-shadow: 0 0 0 1px rgba(232, 185, 190, 0.65), 0 12px 32px -8px rgba(232, 185, 190, 0.42);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-gentle,
+  .animate-float-reverse,
+  .animate-twinkle,
+  .animate-drift-confetti,
+  .animate-flame,
+  .animate-eq-1,
+  .animate-eq-2,
+  .animate-eq-3 {
+    animation: none !important;
+  }
+
+  .bouncy-letter,
+  .flip-card-inner {
+    transition-duration: 0.01ms !important;
+  }
+}

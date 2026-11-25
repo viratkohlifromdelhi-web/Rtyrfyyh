@@ -1,0 +1,6 @@
+{
+  "name": "Kiara Turns 24 — Birthday Celebration",
+  "description": "A whimsical, interactive birthday celebration website for Kiara's 24th featuring a party timeline, heartfelt tributes, an interactive candle cake, confetti bursts, and a persistent Memory Wall guestbook.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
