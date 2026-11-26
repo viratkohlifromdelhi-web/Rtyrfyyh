@@ -14,6 +14,7 @@ import {
   type Rect2D,
 } from '../utils/interactiveFun';
 import { SparkleStarSvg } from './DoodleSvgs';
+import { haptics } from '../utils/haptics';
 import { soundEngine } from '../utils/soundEngine';
 
 interface RunawayAgreementSectionProps {
@@ -118,6 +119,7 @@ export function RunawayAgreementSection({ onAcceptConfetti }: RunawayAgreementSe
     setHasMeasured(true);
     setDodgeCount((c) => c + 1);
     soundEngine.playDodgeZip();
+    haptics.dodgeTap();
   }, [noPos]);
 
   const handleAccept = (e: MouseEvent<HTMLButtonElement>) => {

@@ -7,15 +7,19 @@ import {
   ORBIT_STOP_DURATION_SEC,
   PRIZE_POOL_TIERS,
   RIGGED_GIFT_VALUE,
+  SUMMARY_CONSUMED_KEY,
   VAULT_RESET_CODE,
   VAULT_STORAGE_KEY,
   VAULT_UNLOCK_CODE,
   clampVaultDt,
+  clearSummaryConsumed,
   clearVaultClaim,
   computeStoneOrbitPosition,
   computeStoppingAngularVelocity,
+  consumeOneTimeSummary,
   evaluateVaultPasscode,
   generateGiftCardCode,
+  isSummaryConsumed,
   readVaultClaim,
   resolveVaultRewardValue,
   spawnStoneDustParticles,
@@ -160,4 +164,24 @@ test('vault claim state persists cleanly in localStorage and clears completely o
 
   clearVaultClaim(storage);
   assert.equal(readVaultClaim(storage), null);
+});
+
+test('one-time footer summary flag consumes strictly once and clears cleanly on 9876 reset', () => {
+  const storage = createMemoryStorage();
+  assert.equal(SUMMARY_CONSUMED_KEY, 'morgan_summary_consumed_v1');
+  assert.equal(isSummaryConsumed(storage), false);
+
+  // First unlock consumes the flag and allows rendering once
+  assert.equal(consumeOneTimeSummary(storage), true);
+  assert.equal(isSummaryConsumed(storage), true);
+  assert.equal(storage.getItem(SUMMARY_CONSUMED_KEY), 'true');
+
+  // Repeat unlock / reload must NOT consume again
+  assert.equal(consumeOneTimeSummary(storage), false);
+  assert.equal(isSummaryConsumed(storage), true);
+
+  // Secret reset 9876 clears the flag so first-time unlock works again
+  clearSummaryConsumed(storage);
+  assert.equal(isSummaryConsumed(storage), false);
+  assert.equal(consumeOneTimeSummary(storage), true);
 });

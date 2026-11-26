@@ -6,6 +6,7 @@ import {
   stepConfettiParticles,
   type ConfettiParticle,
 } from '../utils/celebration';
+import { haptics } from '../utils/haptics';
 import { soundEngine } from '../utils/soundEngine';
 
 export interface ConfettiCanvasHandle {
@@ -167,6 +168,7 @@ export const ConfettiCanvas = forwardRef<ConfettiCanvasHandle>(function Confetti
     fireCannons() {
       setBurstCount((c) => c + 1);
       soundEngine.playConfettiPop('cannon');
+      haptics.confettiCannon();
 
       const primary = spawnSideCannons({
         viewportWidth: window.innerWidth,

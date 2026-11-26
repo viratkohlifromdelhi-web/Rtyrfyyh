@@ -1,5 +1,6 @@
-import { useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { Gift, RotateCcw } from 'lucide-react';
+import { haptics, stopHaptics } from '../utils/haptics';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
 import { SparkleStarSvg, WrappedGiftBoxSvg } from './DoodleSvgs';
@@ -10,16 +11,43 @@ interface SurpriseGiftSectionProps {
 
 export function SurpriseGiftSection({ onRevealConfetti }: SurpriseGiftSectionProps) {
   const [isOpened, setIsOpened] = useState(false);
+  const hapticTimersRef = useRef<number[]>([]);
+
+  const clearHapticTimers = () => {
+    for (const id of hapticTimersRef.current) {
+      window.clearTimeout(id);
+    }
+    hapticTimersRef.current = [];
+  };
+
+  useEffect(() => {
+    return () => {
+      clearHapticTimers();
+      stopHaptics();
+    };
+  }, []);
 
   const handleOpenGift = (e: MouseEvent<HTMLButtonElement>) => {
+    clearHapticTimers();
     setIsOpened(true);
     soundEngine.playGiftFanfare();
     bgMusicPlayer.triggerCelebrationSwell();
+
+    // Synced Stage 1-4 gift box unwrap haptics
+    haptics.giftBoxWiggle();
+    hapticTimersRef.current.push(
+      window.setTimeout(() => haptics.giftBoxRibbonPeel(), 140),
+      window.setTimeout(() => haptics.giftBoxLidPop(), 250),
+      window.setTimeout(() => haptics.giftBoxReveal(), 380),
+    );
+
     const rect = e.currentTarget.getBoundingClientRect();
     onRevealConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
   };
 
   const handleWrapBack = () => {
+    clearHapticTimers();
+    stopHaptics();
     soundEngine.playBubbleClick();
     setIsOpened(false);
   };

@@ -7,6 +7,7 @@ import {
   SCANNER_DURATION_MS,
   SCANNER_MAX_PROGRESS,
 } from '../utils/interactiveFun';
+import { getScannerHapticStep, haptics, stopHaptics } from '../utils/haptics';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
 import { FingerprintSparkleSvg, SparkleStarSvg, WavyDivider } from './DoodleSvgs';
@@ -23,6 +24,33 @@ export function BauniMeterSection() {
   const rafRef = useRef<number | null>(null);
   const lastFrameRef = useRef<number | null>(null);
   const progressRef = useRef(0);
+  const hapticTimerRef = useRef<number | null>(null);
+
+  const clearHapticTimer = useCallback(() => {
+    if (hapticTimerRef.current !== null) {
+      window.clearTimeout(hapticTimerRef.current);
+      hapticTimerRef.current = null;
+    }
+  }, []);
+
+  const stopScannerHaptics = useCallback(() => {
+    clearHapticTimer();
+    stopHaptics();
+  }, [clearHapticTimer]);
+
+  const startScannerHapticPulse = useCallback(() => {
+    clearHapticTimer();
+    const firePulse = () => {
+      if (modeRef.current !== 'holding') {
+        hapticTimerRef.current = null;
+        return;
+      }
+      const step = getScannerHapticStep(progressRef.current);
+      haptics.scannerPulse(progressRef.current);
+      hapticTimerRef.current = window.setTimeout(firePulse, step.intervalMs);
+    };
+    firePulse();
+  }, [clearHapticTimer]);
 
   const stopLoop = useCallback(() => {
     if (rafRef.current !== null) {
@@ -54,15 +82,14 @@ export function BauniMeterSection() {
 
         if (result.reachedVerdict) {
           modeRef.current = 'none';
+          clearHapticTimer();
           stopLoop();
           setProgress(SCANNER_MAX_PROGRESS);
           setPhase('verdict');
           setGlitchKey((k) => k + 1);
           soundEngine.playScannerComplete();
           bgMusicPlayer.endScannerVerdict();
-          if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-            navigator.vibrate([25, 45, 35]);
-          }
+          haptics.scannerVerdict();
           return;
         }
       } else if (mode === 'rewinding') {
@@ -83,13 +110,14 @@ export function BauniMeterSection() {
     };
 
     rafRef.current = window.requestAnimationFrame(tick);
-  }, [stopLoop]);
+  }, [clearHapticTimer, stopLoop]);
 
   const cancelEarlyHold = useCallback(() => {
     if (modeRef.current !== 'holding') return;
     if (progressRef.current >= SCANNER_MAX_PROGRESS) return;
 
-    // Immediately abort scan, play descending "uh-oh" bloop, restore background music, and rewind to 0%
+    // Immediately abort scan, silence haptics, play descending "uh-oh" bloop, restore background music, and rewind to 0%
+    stopScannerHaptics();
     soundEngine.playScannerAbort();
     bgMusicPlayer.endScannerAbort();
     setPhase('aborted');
@@ -103,7 +131,7 @@ export function BauniMeterSection() {
       modeRef.current = 'none';
       stopLoop();
     }
-  }, [runLoop, stopLoop]);
+  }, [runLoop, stopLoop, stopScannerHaptics]);
 
   // Safety net: catch release outside the pad or window blur while holding
   useEffect(() => {
@@ -123,11 +151,12 @@ export function BauniMeterSection() {
   useEffect(() => {
     return () => {
       modeRef.current = 'none';
+      stopScannerHaptics();
       stopLoop();
       soundEngine.stopScannerHold();
       bgMusicPlayer.endScannerAbort();
     };
-  }, [stopLoop]);
+  }, [stopLoop, stopScannerHaptics]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (phase === 'verdict') return;
@@ -143,9 +172,7 @@ export function BauniMeterSection() {
 
     soundEngine.startScannerHold();
     bgMusicPlayer.beginScannerHold();
-    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-      navigator.vibrate(15);
-    }
+    startScannerHapticPulse();
 
     runLoop();
   };
@@ -155,6 +182,7 @@ export function BauniMeterSection() {
     soundEngine.stopScannerHold();
     bgMusicPlayer.endScannerAbort();
     modeRef.current = 'none';
+    stopScannerHaptics();
     stopLoop();
     progressRef.current = 0;
     setProgress(0);

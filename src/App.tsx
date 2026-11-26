@@ -3,6 +3,7 @@ import { AdoptionCertificateSection } from './components/AdoptionCertificateSect
 import { AmbientOverlay } from './components/AmbientOverlay';
 import { BackstorySection } from './components/BackstorySection';
 import { BauniMeterSection } from './components/BauniMeterSection';
+import { BirthdaySummaryCard } from './components/BirthdaySummaryCard';
 import { CalendarAndCounterSection } from './components/CalendarAndCounterSection';
 import { CaseFileSection } from './components/CaseFileSection';
 import { ConfettiCanvas, type ConfettiCanvasHandle } from './components/ConfettiCanvas';
@@ -13,6 +14,7 @@ import { InfinityVaultSection } from './components/InfinityVaultSection';
 import { InteractiveTogglesSection } from './components/InteractiveTogglesSection';
 import { LifeStatsSection } from './components/LifeStatsSection';
 import { MakeAWishCake } from './components/MakeAWishCake';
+import { MidnightLockOverlay } from './components/MidnightLockOverlay';
 import { RunawayAgreementSection } from './components/RunawayAgreementSection';
 import { ScratchCouponsSection } from './components/ScratchCouponsSection';
 import { SpinWheelSection } from './components/SpinWheelSection';
@@ -24,6 +26,8 @@ import {
 } from './components/TheatreIntroOverlay';
 import { TopBar } from './components/TopBar';
 import { ANAMIKA } from './data/celebrationData';
+import type { OneTimeSummaryGiftData } from './utils/infinityVault';
+import { shouldShowMidnightLock } from './utils/midnightLock';
 import { bgMusicPlayer } from './utils/musicSynth';
 import { soundEngine } from './utils/soundEngine';
 import { BG_MUSIC_AUTOPLAY_FADE_MS } from './utils/theatrePhysics';
@@ -34,7 +38,7 @@ function shouldSkipIntroFromQuery(): boolean {
   return params.get('autostart') === '1';
 }
 
-export default function App() {
+function BirthdayWebsiteShell() {
   const confettiRef = useRef<ConfettiCanvasHandle | null>(null);
   const theatreOverlayRef = useRef<TheatreIntroOverlayHandle | null>(null);
 
@@ -49,6 +53,9 @@ export default function App() {
   const [isWholesomeMode, setIsWholesomeMode] = useState(false);
   const [friendOverride, setFriendOverride] = useState(true);
   const [sparkleRain, setSparkleRain] = useState(true);
+  // Session-only one-time footer summary card state (strictly false on every page load)
+  const [showOneTimeSummary, setShowOneTimeSummary] = useState(false);
+  const [summaryGiftData, setSummaryGiftData] = useState<OneTimeSummaryGiftData | null>(null);
 
   useEffect(() => {
     bgMusicPlayer.warmUp();
@@ -86,6 +93,16 @@ export default function App() {
 
   const handleCelebrationBurst = useCallback(() => {
     confettiRef.current?.fireCannons();
+  }, []);
+
+  const handleFirstVaultClaimUnlock = useCallback((summary: OneTimeSummaryGiftData) => {
+    setSummaryGiftData(summary);
+    setShowOneTimeSummary(true);
+  }, []);
+
+  const handleVaultReset = useCallback(() => {
+    setShowOneTimeSummary(false);
+    setSummaryGiftData(null);
   }, []);
 
   // Stage 3 Reveal at 15.35s: reveal main site underneath (scale 0.97 -> 1.0, opacity 0.9 -> 1.0 over 550ms)
@@ -243,7 +260,12 @@ export default function App() {
           <ScratchCouponsSection onCardRevealConfetti={handleBurstConfetti} />
 
           {/* 12. The Infinity Gift Vault (6 Avengers Infinity Stones + ₹250 Reveal) */}
-          <InfinityVaultSection onRevealConfetti={handleBurstConfetti} />
+          <InfinityVaultSection
+            onRevealConfetti={handleBurstConfetti}
+            onFirstClaimUnlock={handleFirstVaultClaimUnlock}
+            onVaultReset={handleVaultReset}
+            showFooterSummaryJump={showOneTimeSummary}
+          />
 
           {/* 13. Rigged "Spin the Wheel for Your Birthday Gift" Section */}
           <SpinWheelSection />
@@ -256,6 +278,11 @@ export default function App() {
         </main>
 
         <footer className="relative z-20 border-t border-[#F2C6D8] bg-[#FFF6F9] py-8 pb-28 sm:pb-12">
+          {/* One-Time Screenshot-Ready Birthday Summary Card (renders strictly once on first Vault unlock) */}
+          {showOneTimeSummary && summaryGiftData && (
+            <BirthdaySummaryCard data={summaryGiftData} />
+          )}
+
           <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 text-center sm:flex-row sm:px-6 sm:text-left lg:px-8">
             <div className="flex items-center justify-center gap-2 text-sm text-[#6B3B64] sm:justify-start">
               <SparkleStarSvg className="h-4 w-4 shrink-0 text-[#D94B7D]" />
@@ -291,4 +318,20 @@ export default function App() {
       <FloatingConfettiButton onPop={handleBurstConfetti} />
     </div>
   );
+}
+
+export default function App() {
+  const [isMidnightLocked, setIsMidnightLocked] = useState<boolean>(() =>
+    shouldShowMidnightLock(Date.now()),
+  );
+
+  const handleMidnightUnlock = useCallback(() => {
+    setIsMidnightLocked(false);
+  }, []);
+
+  if (isMidnightLocked) {
+    return <MidnightLockOverlay onUnlock={handleMidnightUnlock} />;
+  }
+
+  return <BirthdayWebsiteShell />;
 }

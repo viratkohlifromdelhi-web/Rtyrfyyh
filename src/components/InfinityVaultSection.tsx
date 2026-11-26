@@ -8,10 +8,12 @@ import {
   ORBIT_STOP_DURATION_SEC,
   PRIZE_POOL_TIERS,
   RIGGED_GIFT_DISPLAY,
+  clearSummaryConsumed,
   clearVaultClaim,
   clampVaultDt,
   computeStoneOrbitPosition,
   computeStoppingAngularVelocity,
+  consumeOneTimeSummary,
   evaluateVaultPasscode,
   generateGiftCardCode,
   getStoneById,
@@ -22,8 +24,10 @@ import {
   writeVaultClaim,
   type DustParticle,
   type InfinityStoneId,
+  type OneTimeSummaryGiftData,
   type VaultClaimRecord,
 } from '../utils/infinityVault';
+import { haptics } from '../utils/haptics';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
 import { InfinityStoneSvg } from './InfinityStoneSvg';
@@ -40,11 +44,19 @@ type VaultPhase =
 
 interface InfinityVaultSectionProps {
   onRevealConfetti?: (originX?: number, originY?: number) => void;
+  onFirstClaimUnlock?: (summary: OneTimeSummaryGiftData) => void;
+  onVaultReset?: () => void;
+  showFooterSummaryJump?: boolean;
 }
 
 const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'CLEAR', '0', 'BACK'] as const;
 
-export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionProps) {
+export function InfinityVaultSection({
+  onRevealConfetti,
+  onFirstClaimUnlock,
+  onVaultReset,
+  showFooterSummaryJump = false,
+}: InfinityVaultSectionProps) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dustCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -359,6 +371,8 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
     stopOrbitLoop();
     stopDustLoop(true);
     clearVaultClaim();
+    clearSummaryConsumed();
+    onVaultReset?.();
     bgMusicPlayer.endVaultSequenceImmediate();
 
     pickedGuardRef.current = false;
@@ -387,7 +401,7 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
     scheduleTimer(() => {
       setResetToastVisible(false);
     }, 1500);
-  }, [clearAllTimers, scheduleTimer, setVaultPhase, stopDustLoop, stopOrbitLoop]);
+  }, [clearAllTimers, onVaultReset, scheduleTimer, setVaultPhase, stopDustLoop, stopOrbitLoop]);
 
   // Evaluate 4-digit code on the main locked keypad
   const submitMainCode = useCallback(
@@ -403,6 +417,7 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
 
       if (resolution === 'alreadyClaimed') {
         soundEngine.playVaultUnlock();
+        haptics.vaultUnlock();
         setCodeDigits('');
         setCodeError(null);
         setVaultPhase('alreadyClaimed');
@@ -411,6 +426,7 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
 
       if (resolution === 'unlock') {
         soundEngine.playVaultUnlock();
+        haptics.vaultUnlock();
         bgMusicPlayer.beginVaultSequence();
         pickedGuardRef.current = false;
         setCodeDigits('');
@@ -427,6 +443,7 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
 
       // Wrong passcode
       soundEngine.playVaultWrongCode();
+      haptics.vaultWrongCode();
       setCodeError('Wrong passcode, try again.');
       setShakeCount((c) => c + 1);
       scheduleTimer(() => {
@@ -452,6 +469,7 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
   const handleMainKeyTap = useCallback(
     (key: (typeof KEYPAD_KEYS)[number]) => {
       soundEngine.playVaultKeypadTap();
+      haptics.vaultKeypadTap();
       if (key === 'CLEAR') {
         setCodeDigits('');
         setCodeError(null);
@@ -497,6 +515,7 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
       }
 
       soundEngine.playVaultWrongCode();
+      haptics.vaultWrongCode();
       setModalError('Wrong passcode, try again.');
       setModalShakeCount((c) => c + 1);
       scheduleTimer(() => {
@@ -521,6 +540,7 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
   const handleModalKeyTap = useCallback(
     (key: (typeof KEYPAD_KEYS)[number]) => {
       soundEngine.playVaultKeypadTap();
+      haptics.vaultKeypadTap();
       if (key === 'CLEAR') {
         setModalDigits('');
         setModalError(null);
@@ -541,6 +561,7 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
   const handleStopRing = useCallback(() => {
     if (phaseRef.current !== 'orbiting') return;
     soundEngine.playVaultRingDecel();
+    haptics.vaultStopRing();
     orbitSpeedRef.current = ORBIT_BASE_SPEED_RAD;
     stopElapsedRef.current = 0;
     setVaultPhase('stopping');
@@ -589,6 +610,7 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
       scheduleTimer(() => {
         setUnselectedFading(true);
         soundEngine.playVaultDustSnap();
+        haptics.vaultDustSnap();
 
         if (canvasMetrics) {
           const spawned: DustParticle[] = [];
@@ -651,6 +673,18 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
         // Reveal the ₹250 physical gift card smoothly right as the chosen stone bursts
         scheduleTimer(() => {
           setVaultPhase('claimed');
+          haptics.vaultRewardReveal();
+
+          // One-time footer screenshot summary card: trigger strictly once on unclaimed -> claimed
+          if (consumeOneTimeSummary()) {
+            onFirstClaimUnlock?.({
+              value: RIGGED_GIFT_DISPLAY,
+              code: nextRecord.code,
+              stoneName: chosenStone.name,
+              stoneColor: chosenStone.bodyStart,
+              stoneGlow: chosenStone.glow,
+            });
+          }
 
           // Fire existing confetti burst centered on vault
           const rect = stageRef.current?.getBoundingClientRect();
@@ -667,7 +701,15 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
         }, 220);
       }, 650);
     },
-    [ensureDustLoop, onRevealConfetti, scheduleTimer, setVaultPhase, stopOrbitLoop, syncDustCanvasSize],
+    [
+      ensureDustLoop,
+      onFirstClaimUnlock,
+      onRevealConfetti,
+      scheduleTimer,
+      setVaultPhase,
+      stopOrbitLoop,
+      syncDustCanvasSize,
+    ],
   );
 
   // Copy 12-digit gift code cleanly with clipboard fallback
@@ -710,8 +752,10 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
     (e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key >= '0' && e.key <= '9') {
         soundEngine.playVaultKeypadTap();
+        haptics.vaultKeypadTap();
       } else if (e.key === 'Backspace') {
         soundEngine.playVaultKeypadTap();
+        haptics.vaultKeypadTap();
       }
     },
     [],
@@ -1196,6 +1240,24 @@ export function InfinityVaultSection({ onRevealConfetti }: InfinityVaultSectionP
                   </span>{' '}
                   to activate your {RIGGED_GIFT_DISPLAY} gift card.
                 </p>
+
+                {/* Subtle pulsing jump button strictly on first-time unlock */}
+                {phase === 'claimed' && showFooterSummaryJump && (
+                  <button
+                    type="button"
+                    data-testid="vault-jump-summary-btn"
+                    onClick={() => {
+                      soundEngine.playBubbleClick(1.04);
+                      haptics.summaryCopyTap();
+                      document
+                        .getElementById('birthday-summary-card')
+                        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }}
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#F6CFD7]/45 bg-[#D94B7D]/25 px-4 py-2 text-xs font-extrabold tracking-wide text-[#FFE9F2] shadow-[0_0_20px_rgba(217,75,125,0.35)] transition-all duration-150 hover:bg-[#D94B7D]/40 active:scale-95 animate-pulse cursor-pointer"
+                  >
+                    <span>View Screenshot Card in Footer ↓</span>
+                  </button>
+                )}
               </div>
             )}
           </div>

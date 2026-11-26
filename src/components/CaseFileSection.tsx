@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { haptics } from '../utils/haptics';
 import { SparkleStarSvg } from './DoodleSvgs';
 import {
   CARD_IDLE_ROT_DEG,
@@ -274,6 +275,7 @@ export function CaseFileSection() {
 
     // Stage 1 SFX (t = 0.0s) + smooth music duck (0.45 -> 0.18 over 0.25s)
     soundEngine.playPaperclipUnclip();
+    haptics.casePaperclip();
     bgMusicPlayer.beginCaseFileOpen();
 
     const prefersReducedMotion =
@@ -284,6 +286,7 @@ export function CaseFileSection() {
     if (prefersReducedMotion) {
       applyOpenPose();
       soundEngine.playCaseStampImpact();
+      haptics.caseStamp();
       setPhaseSync('open');
       duckRestoreTimerRef.current = window.setTimeout(() => {
         duckRestoreTimerRef.current = null;
@@ -343,6 +346,7 @@ export function CaseFileSection() {
       if (!stampSfxPlayed && elapsedSec >= STAMP_IMPACT_SEC) {
         stampSfxPlayed = true;
         soundEngine.playCaseStampImpact();
+        haptics.caseStamp();
         setShowStampSparkles(true);
         bgMusicPlayer.endCaseFileOpen();
         sparkleTimerRef.current = window.setTimeout(() => {
@@ -401,6 +405,7 @@ export function CaseFileSection() {
         applyOpenPose();
         if (!stampSfxPlayed) {
           soundEngine.playCaseStampImpact();
+          haptics.caseStamp();
           bgMusicPlayer.endCaseFileOpen();
         }
         setPhaseSync('open');

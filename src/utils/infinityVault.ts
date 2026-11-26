@@ -5,6 +5,7 @@
  */
 
 export const VAULT_STORAGE_KEY = 'morgan_infinity_vault_v1';
+export const SUMMARY_CONSUMED_KEY = 'morgan_summary_consumed_v1';
 export const VAULT_UNLOCK_CODE = '1845';
 export const VAULT_RESET_CODE = '9876';
 export const RIGGED_GIFT_VALUE = 250;
@@ -99,6 +100,14 @@ export interface VaultClaimRecord {
   stoneName: string;
   stoneId: InfinityStoneId;
   claimedOn: string;
+}
+
+export interface OneTimeSummaryGiftData {
+  value: string;
+  code: string;
+  stoneName: string;
+  stoneColor: string;
+  stoneGlow: string;
 }
 
 export type PasscodeResolution = 'unlock' | 'alreadyClaimed' | 'reset' | 'wrong';
@@ -350,6 +359,44 @@ export function clearVaultClaim(storage?: StorageLike | null): void {
   if (!store) return;
   try {
     store.removeItem(VAULT_STORAGE_KEY);
+  } catch {
+    // Ignore storage restrictions
+  }
+}
+
+export function isSummaryConsumed(storage?: StorageLike | null): boolean {
+  const store = storage ?? (typeof window !== 'undefined' ? window.localStorage : null);
+  if (!store) return false;
+  try {
+    return store.getItem(SUMMARY_CONSUMED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Atomically marks the one-time footer summary card as consumed on the very first unlock.
+ * Returns true ONLY if it was previously unconsumed (first time), false otherwise.
+ */
+export function consumeOneTimeSummary(storage?: StorageLike | null): boolean {
+  const store = storage ?? (typeof window !== 'undefined' ? window.localStorage : null);
+  if (!store) return true;
+  try {
+    if (store.getItem(SUMMARY_CONSUMED_KEY) === 'true') {
+      return false;
+    }
+    store.setItem(SUMMARY_CONSUMED_KEY, 'true');
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+export function clearSummaryConsumed(storage?: StorageLike | null): void {
+  const store = storage ?? (typeof window !== 'undefined' ? window.localStorage : null);
+  if (!store) return;
+  try {
+    store.removeItem(SUMMARY_CONSUMED_KEY);
   } catch {
     // Ignore storage restrictions
   }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { SparkleStarSvg } from './DoodleSvgs';
+import { haptics } from '../utils/haptics';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { WheelAudioEngine } from '../utils/wheelAudio';
 import {
@@ -199,13 +200,7 @@ export function SpinWheelSection() {
         lastPegIdx = currentPegIdx;
         flapperStateRef.current = applyFlapperImpulse(flapperStateRef.current, wheelSpeed);
         audioRef.current?.playPegTick(speedNorm);
-        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-          try {
-            navigator.vibrate(8);
-          } catch {
-            // Ignore blocked vibration in restricted contexts
-          }
-        }
+        haptics.wheelPegTick();
       }
 
       // Step flapper damped spring physics on every frame
@@ -251,6 +246,7 @@ export function SpinWheelSection() {
       lastTrollIndexRef.current = visualSliceIndex;
 
       audioRef.current?.playWompBoing();
+      haptics.wheelLand();
       bgMusicPlayer.endWheelSpin();
 
       setSpinsTried((prev) => {

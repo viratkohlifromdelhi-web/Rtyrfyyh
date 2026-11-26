@@ -17,6 +17,7 @@ import {
   PartyTreatDoodleSvg,
   SparkleStarSvg,
 } from './DoodleSvgs';
+import { haptics } from '../utils/haptics';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
 
@@ -507,6 +508,7 @@ export function ScratchCouponsSection({
       } else {
         soundEngine.playScratchSparkle();
       }
+      haptics.scratchReveal();
       bgMusicPlayer.triggerScratchReveal();
       onCardRevealConfetti(originX, originY);
     },
@@ -521,6 +523,7 @@ export function ScratchCouponsSection({
 
   const handleRevealAll = () => {
     soundEngine.playScratchSparkle();
+    haptics.scratchReveal();
     bgMusicPlayer.triggerScratchReveal();
     setRevealedMap({ nothing: true, party: true, troll: true });
     onCardRevealConfetti(window.innerWidth * 0.5, window.innerHeight * 0.45);
