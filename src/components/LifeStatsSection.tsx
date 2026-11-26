@@ -14,16 +14,22 @@ import { soundEngine } from '../utils/soundEngine';
 
 const BIRTH_DATE = new Date(ANAMIKA_BIRTH_ISO);
 
-export function LifeStatsSection() {
+interface LifeStatsSectionProps {
+  paused?: boolean;
+}
+
+export function LifeStatsSection({ paused = false }: LifeStatsSectionProps) {
   const [stats, setStats] = useState(() => computeLifeStats(new Date(), BIRTH_DATE));
   const [activeTile, setActiveTile] = useState<string | null>(null);
 
   useEffect(() => {
+    if (paused) return;
+    setStats(computeLifeStats(new Date(), BIRTH_DATE));
     const id = window.setInterval(() => {
       setStats(computeLifeStats(new Date(), BIRTH_DATE));
     }, 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [paused]);
 
   const handleTileBounce = (id: string) => {
     soundEngine.playBubbleClick(1.05);

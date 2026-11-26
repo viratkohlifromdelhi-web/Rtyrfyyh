@@ -209,7 +209,7 @@ export const ConfettiCanvas = forwardRef<ConfettiCanvasHandle>(function Confetti
       data-testid="confetti-canvas"
       data-confetti-bursts={burstCount}
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-50 h-full w-full"
+      className="pointer-events-none fixed inset-0 z-[10000] h-full w-full"
     />
   );
 });

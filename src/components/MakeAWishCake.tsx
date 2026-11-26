@@ -11,6 +11,7 @@ import {
   createInitialCakeState,
   relightCandles,
 } from '../utils/celebration';
+import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
 import { SparkleStarSvg } from './DoodleSvgs';
 
@@ -48,6 +49,7 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
 
     const rect = e.currentTarget.getBoundingClientRect();
     soundEngine.playCakeBlowout();
+    bgMusicPlayer.triggerCelebrationSwell();
     setSeqId((s) => s + 1);
     setAnimPhase('blowing');
     onBlowOutConfetti(rect.left + rect.width / 2, rect.top);

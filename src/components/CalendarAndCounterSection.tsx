@@ -10,6 +10,7 @@ import { soundEngine } from '../utils/soundEngine';
 
 interface CalendarAndCounterSectionProps {
   onBirthdayDateTap: (originX?: number, originY?: number) => void;
+  paused?: boolean;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -18,6 +19,7 @@ const BINDER_RINGS = [0, 1, 2, 3, 4, 5];
 
 export function CalendarAndCounterSection({
   onBirthdayDateTap,
+  paused = false,
 }: CalendarAndCounterSectionProps) {
   const [showBirthdayPopup, setShowBirthdayPopup] = useState(false);
   const [dateToast, setDateToast] = useState<{ day: number; message: string; id: number } | null>(
@@ -26,11 +28,13 @@ export function CalendarAndCounterSection({
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
+    if (paused) return;
+    setNow(new Date());
     const id = window.setInterval(() => {
       setNow(new Date());
     }, 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [paused]);
 
   const duration = computeFriendshipDuration(now);
   const countdown = computeBirthdayCountdown(now);

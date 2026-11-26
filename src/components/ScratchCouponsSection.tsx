@@ -17,6 +17,7 @@ import {
   PartyTreatDoodleSvg,
   SparkleStarSvg,
 } from './DoodleSvgs';
+import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
 
 interface ScratchCouponsSectionProps {
@@ -506,6 +507,7 @@ export function ScratchCouponsSection({
       } else {
         soundEngine.playScratchSparkle();
       }
+      bgMusicPlayer.triggerScratchReveal();
       onCardRevealConfetti(originX, originY);
     },
     [onCardRevealConfetti],
@@ -519,6 +521,7 @@ export function ScratchCouponsSection({
 
   const handleRevealAll = () => {
     soundEngine.playScratchSparkle();
+    bgMusicPlayer.triggerScratchReveal();
     setRevealedMap({ nothing: true, party: true, troll: true });
     onCardRevealConfetti(window.innerWidth * 0.5, window.innerHeight * 0.45);
   };

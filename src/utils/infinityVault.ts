@@ -1,0 +1,356 @@
+/**
+ * Pure domain constants, state transitions, 60fps orbital deceleration math,
+ * Thanos-snap dust particle engine, and localStorage persistence helpers for
+ * "The Infinity Gift Vault" section.
+ */
+
+export const VAULT_STORAGE_KEY = 'morgan_infinity_vault_v1';
+export const VAULT_UNLOCK_CODE = '1845';
+export const VAULT_RESET_CODE = '9876';
+export const RIGGED_GIFT_VALUE = 250;
+export const RIGGED_GIFT_DISPLAY = '₹250';
+export const CLAIMED_DATE_LABEL = '3 Dec';
+
+export const PRIZE_POOL_TIERS = ['₹50', '₹100', '₹150', '₹250', '₹500', '₹1,000'] as const;
+
+export const ORBIT_BASE_SPEED_RAD = 1.5; // rad/s smooth orbital rotation
+export const ORBIT_STOP_DURATION_SEC = 1.4; // cubic ease-out deceleration duration
+export const MAX_VAULT_DT_SEC = 0.05;
+
+export type InfinityStoneId = 'space' | 'mind' | 'reality' | 'power' | 'time' | 'soul';
+
+export interface InfinityStoneSpec {
+  id: InfinityStoneId;
+  name: string;
+  core: string;
+  bodyStart: string;
+  bodyEnd: string;
+  glow: string;
+  sparkColor: string;
+  dustPalette: readonly [string, string, string, string];
+}
+
+export const INFINITY_STONES: readonly InfinityStoneSpec[] = [
+  {
+    id: 'space',
+    name: 'Space Stone',
+    core: '#E6F9FF',
+    bodyStart: '#269BFF',
+    bodyEnd: '#0A4AD8',
+    glow: 'rgba(38, 155, 255, 0.85)',
+    sparkColor: '#A8E5FF',
+    dustPalette: ['#E6F9FF', '#5EC0FF', '#269BFF', '#1863D6'],
+  },
+  {
+    id: 'mind',
+    name: 'Mind Stone',
+    core: '#FFFDE0',
+    bodyStart: '#FFD83D',
+    bodyEnd: '#D98E00',
+    glow: 'rgba(255, 216, 61, 0.85)',
+    sparkColor: '#FFF3A8',
+    dustPalette: ['#FFFDE0', '#FFE46B', '#FFD83D', '#D98E00'],
+  },
+  {
+    id: 'reality',
+    name: 'Reality Stone',
+    core: '#FFE3E6',
+    bodyStart: '#F01D35',
+    bodyEnd: '#8F0016',
+    glow: 'rgba(240, 29, 53, 0.85)',
+    sparkColor: '#FF8A99',
+    dustPalette: ['#FFE3E6', '#FF566B', '#F01D35', '#A80E24'],
+  },
+  {
+    id: 'power',
+    name: 'Power Stone',
+    core: '#F6E3FF',
+    bodyStart: '#A933FF',
+    bodyEnd: '#5A00B8',
+    glow: 'rgba(169, 51, 255, 0.85)',
+    sparkColor: '#DDA6FF',
+    dustPalette: ['#F6E3FF', '#C96BFF', '#A933FF', '#6D18C7'],
+  },
+  {
+    id: 'time',
+    name: 'Time Stone',
+    core: '#E3FFF0',
+    bodyStart: '#00DE73',
+    bodyEnd: '#007A3D',
+    glow: 'rgba(0, 222, 115, 0.85)',
+    sparkColor: '#8CFFC7',
+    dustPalette: ['#E3FFF0', '#4DF5A3', '#00DE73', '#0A9650'],
+  },
+  {
+    id: 'soul',
+    name: 'Soul Stone',
+    core: '#FFF0DB',
+    bodyStart: '#FF8000',
+    bodyEnd: '#C44200',
+    glow: 'rgba(255, 128, 0, 0.85)',
+    sparkColor: '#FFC480',
+    dustPalette: ['#FFF0DB', '#FFA94D', '#FF8000', '#C44200'],
+  },
+] as const;
+
+export interface VaultClaimRecord {
+  claimed: boolean;
+  code: string;
+  stoneName: string;
+  stoneId: InfinityStoneId;
+  claimedOn: string;
+}
+
+export type PasscodeResolution = 'unlock' | 'alreadyClaimed' | 'reset' | 'wrong';
+
+export interface DustParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  initialSize: number;
+  alpha: number;
+  lifeSec: number;
+  maxLifeSec: number;
+  color: string;
+  phase: number;
+  curlFreq: number;
+  curlAmp: number;
+  delaySec: number;
+}
+
+export interface StorageLike {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+export function clampVaultDt(dtMs: number): number {
+  if (!Number.isFinite(dtMs) || dtMs <= 0) return 0.001;
+  return Math.min(Math.max(dtMs / 1000, 0.001), MAX_VAULT_DT_SEC);
+}
+
+/**
+ * Evaluates a 4-digit passcode against the vault rules:
+ * - '9876' ALWAYS resets the vault (even if already claimed).
+ * - '1845' unlocks if unclaimed, or routes to 'alreadyClaimed' if already claimed.
+ * - Any other code returns 'wrong'.
+ */
+export function evaluateVaultPasscode(
+  rawCode: string,
+  existingClaim: VaultClaimRecord | null,
+): PasscodeResolution {
+  const normalized = rawCode.trim();
+  if (normalized === VAULT_RESET_CODE) {
+    return 'reset';
+  }
+  if (normalized === VAULT_UNLOCK_CODE) {
+    return existingClaim?.claimed ? 'alreadyClaimed' : 'unlock';
+  }
+  return 'wrong';
+}
+
+/**
+ * Strict rigged outcome: regardless of which of the 6 Infinity Stones is picked,
+ * the revealed gift card value is ALWAYS ₹250.
+ */
+export function resolveVaultRewardValue(_stoneId: InfinityStoneId): number {
+  return RIGGED_GIFT_VALUE;
+}
+
+export function getStoneById(stoneId: InfinityStoneId): InfinityStoneSpec {
+  return INFINITY_STONES.find((s) => s.id === stoneId) ?? INFINITY_STONES[0];
+}
+
+/**
+ * Generates a realistic 12-digit gift card code formatted in 3 groups of 4 digits
+ * (e.g. "4829 - 7104 - 9362").
+ */
+export function generateGiftCardCode(rng: () => number = Math.random): string {
+  const groups: string[] = [];
+  for (let g = 0; g < 3; g++) {
+    let chunk = '';
+    for (let d = 0; d < 4; d++) {
+      // Avoid leading 0 on first digit for cleaner realistic look
+      const min = g === 0 && d === 0 ? 1 : 0;
+      const span = 10 - min;
+      const digit = min + Math.floor(Math.max(0, Math.min(0.999999, rng())) * span);
+      chunk += String(digit);
+    }
+    groups.push(chunk);
+  }
+  return groups.join(' - ');
+}
+
+/**
+ * Cubic ease-out angular deceleration curve from ORBIT_BASE_SPEED_RAD -> 0 over 1.4s.
+ */
+export function computeStoppingAngularVelocity(
+  elapsedSec: number,
+  startSpeedRad = ORBIT_BASE_SPEED_RAD,
+  durationSec = ORBIT_STOP_DURATION_SEC,
+): number {
+  if (durationSec <= 0) return 0;
+  const u = Math.max(0, Math.min(1, elapsedSec / durationSec));
+  return startSpeedRad * Math.pow(1 - u, 3);
+}
+
+/**
+ * Computes (x, y) pixel offset from ring center for stone `index` (0..5)
+ * at orbital angle `baseAngleRad`.
+ */
+export function computeStoneOrbitPosition(
+  index: number,
+  baseAngleRad: number,
+  radiusPx: number,
+): { x: number; y: number } {
+  const angle = baseAngleRad + (index * Math.PI * 2) / INFINITY_STONES.length - Math.PI / 2;
+  return {
+    x: Math.cos(angle) * radiusPx,
+    y: Math.sin(angle) * radiusPx,
+  };
+}
+
+/**
+ * Spawns shimmering Thanos-snap dust/ash particles directly at a stone's canvas coordinates.
+ */
+export function spawnStoneDustParticles(params: {
+  cx: number;
+  cy: number;
+  spreadPx: number;
+  count: number;
+  palette: readonly string[];
+  intensity?: 'unselected' | 'chosen';
+  rng?: () => number;
+}): DustParticle[] {
+  const rng = params.rng ?? Math.random;
+  const isChosen = params.intensity === 'chosen';
+  const out: DustParticle[] = [];
+
+  for (let i = 0; i < params.count; i++) {
+    const angle = rng() * Math.PI * 2;
+    const dist = Math.sqrt(rng()) * params.spreadPx;
+    const x = params.cx + Math.cos(angle) * dist;
+    const y = params.cy + Math.sin(angle) * dist;
+
+    // Organic Thanos-snap drift: mostly upward & rightward with varied grain speeds
+    const driftSpeed = isChosen ? 38 + rng() * 95 : 26 + rng() * 68;
+    const vx = (isChosen ? 18 : 24) + rng() * (isChosen ? 62 : 52) + Math.cos(angle) * (isChosen ? 28 : 10);
+    const vy = -driftSpeed + (rng() - 0.5) * 20;
+
+    const initialSize = isChosen ? 1.5 + rng() * 3.1 : 1.2 + rng() * 2.5;
+    const maxLifeSec = isChosen ? 0.75 + rng() * 0.65 : 0.65 + rng() * 0.6;
+    const delaySec = isChosen ? rng() * 0.14 : rng() * 0.24;
+    const colorIdx = Math.floor(rng() * params.palette.length);
+
+    out.push({
+      x,
+      y,
+      vx,
+      vy,
+      size: initialSize,
+      initialSize,
+      alpha: 1,
+      lifeSec: 0,
+      maxLifeSec,
+      color: params.palette[colorIdx] ?? '#FFE6F0',
+      phase: rng() * Math.PI * 2,
+      curlFreq: 2.5 + rng() * 4.0,
+      curlAmp: 12 + rng() * 24,
+      delaySec,
+    });
+  }
+
+  return out;
+}
+
+/**
+ * Advances all active dust particles by `dtSec` and prunes faded particles (`alpha <= 0`).
+ * Returns the remaining active particle list (empty when canvas loop should stop).
+ */
+export function stepDustParticles(particles: DustParticle[], dtSec: number): DustParticle[] {
+  const next: DustParticle[] = [];
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+    if (p.delaySec > 0) {
+      p.delaySec = Math.max(0, p.delaySec - dtSec);
+      next.push(p);
+      continue;
+    }
+
+    p.lifeSec += dtSec;
+    if (p.lifeSec >= p.maxLifeSec) {
+      continue;
+    }
+
+    const u = p.lifeSec / p.maxLifeSec;
+    const windCurlX = Math.sin(p.lifeSec * p.curlFreq + p.phase) * p.curlAmp;
+    const windCurlY = Math.cos(p.lifeSec * (p.curlFreq * 0.8) + p.phase) * (p.curlAmp * 0.35);
+
+    p.x += (p.vx + windCurlX) * dtSec;
+    p.y += (p.vy + windCurlY) * dtSec;
+    // Gentle upward acceleration as ash turns weightless
+    p.vy -= 18 * dtSec;
+    p.vx += 14 * dtSec;
+
+    p.alpha = Math.max(0, Math.pow(1 - u, 1.35));
+    p.size = Math.max(0.25, p.initialSize * (1 - u * 0.72));
+
+    if (p.alpha > 0.01) {
+      next.push(p);
+    }
+  }
+  return next;
+}
+
+export function readVaultClaim(storage?: StorageLike | null): VaultClaimRecord | null {
+  const store = storage ?? (typeof window !== 'undefined' ? window.localStorage : null);
+  if (!store) return null;
+  try {
+    const raw = store.getItem(VAULT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<VaultClaimRecord>;
+    if (
+      parsed &&
+      parsed.claimed === true &&
+      typeof parsed.code === 'string' &&
+      parsed.code.length >= 12 &&
+      typeof parsed.stoneName === 'string'
+    ) {
+      const validStoneId = INFINITY_STONES.some((s) => s.id === parsed.stoneId)
+        ? (parsed.stoneId as InfinityStoneId)
+        : (INFINITY_STONES.find((s) => s.name === parsed.stoneName)?.id ?? 'reality');
+      return {
+        claimed: true,
+        code: parsed.code,
+        stoneName: parsed.stoneName,
+        stoneId: validStoneId,
+        claimedOn: typeof parsed.claimedOn === 'string' && parsed.claimedOn ? parsed.claimedOn : CLAIMED_DATE_LABEL,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeVaultClaim(record: VaultClaimRecord, storage?: StorageLike | null): void {
+  const store = storage ?? (typeof window !== 'undefined' ? window.localStorage : null);
+  if (!store) return;
+  try {
+    store.setItem(VAULT_STORAGE_KEY, JSON.stringify(record));
+  } catch {
+    // Ignore storage quota / private mode restrictions
+  }
+}
+
+export function clearVaultClaim(storage?: StorageLike | null): void {
+  const store = storage ?? (typeof window !== 'undefined' ? window.localStorage : null);
+  if (!store) return;
+  try {
+    store.removeItem(VAULT_STORAGE_KEY);
+  } catch {
+    // Ignore storage restrictions
+  }
+}

@@ -45,8 +45,8 @@ class SoundEffectsEngine {
     };
   }
 
-  private ensureContext(): AudioContext | null {
-    if (!this.enabled || typeof window === 'undefined') return null;
+  public getAudioContext(): AudioContext | null {
+    if (typeof window === 'undefined') return null;
     const AudioCtx =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -55,22 +55,44 @@ class SoundEffectsEngine {
     if (!this.ctx) {
       this.ctx = new AudioCtx();
     }
-    if (this.ctx.state === 'suspended') {
-      void this.ctx.resume();
+    return this.ctx;
+  }
+
+  public async resumeSharedContext(): Promise<AudioContext | null> {
+    const ctx = this.getAudioContext();
+    if (!ctx) return null;
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch {
+        // Ignore browser resume rejection outside a user gesture
+      }
     }
-    if (!this.noiseBuffer && this.ctx) {
-      const length = Math.floor(this.ctx.sampleRate * 0.65);
-      const buffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
+    return ctx;
+  }
+
+  private ensureContext(): AudioContext | null {
+    if (!this.enabled) return null;
+    const ctx = this.getAudioContext();
+    if (!ctx) return null;
+
+    if (ctx.state === 'suspended') {
+      void ctx.resume();
+    }
+    if (!this.noiseBuffer) {
+      const length = Math.floor(ctx.sampleRate * 0.65);
+      const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < length; i++) {
         data[i] = Math.random() * 2 - 1;
       }
       this.noiseBuffer = buffer;
     }
-    return this.ctx;
+    return ctx;
   }
 
   public unlock(): void {
+    void this.resumeSharedContext();
     this.ensureContext();
   }
 
@@ -643,6 +665,608 @@ class SoundEffectsEngine {
     bGain.connect(ctx.destination);
     boing.start(now + 0.15);
     boing.stop(now + 0.82);
+  }
+
+  /**
+   * Soft silky fabric rustle + delicate fairy shimmer as the mini-theatre ribbon bow unties and curtains open.
+   */
+  public playCurtainRustle(): void {
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    if (this.noiseBuffer) {
+      const noise = ctx.createBufferSource();
+      noise.buffer = this.noiseBuffer;
+      noise.loop = true;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(680, now);
+      filter.frequency.exponentialRampToValueAtTime(1650, now + 0.38);
+      filter.frequency.exponentialRampToValueAtTime(820, now + 0.92);
+      filter.Q.setValueAtTime(1.1, now);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.075, now + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.032, now + 0.55);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.98);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start(now);
+      noise.stop(now + 1.02);
+    }
+
+    // Gentle ribbon untie sparkle chime
+    [1318.51, 1760.0].forEach((freq, idx) => {
+      const start = now + idx * 0.055;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, start);
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.linearRampToValueAtTime(0.035, start + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.34);
+    });
+  }
+
+  /**
+   * Crisp metallic rod "unhook clink" + soft descending cloth whoosh for the mini-curtain finale drop.
+   */
+  public playRodUnhookDrop(): void {
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    // 1. Crisp metallic bracket unhook clink
+    const clinks = [
+      { t: 0, f: 1680, peak: 0.08, dur: 0.11 },
+      { t: 0.018, f: 2490, peak: 0.06, dur: 0.14 },
+      { t: 0.055, f: 1320, peak: 0.045, dur: 0.1 },
+    ];
+    clinks.forEach((c) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(c.f, now + c.t);
+      osc.frequency.exponentialRampToValueAtTime(c.f * 0.94, now + c.t + c.dur);
+
+      gain.gain.setValueAtTime(0.0001, now + c.t);
+      gain.gain.linearRampToValueAtTime(c.peak, now + c.t + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + c.t + c.dur);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + c.t);
+      osc.stop(now + c.t + c.dur + 0.02);
+    });
+
+    // 2. Soft falling cloth whoosh
+    if (this.noiseBuffer) {
+      const noise = ctx.createBufferSource();
+      noise.buffer = this.noiseBuffer;
+      noise.loop = true;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1150, now + 0.12);
+      filter.frequency.exponentialRampToValueAtTime(260, now + 0.72);
+      filter.Q.setValueAtTime(1.05, now + 0.12);
+
+      const nGain = ctx.createGain();
+      nGain.gain.setValueAtTime(0.0001, now + 0.12);
+      nGain.gain.linearRampToValueAtTime(0.11, now + 0.22);
+      nGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.76);
+
+      noise.connect(filter);
+      filter.connect(nGain);
+      nGain.connect(ctx.destination);
+      noise.start(now + 0.12);
+      noise.stop(now + 0.8);
+    }
+  }
+
+  /**
+   * Soft, crisp window-shut pop + gentle pastel UI chime for Stage 2 of the mini-theatre exit.
+   */
+  public playWindowShutChime(): void {
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    // 1. Tactile soft shut pop (quick pitch drop)
+    const pop = ctx.createOscillator();
+    const popGain = ctx.createGain();
+    pop.type = 'sine';
+    pop.frequency.setValueAtTime(520, now);
+    pop.frequency.exponentialRampToValueAtTime(195, now + 0.085);
+
+    popGain.gain.setValueAtTime(0.0001, now);
+    popGain.gain.linearRampToValueAtTime(0.08, now + 0.01);
+    popGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+
+    pop.connect(popGain);
+    popGain.connect(ctx.destination);
+    pop.start(now);
+    pop.stop(now + 0.11);
+
+    // 2. Soft airy sparkle chime right as the window snaps closed
+    [783.99, 1046.5].forEach((freq, idx) => {
+      const start = now + 0.045 + idx * 0.04;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, start);
+
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.linearRampToValueAtTime(0.042, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.24);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.26);
+    });
+  }
+
+  /**
+   * Case File #0722 — Paperclip Metallic Unclip (t = 0.0s):
+   * Crisp high metallic "ting-click" using triangle @ 2450Hz + sine @ 3900Hz decaying 0.16 -> 0.001 over 55ms.
+   */
+  public playPaperclipUnclip(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      const osc1 = ctx.createOscillator();
+      const g1 = ctx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(2450, now);
+      g1.gain.setValueAtTime(0.16, now);
+      g1.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+      osc1.connect(g1);
+      g1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.065);
+
+      const osc2 = ctx.createOscillator();
+      const g2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(3900, now);
+      g2.gain.setValueAtTime(0.14, now);
+      g2.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+      osc2.connect(g2);
+      g2.connect(ctx.destination);
+      osc2.start(now);
+      osc2.stop(now + 0.065);
+    } catch {
+      // Ignore Web Audio errors when autoplay is restricted
+    }
+  }
+
+  /**
+   * Case File #0722 — Cardstock Slide & Folder Rustle (t = 0.14s):
+   * 460ms filtered noise buffer through bandpass (Q: 1.7, 620Hz -> 1550Hz -> 880Hz), peak gain 0.24.
+   */
+  public playCardstockSlide(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      const durationSec = 0.46;
+      const sampleLen = Math.floor(ctx.sampleRate * durationSec);
+      const buffer = ctx.createBuffer(1, sampleLen, ctx.sampleRate);
+      const channel = buffer.getChannelData(0);
+      // Warm pink-tinted cardstock friction noise
+      let b0 = 0;
+      let b1 = 0;
+      let b2 = 0;
+      for (let i = 0; i < sampleLen; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99765 * b0 + white * 0.099046;
+        b1 = 0.963 * b1 + white * 0.2965164;
+        b2 = 0.57 * b2 + white * 1.0526913;
+        channel[i] = (b0 + b1 + b2 + white * 0.35) * 0.28;
+      }
+
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.Q.setValueAtTime(1.7, now);
+      filter.frequency.setValueAtTime(620, now);
+      filter.frequency.exponentialRampToValueAtTime(1550, now + 0.24);
+      filter.frequency.exponentialRampToValueAtTime(880, now + durationSec);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.24, now + 0.085);
+      gain.gain.exponentialRampToValueAtTime(0.13, now + 0.31);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + durationSec);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start(now);
+      noise.stop(now + durationSec + 0.02);
+    } catch {
+      // Ignore Web Audio errors when autoplay is restricted
+    }
+  }
+
+  /**
+   * Case File #0722 — Rubber Stamp Soft Thud + Mini Chime (t = 0.84s):
+   * Soft stamp thud (sine 155Hz -> 48Hz over 95ms, gain 0.26) + 25ms lowpass noise tap (400Hz, gain 0.12)
+   * + E5 (659Hz) & B5 (987Hz) soft sine chime decaying over 320ms (gain 0.11).
+   */
+  public playCaseStampImpact(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      // 1. Soft tactile rubber stamp thud
+      const thud = ctx.createOscillator();
+      const thudGain = ctx.createGain();
+      thud.type = 'sine';
+      thud.frequency.setValueAtTime(155, now);
+      thud.frequency.exponentialRampToValueAtTime(48, now + 0.095);
+
+      thudGain.gain.setValueAtTime(0.0001, now);
+      thudGain.gain.linearRampToValueAtTime(0.26, now + 0.008);
+      thudGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.105);
+
+      thud.connect(thudGain);
+      thudGain.connect(ctx.destination);
+      thud.start(now);
+      thud.stop(now + 0.115);
+
+      // 2. 25ms lowpass noise tap (400Hz, gain 0.12)
+      if (this.noiseBuffer) {
+        const tap = ctx.createBufferSource();
+        tap.buffer = this.noiseBuffer;
+
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(400, now);
+
+        const tapGain = ctx.createGain();
+        tapGain.gain.setValueAtTime(0.12, now);
+        tapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.025);
+
+        tap.connect(lp);
+        lp.connect(tapGain);
+        tapGain.connect(ctx.destination);
+        tap.start(now);
+        tap.stop(now + 0.032);
+      }
+
+      // 3. Delicate celebratory glint: E5 (659Hz) + B5 (987Hz) soft sine chime over 320ms
+      [659, 987].forEach((freq, idx) => {
+        const start = now + 0.02 + idx * 0.035;
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+
+        g.gain.setValueAtTime(0.0001, start);
+        g.gain.linearRampToValueAtTime(0.11, start + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
+
+        osc.connect(g);
+        g.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.34);
+      });
+    } catch {
+      // Ignore Web Audio errors when autoplay is restricted
+    }
+  }
+
+  /**
+   * Infinity Gift Vault — Keypad tap: crisp 880Hz sine, 30ms.
+   */
+  public playVaultKeypadTap(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, now);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.085, now + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.03);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.036);
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Infinity Gift Vault — Wrong passcode: 180Hz -> 140Hz double sawtooth buzz, 160ms.
+   */
+  public playVaultWrongCode(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      [
+        { offset: 0, freq: 180, dur: 0.072 },
+        { offset: 0.082, freq: 140, dur: 0.078 },
+      ].forEach((b) => {
+        const osc = ctx.createOscillator();
+        const filter = ctx.createBiquadFilter();
+        const gain = ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(b.freq, now + b.offset);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(620, now + b.offset);
+
+        gain.gain.setValueAtTime(0.0001, now + b.offset);
+        gain.gain.linearRampToValueAtTime(0.11, now + b.offset + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + b.offset + b.dur);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + b.offset);
+        osc.stop(now + b.offset + b.dur + 0.015);
+      });
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Infinity Gift Vault — Vault unlock: C5 -> E5 -> G5 -> B5 cosmic arpeggio, 420ms.
+   */
+  public playVaultUnlock(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      const notes = [523.25, 659.25, 783.99, 987.77]; // C5, E5, G5, B5
+      notes.forEach((freq, idx) => {
+        const start = now + idx * 0.068;
+        const osc = ctx.createOscillator();
+        const overtone = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, start);
+        overtone.type = 'sine';
+        overtone.frequency.setValueAtTime(freq * 2, start);
+
+        const overGain = ctx.createGain();
+        overGain.gain.setValueAtTime(0.28, start);
+
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.linearRampToValueAtTime(0.1, start + 0.014);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+
+        osc.connect(gain);
+        overtone.connect(overGain);
+        overGain.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(start);
+        overtone.start(start);
+        osc.stop(start + 0.24);
+        overtone.stop(start + 0.24);
+      });
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Infinity Gift Vault — Orbital ring deceleration: lowpass sweeping down-hum, 1.3s.
+   */
+  public playVaultRingDecel(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const dur = 1.3;
+
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+
+      osc1.type = 'sawtooth';
+      osc2.type = 'triangle';
+      osc1.frequency.setValueAtTime(240, now);
+      osc1.frequency.exponentialRampToValueAtTime(78, now + dur);
+      osc2.frequency.setValueAtTime(360, now);
+      osc2.frequency.exponentialRampToValueAtTime(116, now + dur);
+
+      filter.type = 'lowpass';
+      filter.Q.setValueAtTime(3.2, now);
+      filter.frequency.setValueAtTime(1350, now);
+      filter.frequency.exponentialRampToValueAtTime(210, now + dur);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.085, now + 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.045, now + dur * 0.72);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + dur + 0.04);
+      osc2.stop(now + dur + 0.04);
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Infinity Gift Vault — Thanos-snap dust disintegration:
+   * 20ms bandpass snap + 1.1s airy granular wind-rustle bandpass (1800Hz -> 450Hz).
+   */
+  public playVaultDustSnap(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      // 1. Crisp 20ms bandpass snap transient
+      if (this.noiseBuffer) {
+        const snap = ctx.createBufferSource();
+        snap.buffer = this.noiseBuffer;
+
+        const snapBp = ctx.createBiquadFilter();
+        snapBp.type = 'bandpass';
+        snapBp.frequency.setValueAtTime(2600, now);
+        snapBp.Q.setValueAtTime(2.2, now);
+
+        const snapGain = ctx.createGain();
+        snapGain.gain.setValueAtTime(0.24, now);
+        snapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.022);
+
+        snap.connect(snapBp);
+        snapBp.connect(snapGain);
+        snapGain.connect(ctx.destination);
+        snap.start(now);
+        snap.stop(now + 0.028);
+      }
+
+      // 2. 1.1s airy granular wind-rustle bandpass sweeping 1800Hz -> 450Hz
+      const dur = 1.1;
+      const sampleLen = Math.floor(ctx.sampleRate * dur);
+      const grainBuf = ctx.createBuffer(1, sampleLen, ctx.sampleRate);
+      const data = grainBuf.getChannelData(0);
+      for (let i = 0; i < sampleLen; i++) {
+        // Subtle granular sparkle amplitude modulation
+        const env = 0.65 + 0.35 * Math.sin(i * 0.0045) * Math.cos(i * 0.013);
+        data[i] = (Math.random() * 2 - 1) * env;
+      }
+
+      const wind = ctx.createBufferSource();
+      wind.buffer = grainBuf;
+
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.Q.setValueAtTime(1.5, now + 0.02);
+      bp.frequency.setValueAtTime(1800, now + 0.02);
+      bp.frequency.exponentialRampToValueAtTime(450, now + 0.02 + dur);
+
+      const windGain = ctx.createGain();
+      windGain.gain.setValueAtTime(0.0001, now + 0.015);
+      windGain.gain.linearRampToValueAtTime(0.16, now + 0.14);
+      windGain.gain.exponentialRampToValueAtTime(0.075, now + 0.65);
+      windGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.02 + dur);
+
+      wind.connect(bp);
+      bp.connect(windGain);
+      windGain.connect(ctx.destination);
+      wind.start(now + 0.015);
+      wind.stop(now + dur + 0.05);
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Infinity Gift Vault — ₹250 reward reveal chime: E5 + G#5 + B5 + E6 shimmer, 650ms.
+   */
+  public playVaultRewardChime(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      const chord = [659.25, 830.61, 987.77, 1318.51]; // E5, G#5, B5, E6
+      chord.forEach((freq, idx) => {
+        const start = now + idx * 0.045;
+        const osc = ctx.createOscillator();
+        const shimmer = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, start);
+        shimmer.type = 'sine';
+        shimmer.frequency.setValueAtTime(freq * 1.5, start);
+
+        const sGain = ctx.createGain();
+        sGain.gain.setValueAtTime(0.22, start);
+
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.linearRampToValueAtTime(0.095, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.56);
+
+        osc.connect(gain);
+        shimmer.connect(sGain);
+        sGain.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(start);
+        shimmer.start(start);
+        osc.stop(start + 0.6);
+        shimmer.stop(start + 0.6);
+      });
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Infinity Gift Vault — Reverse-time emerald shimmer for secret reset code (`9876`).
+   */
+  public playVaultTimeReset(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      const notes = [1975.53, 1479.98, 1174.66, 987.77, 1318.51];
+      notes.forEach((freq, idx) => {
+        const start = now + idx * 0.055;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq * 0.94, start);
+        osc.frequency.exponentialRampToValueAtTime(freq, start + 0.09);
+
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.linearRampToValueAtTime(0.085, start + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.24);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.26);
+      });
+    } catch {
+      // Ignore Web Audio errors
+    }
   }
 }
 

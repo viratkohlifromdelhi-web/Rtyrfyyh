@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { SparkleStarSvg } from './DoodleSvgs';
+import { bgMusicPlayer } from '../utils/musicSynth';
 import { WheelAudioEngine } from '../utils/wheelAudio';
 import {
   applyFlapperImpulse,
@@ -139,6 +140,7 @@ export function SpinWheelSection() {
       }
       audioRef.current?.dispose();
       audioRef.current = null;
+      bgMusicPlayer.clearWheelDuck();
     };
   }, []);
 
@@ -155,8 +157,9 @@ export function SpinWheelSection() {
   const startSpin = useCallback(() => {
     if (isSpinning) return;
 
-    // Unlock Web Audio cleanly on user tap
+    // Unlock Web Audio cleanly on user tap & duck background music to 0.12 (0.3s) while spinning
     audioRef.current?.unlock();
+    bgMusicPlayer.beginWheelSpin();
 
     if (landedTimeoutRef.current !== null) {
       window.clearTimeout(landedTimeoutRef.current);
@@ -248,6 +251,7 @@ export function SpinWheelSection() {
       lastTrollIndexRef.current = visualSliceIndex;
 
       audioRef.current?.playWompBoing();
+      bgMusicPlayer.endWheelSpin();
 
       setSpinsTried((prev) => {
         const nextCount = prev + 1;

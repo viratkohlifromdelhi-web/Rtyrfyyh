@@ -7,6 +7,7 @@ import {
   SCANNER_DURATION_MS,
   SCANNER_MAX_PROGRESS,
 } from '../utils/interactiveFun';
+import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
 import { FingerprintSparkleSvg, SparkleStarSvg, WavyDivider } from './DoodleSvgs';
 
@@ -58,6 +59,7 @@ export function BauniMeterSection() {
           setPhase('verdict');
           setGlitchKey((k) => k + 1);
           soundEngine.playScannerComplete();
+          bgMusicPlayer.endScannerVerdict();
           if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
             navigator.vibrate([25, 45, 35]);
           }
@@ -87,8 +89,9 @@ export function BauniMeterSection() {
     if (modeRef.current !== 'holding') return;
     if (progressRef.current >= SCANNER_MAX_PROGRESS) return;
 
-    // Immediately abort scan, play descending "uh-oh" bloop, show cheeky warning, and smoothly rewind to 0%
+    // Immediately abort scan, play descending "uh-oh" bloop, restore background music, and rewind to 0%
     soundEngine.playScannerAbort();
+    bgMusicPlayer.endScannerAbort();
     setPhase('aborted');
     setAbortCount((c) => c + 1);
 
@@ -122,6 +125,7 @@ export function BauniMeterSection() {
       modeRef.current = 'none';
       stopLoop();
       soundEngine.stopScannerHold();
+      bgMusicPlayer.endScannerAbort();
     };
   }, [stopLoop]);
 
@@ -138,6 +142,7 @@ export function BauniMeterSection() {
     setPhase('scanning');
 
     soundEngine.startScannerHold();
+    bgMusicPlayer.beginScannerHold();
     if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
       navigator.vibrate(15);
     }
@@ -148,6 +153,7 @@ export function BauniMeterSection() {
   const handleReset = () => {
     soundEngine.playBubbleClick();
     soundEngine.stopScannerHold();
+    bgMusicPlayer.endScannerAbort();
     modeRef.current = 'none';
     stopLoop();
     progressRef.current = 0;

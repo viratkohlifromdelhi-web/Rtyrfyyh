@@ -1,5 +1,6 @@
 import { useState, type MouseEvent } from 'react';
 import { Gift, RotateCcw } from 'lucide-react';
+import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
 import { SparkleStarSvg, WrappedGiftBoxSvg } from './DoodleSvgs';
 
@@ -13,6 +14,7 @@ export function SurpriseGiftSection({ onRevealConfetti }: SurpriseGiftSectionPro
   const handleOpenGift = (e: MouseEvent<HTMLButtonElement>) => {
     setIsOpened(true);
     soundEngine.playGiftFanfare();
+    bgMusicPlayer.triggerCelebrationSwell();
     const rect = e.currentTarget.getBoundingClientRect();
     onRevealConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
   };

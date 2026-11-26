@@ -507,66 +507,48 @@
     transform: scaleY(1) scaleX(1) skewX(-2deg) rotate(-1.5deg);
   }
   22% {
-    transform: scaleY(1.13) scaleX(0.92) skewX(3deg) rotate(2.6deg);
+    transform: scaleY(1.13) scaleX(0.92) skewX(3deg) rotate(2.5deg);
   }
   48% {
-    transform: scaleY(0.92) scaleX(1.06) skewX(-3.6deg) rotate(-2.2deg);
+    transform: scaleY(0.92) scaleX(1.06) skewX(-3.5deg) rotate(-2deg);
   }
   74% {
-    transform: scaleY(1.09) scaleX(0.95) skewX(2.2deg) rotate(1.6deg);
+    transform: scaleY(1.09) scaleX(0.95) skewX(2deg) rotate(1.5deg);
   }
 }
 
 @keyframes candle-core-flicker {
   0%, 100% {
-    transform: scaleY(1) scaleX(1) skewX(1deg);
+    transform: scaleY(1) scaleX(1);
     opacity: 0.96;
   }
   35% {
-    transform: scaleY(1.15) scaleX(0.9) skewX(-2deg);
+    transform: scaleY(1.14) scaleX(0.9);
     opacity: 1;
   }
   70% {
-    transform: scaleY(0.9) scaleX(1.07) skewX(1.5deg);
+    transform: scaleY(0.9) scaleX(1.06);
     opacity: 0.88;
   }
 }
 
 @keyframes candle-aura-pulse {
   0%, 100% {
-    transform: scale(0.93);
-    opacity: 0.56;
+    transform: scale(0.94);
+    opacity: 0.55;
   }
   50% {
-    transform: scale(1.15);
-    opacity: 0.86;
+    transform: scale(1.14);
+    opacity: 0.85;
   }
 }
 
 @keyframes frosting-candle-glow {
   0%, 100% {
-    opacity: 0.44;
+    opacity: 0.42;
   }
   50% {
-    opacity: 0.7;
-  }
-}
-
-@keyframes frosting-glow-out {
-  0% {
-    opacity: 0.62;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes frosting-glow-in {
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 0.58;
+    opacity: 0.68;
   }
 }
 
@@ -575,16 +557,12 @@
     transform: skewX(0deg) rotate(0deg) scaleY(1) scaleX(1);
     opacity: 1;
   }
-  45% {
-    transform: skewX(-26deg) rotate(24deg) translate3d(6px, 1px, 0) scaleY(0.86) scaleX(1.16);
-    opacity: 0.95;
-  }
-  78% {
-    transform: skewX(-34deg) rotate(32deg) translate3d(10px, 4px, 0) scaleY(0.38) scaleX(0.62);
-    opacity: 0.45;
+  55% {
+    transform: skewX(-28deg) rotate(26deg) translate3d(7px, 2px, 0) scaleY(0.84) scaleX(1.18);
+    opacity: 0.92;
   }
   100% {
-    transform: skewX(-38deg) rotate(36deg) translate3d(13px, 6px, 0) scaleY(0.05) scaleX(0.12);
+    transform: skewX(-36deg) rotate(34deg) translate3d(11px, 6px, 0) scaleY(0.05) scaleX(0.15);
     opacity: 0;
   }
 }
@@ -592,19 +570,15 @@
 @keyframes wick-ember-fade {
   0% {
     opacity: 1;
-    transform: scale(1.28);
+    transform: scale(1.25);
   }
-  30% {
+  35% {
     opacity: 0.92;
-    transform: scale(1.04);
-  }
-  70% {
-    opacity: 0.42;
-    transform: scale(0.78);
+    transform: scale(1);
   }
   100% {
     opacity: 0;
-    transform: scale(0.45);
+    transform: scale(0.5);
   }
 }
 
@@ -613,51 +587,28 @@
     opacity: 0;
     transform: translate3d(0, 6px, 0) scale(0.55) rotate(-6deg);
   }
-  16% {
+  18% {
     opacity: 0.78;
-    transform: translate3d(3px, -5px, 0) scale(0.84) rotate(5deg);
+    transform: translate3d(3px, -6px, 0) scale(0.85) rotate(4deg);
   }
-  55% {
-    opacity: 0.48;
-    transform: translate3d(-4px, -21px, 0) scale(1.16) rotate(-5deg);
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(7px, -42px, 0) scale(1.48) rotate(7deg);
-  }
-}
-
-@keyframes smoke-curl-rise-alt {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, 5px, 0) scale(0.5) rotate(6deg);
-  }
-  20% {
-    opacity: 0.68;
-    transform: translate3d(-3px, -7px, 0) scale(0.82) rotate(-5deg);
-  }
-  60% {
-    opacity: 0.36;
-    transform: translate3d(5px, -24px, 0) scale(1.18) rotate(6deg);
+  58% {
+    opacity: 0.45;
+    transform: translate3d(-4px, -22px, 0) scale(1.18) rotate(-5deg);
   }
   100% {
     opacity: 0;
-    transform: translate3d(-4px, -44px, 0) scale(1.45) rotate(-6deg);
+    transform: translate3d(7px, -42px, 0) scale(1.5) rotate(7deg);
   }
 }
 
 @keyframes candle-ignite-pop {
   0% {
     opacity: 0;
-    transform: scale(0.08, 0.12) translate3d(0, 4px, 0);
+    transform: scale(0.1) translate3d(0, 8px, 0);
   }
-  58% {
+  65% {
     opacity: 1;
     transform: scale(1.22, 1.28) translate3d(0, -1px, 0);
-  }
-  82% {
-    opacity: 1;
-    transform: scale(0.95, 0.96) translate3d(0, 0, 0);
   }
   100% {
     opacity: 1;
@@ -668,73 +619,237 @@
 @keyframes wick-sparkle-pop {
   0% {
     opacity: 0;
-    transform: scale(0.25) rotate(0deg);
+    transform: scale(0.3) rotate(0deg);
   }
-  32% {
+  35% {
     opacity: 1;
-    transform: scale(1.24) rotate(24deg);
+    transform: scale(1.2) rotate(24deg);
   }
   100% {
     opacity: 0;
-    transform: scale(0.45) rotate(64deg) translate3d(0, -10px, 0);
+    transform: scale(0.5) rotate(60deg) translate3d(0, -10px, 0);
   }
 }
 
 .animate-candle-flame {
-  transform-box: view-box;
+  transform-box: fill-box;
+  transform-origin: bottom center;
   animation: candle-dance-organic var(--flame-dur, 0.85s) ease-in-out var(--flame-delay, 0s) infinite;
 }
 
 .animate-candle-core {
-  transform-box: view-box;
-  animation: candle-core-flicker calc(var(--flame-dur, 0.85s) * 0.88) ease-in-out var(--flame-delay, 0s) infinite;
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: candle-core-flicker var(--flame-dur, 0.85s) ease-in-out var(--flame-delay, 0s) infinite;
 }
 
 .animate-candle-aura {
-  transform-box: view-box;
-  animation: candle-aura-pulse calc(var(--flame-dur, 0.85s) * 1.35) ease-in-out var(--flame-delay, 0s) infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: candle-aura-pulse calc(var(--flame-dur, 0.85s) * 1.4) ease-in-out var(--flame-delay, 0s) infinite;
 }
 
 .animate-frosting-glow {
   animation: frosting-candle-glow 1.5s ease-in-out infinite;
 }
 
-.animate-frosting-blowout {
-  animation: frosting-glow-out 250ms ease-out forwards;
-}
-
-.animate-frosting-ignite {
-  animation: frosting-glow-in 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
 .animate-candle-gust {
-  transform-box: view-box;
-  animation: candle-gust-out 250ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: candle-gust-out 380ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .animate-wick-ember {
-  transform-box: view-box;
-  animation: wick-ember-fade 1.2s ease-out both;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wick-ember-fade 1.2s ease-out forwards;
 }
 
 .animate-smoke-curl {
-  transform-box: view-box;
-  animation: smoke-curl-rise 1.8s cubic-bezier(0.22, 0.61, 0.36, 1) both;
-}
-
-.animate-smoke-curl-alt {
-  transform-box: view-box;
-  animation: smoke-curl-rise-alt 1.8s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: smoke-curl-rise 1.8s ease-out forwards;
 }
 
 .animate-candle-ignite {
-  transform-box: view-box;
+  transform-box: fill-box;
+  transform-origin: bottom center;
   animation: candle-ignite-pop 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-wick-sparkle {
-  transform-box: view-box;
+  transform-box: fill-box;
+  transform-origin: center;
   animation: wick-sparkle-pop 520ms ease-out both;
+}
+
+/* Mini-Theatre Intro outer sparkle glints & sound button pulse */
+@keyframes theatre-glint-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(-18deg);
+  }
+  32% {
+    opacity: 1;
+    transform: scale(1.22) rotate(12deg);
+  }
+  70% {
+    opacity: 0.9;
+    transform: scale(0.95) rotate(24deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.35) rotate(45deg) translate3d(0, -10px, 0);
+  }
+}
+
+@keyframes theatre-sound-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.12, 1.24);
+    opacity: 0;
+  }
+}
+
+.animate-theatre-glint {
+  animation: theatre-glint-pop 850ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-theatre-sound-pulse {
+  animation: theatre-sound-pulse 1.9s ease-out infinite;
+}
+
+@keyframes loader-bar-shimmer {
+  0% {
+    transform: translate3d(-120%, 0, 0);
+  }
+  100% {
+    transform: translate3d(240%, 0, 0);
+  }
+}
+
+.animate-loader-shimmer {
+  animation: loader-bar-shimmer 1.6s ease-in-out infinite;
+}
+
+/* Infinity Gift Vault GPU-composited animations */
+@keyframes vault-shake {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  18% {
+    transform: translate3d(-8px, 0, 0);
+  }
+  36% {
+    transform: translate3d(8px, 0, 0);
+  }
+  54% {
+    transform: translate3d(-6px, 0, 0);
+  }
+  72% {
+    transform: translate3d(6px, 0, 0);
+  }
+  88% {
+    transform: translate3d(-3px, 0, 0);
+  }
+}
+
+@keyframes vault-foil-shimmer {
+  0% {
+    transform: translate3d(-150%, 0, 0) skewX(-22deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.45;
+  }
+  55% {
+    transform: translate3d(240%, 0, 0) skewX(-22deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(240%, 0, 0) skewX(-22deg);
+    opacity: 0;
+  }
+}
+
+@keyframes vault-shockwave {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.95;
+  }
+  70% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(2.85);
+    opacity: 0;
+  }
+}
+
+@keyframes vault-card-reveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.88) translate3d(0, 12px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes vault-emerald-reset {
+  0% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+  28% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+
+@keyframes vault-spark-twinkle {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+.animate-vault-shake {
+  animation: vault-shake 320ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.animate-vault-foil {
+  animation: vault-foil-shimmer 4.4s ease-in-out infinite;
+}
+
+.animate-vault-shockwave {
+  animation: vault-shockwave 720ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-vault-card-reveal {
+  animation: vault-card-reveal 550ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-vault-emerald-reset {
+  animation: vault-emerald-reset 760ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-vault-spark {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: vault-spark-twinkle 2.2s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -763,7 +878,16 @@
   .animate-result-shake,
   .animate-wheel-emoji-burst,
   .animate-btn-shine,
-  .animate-popper-ring {
+  .animate-popper-ring,
+  .animate-theatre-glint,
+  .animate-theatre-sound-pulse,
+  .animate-loader-shimmer,
+  .animate-vault-shake,
+  .animate-vault-foil,
+  .animate-vault-shockwave,
+  .animate-vault-card-reveal,
+  .animate-vault-emerald-reset,
+  .animate-vault-spark {
     animation: none !important;
   }
 
