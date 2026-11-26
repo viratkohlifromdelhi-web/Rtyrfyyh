@@ -8,8 +8,8 @@ export const ANAMIKA = {
   birthdayLabel: '03 December 2026',
   birthDateLabel: '03 Dec 2009',
   heroSubtitle:
-    'Wishing the loudest birthday to my sarcastic lesbian daughter Morgan, certified bauni, and somehow my greatest HG of all time.',
-  polaroidCaption: 'The #1 Homegirl (bachawww status: permanent).',
+    'Happy birthday to my lesbian daughter Morgan, permanent bauni, and somehow my greatest HG.',
+  polaroidCaption: 'Anamika aka Morgan — my greatest HG.',
 };
 
 export interface HeroSticker {
@@ -24,29 +24,29 @@ export const HERO_STICKERS: HeroSticker[] = [
   {
     id: 'sticker-hg',
     label: '👑 Greatest HG',
-    bg: 'bg-[#FFE898]',
-    border: 'border-[#E6C75A]',
+    bg: 'bg-[#FFF3C4]',
+    border: 'border-[#E6C96E]',
     rotate: '-rotate-2',
   },
   {
     id: 'sticker-bauni',
-    label: '📏 Certified Bauni',
-    bg: 'bg-[#FFE4F0]',
-    border: 'border-[#F3B5D0]',
+    label: '📏 Bauni',
+    bg: 'bg-[#FFE6F0]',
+    border: 'border-[#F2B5CC]',
     rotate: 'rotate-2',
   },
   {
     id: 'sticker-morgan',
     label: '🎀 Daughter: Morgan',
-    bg: 'bg-[#EBE3FF]',
-    border: 'border-[#CDBBF9]',
+    bg: 'bg-[#F1E9FF]',
+    border: 'border-[#D5C3F5]',
     rotate: '-rotate-1',
   },
   {
-    id: 'sticker-bachawww',
-    label: '✨ Bachawww Energy',
-    bg: 'bg-[#FFFDF8]',
-    border: 'border-[#E7D3E3]',
+    id: 'sticker-bachhaww',
+    label: '✨ Bachhaww',
+    bg: 'bg-[#FFFDFB]',
+    border: 'border-[#ECC6D7]',
     rotate: 'rotate-2',
   },
 ];
@@ -54,27 +54,32 @@ export const HERO_STICKERS: HeroSticker[] = [
 export const MODE_MESSAGES = {
   roast: {
     badge: 'Roast Mode 🔥',
-    title: 'Certified Bauni & Sarcastic Lesbian Daughter Morgan',
-    body: 'Turning 17 and still operating at maximum bachawww chaos and fun-sized height. Started calling you my lesbian daughter Morgan purely for sarcasm, and honestly you earned the title permanently. Still a certified Gawaar though — happy birthday, bauni!',
-    polaroidNote: 'Bachawww mode active · Zero height gained since Class 8th.',
+    title: 'Birthday Roast for Morgan',
+    body: 'Happy 17th birthday Morgan. Still a bauni, still a Gawaar, still my lesbian daughter, and still zero height growth.',
+    polaroidNote: 'Still zero height growth since 8th class.',
   },
   wholesome: {
     badge: 'Wholesome Mode 🫶',
-    title: 'Genuinely the Greatest HG Anyone Could Ask For',
-    body: 'Jokes aside for five seconds: you are literally the greatest HG of all time. The one friend I can tell anything to without a second thought, zero judgment, and 100% real loyalty. Wild how one Instagram message turned an old classmate into my #1 person on the friend list.',
-    polaroidNote: 'Greatest HG status · 100% unfiltered trust & best-friend respect.',
+    title: 'Being Real for a Second',
+    body: "Jokes apart, you're genuinely my greatest HG and the best friend I've had till now. I can tell you anything without a second thought. Happy birthday, Anamika.",
+    polaroidNote: 'Always my greatest HG.',
   },
 };
 
+/**
+ * Base 5-person friend list (before the 22 July override).
+ * When Friend List Override is ON (the default), Morgan sits right at #2 behind Abhay:
+ * 1. Abhay, 2. Morgan, 3. Ankit, 4. Ayush, 5. Harsh
+ */
 export const FRIEND_LEADERBOARD_BASE: FriendRankEntry[] = [
-  { id: 'friend-1', name: 'Aarav', tag: 'Old school bro' },
-  { id: 'friend-2', name: 'Rohan', tag: 'Late-night gaming squad' },
-  { id: 'friend-3', name: 'Kabir', tag: 'Group chat menace' },
-  { id: 'friend-4', name: 'Dev', tag: 'Day-one homie' },
+  { id: 'friend-abhay', name: 'Abhay', tag: 'Day-one bro' },
+  { id: 'friend-ankit', name: 'Ankit', tag: 'Old buddy' },
+  { id: 'friend-ayush', name: 'Ayush', tag: 'Group chat regular' },
+  { id: 'friend-harsh', name: 'Harsh', tag: 'School friend' },
   {
     id: 'anamika-morgan',
-    name: 'Anamika (Morgan)',
-    tag: 'Undisputed #1 Greatest HG',
+    name: 'Morgan',
+    tag: 'Texted first on 22 July',
     isAnamika: true,
   },
 ];
@@ -96,36 +101,36 @@ export const BACKSTORY_CHAPTERS: BackstoryChapter[] = [
     title: 'Pioneer Academy, Lalganj',
     period: 'Till Class 8th',
     description:
-      'We studied together till Class 8th, just normal classmates with zero idea we’d end up here.',
-    tag: 'Origin Story',
+      'We studied together till 8th class and were just normal classmates.',
+    tag: 'School Days',
   },
   {
     id: 'ch-2',
     chapterLabel: 'Chapter 2',
     title: 'Different Schools',
-    period: 'The Quiet Arc',
+    period: 'After Class 8th',
     description:
-      'I moved to another school, and for a long time we were just old classmates doing our own thing.',
-    tag: 'Plot Pause',
+      'Then I moved to another school and we barely even talked.',
+    tag: 'Barely Talked',
   },
   {
     id: 'ch-3',
     chapterLabel: 'Chapter 3',
-    title: '22 July 2026 — The Instagram Plot Twist',
-    period: '22 July 2026',
+    title: '22 July 2026',
+    period: 'Instagram DM',
     description:
-      'She messaged me first on Instagram, and literally everything changed.',
-    tag: 'Game Changer',
+      'Then we met again on Instagram when she messaged me first, and everything changed.',
+    tag: 'Everything Changed',
     highlight: true,
   },
   {
     id: 'ch-4',
     chapterLabel: 'Now',
-    title: 'Undisputed Greatest HG',
-    period: 'Present Day & Counting',
+    title: 'Greatest HG',
+    period: 'Still Counting',
     description:
-      'She overtook every single male friend to claim the #1 spot on my friend list—my greatest homegirl who I share everything with without a second thought.',
-    tag: 'Rank #1 Forever',
+      "Now she's my greatest HG and I share literally everything with her without even thinking twice.",
+    tag: 'Closest Friend',
     highlight: true,
   },
 ];
@@ -146,39 +151,39 @@ export const MORGAN_STARTER_PACK: StarterPackCard[] = [
     icon: 'ribbonCrown',
     title: 'Daughter "Morgan"',
     description:
-      "Started calling you my daughter just for fun and sarcasm, and now you're stuck with the name forever.",
-    bonusQuip: 'Official legal alias in the group lore: Morgan Singh.',
-    bgClass: 'bg-[#FFE4F0]',
-    accentClass: 'text-[#C2377E]',
+      "Started calling you my daughter as a joke and now you're stuck with the name forever.",
+    bonusQuip: 'Basically your real name now: Morgan Singh.',
+    bgClass: 'bg-[#FFE6F0]',
+    accentClass: 'text-[#D94B7D]',
   },
   {
     id: 'sp-bauni',
     icon: 'rulerSparkle',
-    title: 'Certified Bauni',
+    title: 'Permanent Bauni',
     description:
-      'Fun-sized height, oversized chaos, peak bachawww behavior.',
-    bonusQuip: 'Vertical measurement: compact. Loudness: stadium level.',
-    bgClass: 'bg-[#FFE898]/65',
+      'Short height, loud voice, and full bachhaww vibes.',
+    bonusQuip: 'Still waiting on that growth spurt.',
+    bgClass: 'bg-[#FFF3C4]/80',
     accentClass: 'text-[#8F6500]',
   },
   {
-    id: 'sp-lesbian-icon',
+    id: 'sp-lesbian-daughter',
     icon: 'rainbowShades',
-    title: 'Sarcastic Lesbian Icon',
+    title: 'Lesbian Daughter',
     description:
-      'The running joke that never dies—happy birthday to my favorite sarcastic lesbian daughter.',
-    bonusQuip: 'Zero chance this joke ever gets retired. Ever.',
-    bgClass: 'bg-[#EBE3FF]',
-    accentClass: 'text-[#623EA8]',
+      "The joke that's never getting old—happy birthday to my lesbian daughter Morgan.",
+    bonusQuip: "Zero chance I'm ever dropping this nickname.",
+    bgClass: 'bg-[#F1E9FF]',
+    accentClass: 'text-[#6A3D8A]',
   },
   {
     id: 'sp-hg',
     icon: 'trophy',
     title: 'Greatest HG',
     description:
-      'Beat every single guy friend for the #1 spot. Zero filter, zero second thoughts.',
-    bonusQuip: 'Undefeated, undisputed #1 Homegirl Hall of Fame.',
-    bgClass: 'bg-[#FFF3E0]',
+      'Right at #2 on my friend list behind Abhay. Zero filter, I can tell you anything.',
+    bonusQuip: "Best friend I've had till now, no doubt.",
+    bgClass: 'bg-[#FFF3C4]/65',
     accentClass: 'text-[#9B4E15]',
   },
 ];

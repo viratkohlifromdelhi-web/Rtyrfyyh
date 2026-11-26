@@ -21,17 +21,15 @@ export interface Rect2D {
 }
 
 export const RUNAWAY_TAUNTS: readonly string[] = [
-  'Nice try, bauni',
-  'Too slow, Morgan!',
-  'Stop fighting the truth',
+  'Nice try',
+  'Too slow, Morgan',
+  'Stop lying to yourself',
   'Just tap Yes already 😂',
-  'Your thumb cannot catch this 🐍',
-  'Resistance is pointless, Gawaar',
 ];
 
 export function getDodgeMessage(dodgeCount: number): string {
   if (dodgeCount <= 0) {
-    return 'Go ahead, try tapping No if you dare.';
+    return 'Go ahead, try tapping No.';
   }
   return RUNAWAY_TAUNTS[(dodgeCount - 1) % RUNAWAY_TAUNTS.length];
 }
@@ -102,24 +100,25 @@ export function computeDodgePosition(
 }
 
 export const SCANNER_MAX_PROGRESS = 99;
+export const SCANNER_DURATION_MS = 3200;
 
 export function getScannerStageMessage(progress: number): string {
   if (progress <= 0) {
-    return 'Place your thumb on the glowing pad to begin...';
+    return 'Press and hold your thumb on the pad...';
   }
   if (progress < 34) {
-    return 'Calibrating microscope...';
+    return 'Checking height...';
   }
   if (progress < 68) {
-    return 'Zooming in 500x...';
+    return 'Still looking...';
   }
-  return 'Searching near the floor...';
+  return 'Are you even standing up?';
 }
 
 export function advanceScannerProgress(
   currentProgress: number,
   deltaMs: number,
-  totalDurationMs = 2400,
+  totalDurationMs = SCANNER_DURATION_MS,
 ): { progress: number; reachedVerdict: boolean } {
   if (deltaMs <= 0 || totalDurationMs <= 0) {
     const clamped = Math.min(SCANNER_MAX_PROGRESS, Math.max(0, currentProgress));
@@ -131,6 +130,26 @@ export function advanceScannerProgress(
   return {
     progress: next,
     reachedVerdict: next >= SCANNER_MAX_PROGRESS,
+  };
+}
+
+/**
+ * Smoothly rewinds the Bauni-Meter progress bar back to 0% after an early finger lift.
+ */
+export function rewindScannerProgress(
+  currentProgress: number,
+  deltaMs: number,
+  rewindDurationMs = 420,
+): { progress: number; done: boolean } {
+  if (currentProgress <= 0 || deltaMs <= 0 || rewindDurationMs <= 0) {
+    const clamped = Math.max(0, currentProgress);
+    return { progress: clamped, done: clamped <= 0 };
+  }
+  const decrement = (deltaMs / rewindDurationMs) * SCANNER_MAX_PROGRESS;
+  const next = Math.max(0, currentProgress - decrement);
+  return {
+    progress: next,
+    done: next <= 0,
   };
 }
 

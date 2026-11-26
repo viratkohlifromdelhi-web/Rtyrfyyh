@@ -1,22 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RotateCcw, Sparkles } from 'lucide-react';
+import { AlertTriangle, RotateCcw, Sparkles } from 'lucide-react';
 import {
   advanceScannerProgress,
   getScannerStageMessage,
+  rewindScannerProgress,
+  SCANNER_DURATION_MS,
   SCANNER_MAX_PROGRESS,
 } from '../utils/interactiveFun';
+import { soundEngine } from '../utils/soundEngine';
 import { FingerprintSparkleSvg, SparkleStarSvg, WavyDivider } from './DoodleSvgs';
 
-type ScannerPhase = 'idle' | 'scanning' | 'paused' | 'verdict';
+type ScannerPhase = 'idle' | 'scanning' | 'aborted' | 'verdict';
 
 export function BauniMeterSection() {
   const [progress, setProgress] = useState(0);
   const [phase, setPhase] = useState<ScannerPhase>('idle');
   const [glitchKey, setGlitchKey] = useState(0);
+  const [abortCount, setAbortCount] = useState(0);
 
-  const isHoldingRef = useRef(false);
-  const isAutoRef = useRef(false);
-  const pressStartRef = useRef(0);
+  const modeRef = useRef<'none' | 'holding' | 'rewinding'>('none');
   const rafRef = useRef<number | null>(null);
   const lastFrameRef = useRef<number | null>(null);
   const progressRef = useRef(0);
@@ -33,7 +35,8 @@ export function BauniMeterSection() {
     if (rafRef.current !== null) return;
 
     const tick = (now: number) => {
-      if (!isHoldingRef.current && !isAutoRef.current) {
+      const mode = modeRef.current;
+      if (mode === 'none') {
         stopLoop();
         return;
       }
@@ -42,18 +45,36 @@ export function BauniMeterSection() {
       lastFrameRef.current = now;
       const deltaMs = Math.min(64, Math.max(0, now - prevTime));
 
-      const result = advanceScannerProgress(progressRef.current, deltaMs, 2100);
-      progressRef.current = result.progress;
-      setProgress(Math.floor(result.progress));
+      if (mode === 'holding') {
+        const result = advanceScannerProgress(progressRef.current, deltaMs, SCANNER_DURATION_MS);
+        progressRef.current = result.progress;
+        setProgress(Math.floor(result.progress));
+        soundEngine.updateScannerHold(result.progress / SCANNER_MAX_PROGRESS);
 
-      if (result.reachedVerdict) {
-        isHoldingRef.current = false;
-        isAutoRef.current = false;
-        stopLoop();
-        setProgress(SCANNER_MAX_PROGRESS);
-        setPhase('verdict');
-        setGlitchKey((k) => k + 1);
-        return;
+        if (result.reachedVerdict) {
+          modeRef.current = 'none';
+          stopLoop();
+          setProgress(SCANNER_MAX_PROGRESS);
+          setPhase('verdict');
+          setGlitchKey((k) => k + 1);
+          soundEngine.playScannerComplete();
+          if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+            navigator.vibrate([25, 45, 35]);
+          }
+          return;
+        }
+      } else if (mode === 'rewinding') {
+        const rewound = rewindScannerProgress(progressRef.current, deltaMs, 420);
+        progressRef.current = rewound.progress;
+        setProgress(Math.floor(rewound.progress));
+
+        if (rewound.done) {
+          modeRef.current = 'none';
+          progressRef.current = 0;
+          setProgress(0);
+          stopLoop();
+          return;
+        }
       }
 
       rafRef.current = window.requestAnimationFrame(tick);
@@ -62,55 +83,72 @@ export function BauniMeterSection() {
     rafRef.current = window.requestAnimationFrame(tick);
   }, [stopLoop]);
 
+  const cancelEarlyHold = useCallback(() => {
+    if (modeRef.current !== 'holding') return;
+    if (progressRef.current >= SCANNER_MAX_PROGRESS) return;
+
+    // Immediately abort scan, play descending "uh-oh" bloop, show cheeky warning, and smoothly rewind to 0%
+    soundEngine.playScannerAbort();
+    setPhase('aborted');
+    setAbortCount((c) => c + 1);
+
+    if (progressRef.current > 0) {
+      modeRef.current = 'rewinding';
+      lastFrameRef.current = null;
+      runLoop();
+    } else {
+      modeRef.current = 'none';
+      stopLoop();
+    }
+  }, [runLoop, stopLoop]);
+
+  // Safety net: catch release outside the pad or window blur while holding
   useEffect(() => {
-    return () => stopLoop();
+    const onGlobalRelease = () => {
+      cancelEarlyHold();
+    };
+    window.addEventListener('pointerup', onGlobalRelease);
+    window.addEventListener('pointercancel', onGlobalRelease);
+    window.addEventListener('blur', onGlobalRelease);
+    return () => {
+      window.removeEventListener('pointerup', onGlobalRelease);
+      window.removeEventListener('pointercancel', onGlobalRelease);
+      window.removeEventListener('blur', onGlobalRelease);
+    };
+  }, [cancelEarlyHold]);
+
+  useEffect(() => {
+    return () => {
+      modeRef.current = 'none';
+      stopLoop();
+      soundEngine.stopScannerHold();
+    };
   }, [stopLoop]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (phase === 'verdict') return;
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
     e.preventDefault();
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      // Synthetic pointer events in automated browsers may not have an active pointerId
-    }
-    pressStartRef.current = performance.now();
-    isHoldingRef.current = true;
+
+    // Start fresh continuous press-and-hold scan from 0% (or clean reset if rewinding)
+    progressRef.current = 0;
+    setProgress(0);
+    modeRef.current = 'holding';
+    lastFrameRef.current = null;
     setPhase('scanning');
+
+    soundEngine.startScannerHold();
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(15);
+    }
+
     runLoop();
   };
 
-  const handlePointerUpOrCancel = () => {
-    if (!isHoldingRef.current) return;
-    const heldMs = performance.now() - pressStartRef.current;
-    isHoldingRef.current = false;
-
-    if (progressRef.current >= SCANNER_MAX_PROGRESS) return;
-
-    // Quick tap (< 420ms) seamlessly auto-runs the scan as a mobile/desktop fallback
-    if (heldMs < 420) {
-      isAutoRef.current = true;
-      setPhase('scanning');
-      runLoop();
-    } else if (!isAutoRef.current) {
-      stopLoop();
-      setPhase('paused');
-    }
-  };
-
-  const handleKeyboardActivate = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (phase === 'verdict') return;
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      isAutoRef.current = true;
-      setPhase('scanning');
-      runLoop();
-    }
-  };
-
   const handleReset = () => {
-    isHoldingRef.current = false;
-    isAutoRef.current = false;
+    soundEngine.playBubbleClick();
+    soundEngine.stopScannerHold();
+    modeRef.current = 'none';
     stopLoop();
     progressRef.current = 0;
     setProgress(0);
@@ -118,12 +156,12 @@ export function BauniMeterSection() {
   };
 
   const isScanning = phase === 'scanning';
+  const isAborted = phase === 'aborted';
   const isVerdict = phase === 'verdict';
 
-  const statusMessage =
-    phase === 'paused'
-      ? 'Keep holding—or tap once to auto-scan!'
-      : getScannerStageMessage(progress);
+  const statusMessage = isAborted
+    ? "Don't lift your finger early — hold till 99%!"
+    : getScannerStageMessage(progress);
 
   return (
     <section id="bauni-meter" className="relative z-20 scroll-mt-16">
@@ -133,13 +171,13 @@ export function BauniMeterSection() {
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p className="text-sm font-semibold tracking-wide text-[#FFE898]">
-              Scientifically Unverified Height Lab
+              Height Check
             </p>
             <h2 className="font-display mt-1.5 text-balance text-3xl font-semibold tracking-tight text-[#FFFDF8] sm:text-4xl lg:text-5xl">
-              Official Bauni-Meter Scanner 📏✨
+              Bauni-Meter Scanner 📏✨
             </h2>
             <p className="mt-2.5 text-base text-[#FFE4F0]">
-              Press and hold to verify official height.
+              Press and hold until 99% to check your height.
             </p>
           </div>
 
@@ -148,15 +186,22 @@ export function BauniMeterSection() {
             data-phase={phase}
             className="mt-9 grid grid-cols-1 items-center gap-8 rounded-[2rem] border border-[#FFE4F0]/20 bg-[#4E1E47] p-6 shadow-[0_24px_56px_-22px_rgba(0,0,0,0.45)] sm:p-10 md:grid-cols-12"
           >
-            {/* Left column: Glowing pastel circular thumb-scanner pad */}
+            {/* Left column: Strict press-and-hold glowing pastel circular thumb-scanner pad */}
             <div className="flex flex-col items-center md:col-span-5">
               <div className="relative flex items-center justify-center">
-                {/* Soft outer pastel pulse ring while scanning */}
+                {/* Glowing pulsing ripple rings while actively held */}
                 {isScanning && (
-                  <span
-                    aria-hidden="true"
-                    className="animate-scanner-ring pointer-events-none absolute -inset-3 rounded-full border-2 border-[#FF8FC2]"
-                  />
+                  <>
+                    <span
+                      aria-hidden="true"
+                      className="animate-scanner-ring pointer-events-none absolute -inset-3 rounded-full border-2 border-[#FF8FC2]"
+                    />
+                    <span
+                      aria-hidden="true"
+                      style={{ animationDelay: '0.55s' }}
+                      className="animate-scanner-ring pointer-events-none absolute -inset-5 rounded-full border-2 border-[#FFE898]/80"
+                    />
+                  </>
                 )}
 
                 <button
@@ -165,11 +210,13 @@ export function BauniMeterSection() {
                   aria-label="Hold thumb here to measure height"
                   disabled={isVerdict}
                   onPointerDown={handlePointerDown}
-                  onPointerUp={handlePointerUpOrCancel}
-                  onPointerCancel={handlePointerUpOrCancel}
-                  onKeyDown={handleKeyboardActivate}
+                  onPointerUp={cancelEarlyHold}
+                  onPointerLeave={cancelEarlyHold}
+                  onPointerCancel={cancelEarlyHold}
                   onContextMenu={(e) => e.preventDefault()}
                   style={{
+                    touchAction: 'none',
+                    userSelect: 'none',
                     WebkitUserSelect: 'none',
                     WebkitTouchCallout: 'none',
                   }}
@@ -177,11 +224,13 @@ export function BauniMeterSection() {
                     isVerdict
                       ? 'border-[#FFE898] bg-gradient-to-br from-[#FFE4F0] to-[#EBE3FF] text-[#C2377E] cursor-default'
                       : isScanning
-                        ? 'scale-[0.97] border-[#FF8FC2] bg-gradient-to-br from-[#FFE4F0] via-[#FFFDF8] to-[#EBE3FF] text-[#C2377E] shadow-[0_0_38px_rgba(255,143,194,0.65)] cursor-pointer'
-                        : 'border-[#FFE4F0]/75 bg-gradient-to-br from-[#FFE4F0] via-[#FFFDF8] to-[#EBE3FF] text-[#3B1535] shadow-[0_0_28px_rgba(255,228,240,0.3)] hover:scale-[1.03] cursor-pointer'
+                        ? 'scale-[0.96] border-[#FF8FC2] bg-gradient-to-br from-[#FFE4F0] via-[#FFFDF8] to-[#EBE3FF] text-[#C2377E] shadow-[0_0_44px_rgba(255,143,194,0.8)] cursor-pointer'
+                        : isAborted
+                          ? 'border-[#FF6B9D] bg-gradient-to-br from-[#FFE4F0] via-[#FFFDF8] to-[#EBE3FF] text-[#3B1535] shadow-[0_0_24px_rgba(255,107,157,0.45)] hover:scale-[1.03] cursor-pointer'
+                          : 'border-[#FFE4F0]/75 bg-gradient-to-br from-[#FFE4F0] via-[#FFFDF8] to-[#EBE3FF] text-[#3B1535] shadow-[0_0_28px_rgba(255,228,240,0.3)] hover:scale-[1.03] cursor-pointer'
                   }`}
                 >
-                  {/* Animated glowing pink laser bar moving up and down */}
+                  {/* Animated glowing pink laser bar moving up and down while held */}
                   {isScanning && (
                     <span
                       aria-hidden="true"
@@ -190,7 +239,7 @@ export function BauniMeterSection() {
                   )}
 
                   <FingerprintSparkleSvg
-                    className={`relative z-10 h-24 w-24 transition-transform duration-200 ${
+                    className={`pointer-events-none relative z-10 h-24 w-24 transition-transform duration-200 ${
                       isScanning ? 'scale-105 text-[#C2377E]' : 'text-[#3B1535]'
                     }`}
                   />
@@ -199,11 +248,24 @@ export function BauniMeterSection() {
 
               <p className="mt-4 text-center text-xs font-medium text-[#FFE4F0]/90">
                 {isVerdict
-                  ? 'Scan complete (results are tragic)'
+                  ? 'Done (sorry not sorry)'
                   : isScanning
-                    ? 'Scanning in progress...'
-                    : 'Hold thumb here — or tap once to auto-scan'}
+                    ? "Keep holding, don't let go..."
+                    : 'Hold thumb down for 3 seconds'}
               </p>
+
+              {/* Cheeky red/berry warning prompt on early release */}
+              {isAborted && (
+                <div
+                  key={abortCount}
+                  role="alert"
+                  data-testid="bauni-abort-warning"
+                  className="animate-pop-in mt-3 inline-flex max-w-xs items-center gap-2 rounded-2xl border border-[#FF7AA8]/70 bg-[#88164D]/90 px-3.5 py-2 text-center text-xs font-bold leading-snug text-[#FFE8F2] shadow-md"
+                >
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-[#FFE898]" aria-hidden="true" />
+                  <span>Hold your finger till the end, don&rsquo;t cheat 👀</span>
+                </div>
+              )}
             </div>
 
             {/* Right column: Live progress readout + 99% verdict box */}
@@ -212,7 +274,7 @@ export function BauniMeterSection() {
                 <div className="flex items-center justify-between gap-4">
                   <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#FFE898]">
                     <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                    Height Calibration Progress
+                    Scan Progress
                   </span>
                   <span
                     data-testid="bauni-progress-value"
@@ -233,7 +295,11 @@ export function BauniMeterSection() {
                 >
                   <div
                     style={{ width: `${Math.min(100, (progress / SCANNER_MAX_PROGRESS) * 100)}%` }}
-                    className="h-full rounded-full bg-gradient-to-r from-[#FF8FC2] via-[#FFE898] to-[#D4B8FF] transition-[width] duration-75"
+                    className={`h-full rounded-full transition-[width] duration-75 ${
+                      isAborted
+                        ? 'bg-gradient-to-r from-[#FF5E8A] to-[#FF8FC2]'
+                        : 'bg-gradient-to-r from-[#FF8FC2] via-[#FFE898] to-[#D4B8FF]'
+                    }`}
                   />
                 </div>
 
@@ -241,7 +307,9 @@ export function BauniMeterSection() {
                   <p
                     data-testid="bauni-stage-message"
                     aria-live="polite"
-                    className="mt-4 min-h-[1.5rem] text-sm font-medium text-[#FFE4F0]"
+                    className={`mt-4 min-h-[1.5rem] text-sm font-medium ${
+                      isAborted ? 'text-[#FF9BC1]' : 'text-[#FFE4F0]'
+                    }`}
                   >
                     {statusMessage}
                   </p>
@@ -255,11 +323,11 @@ export function BauniMeterSection() {
                   >
                     <div className="flex items-center gap-2 text-xs font-bold tracking-wide text-[#C2377E]">
                       <SparkleStarSvg className="h-4 w-4 shrink-0 text-[#E04D92]" />
-                      <span>SCANNER OVERLOAD AT 99%</span>
+                      <span>SCAN ERROR AT 99%</span>
                     </div>
 
                     <p className="font-display mt-2 text-lg font-semibold leading-snug text-[#3B1535] sm:text-xl">
-                      ERROR 404: Too fun-sized to detect! Result: Certified Bauni &amp; Bachawww 🎀
+                      Error: Too short to measure. Confirmed bauni and bachhaww 🎀
                     </p>
 
                     <button

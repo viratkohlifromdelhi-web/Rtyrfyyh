@@ -305,13 +305,13 @@ export function SpinWheelSection() {
         {/* Section Header */}
         <div className="text-center">
           <p className="text-sm font-semibold text-[#C2377E]">
-            Spin the Wheel for Your Birthday Gift 🎡🎁
+            Birthday Prize Wheel 🎡🎁
           </p>
           <h2 className="font-display mt-1.5 text-balance text-3xl font-semibold tracking-tight text-[#3B1535] sm:text-4xl lg:text-5xl">
-            Spin for Your Big Birthday Gift! 🎡✨
+            Spin for Your Birthday Gift! 🎡✨
           </h2>
           <p className="mx-auto mt-2.5 max-w-xl text-base leading-relaxed text-[#5E2E57]">
-            100% totally fair, definitely not rigged wheel of gifts for my greatest HG.
+            Totally fair and definitely not rigged. Go ahead, try your luck.
           </p>
         </div>
 
@@ -607,7 +607,7 @@ export function SpinWheelSection() {
               </div>
 
               <span className="inline-flex items-center rounded-full border border-[#F2C3DA] bg-[#FFE4F0] px-3.5 py-1 text-xs font-bold text-[#3B1535]">
-                Official Wheel Verdict
+                Your Prize
               </span>
               <h3
                 data-testid="wheel-result-label"
@@ -642,7 +642,7 @@ export function SpinWheelSection() {
                 data-testid="wheel-cheeky-note"
                 className="animate-pop-in mt-2.5 text-xs font-semibold text-[#C2377E] sm:text-sm"
               >
-                Keep spinning, surely the next one is the iPhone 👀
+                Keep spinning, maybe the next one is the iPhone 👀
               </p>
             )}
           </div>

@@ -12,6 +12,7 @@ import { splitHeadlineWords } from '../utils/celebration';
 import {
   PolaroidCameraDoodle,
   RibbonSquiggleSvg,
+  SparkleBurstIconSvg,
   SparkleStarSvg,
 } from './DoodleSvgs';
 
@@ -27,8 +28,8 @@ interface FloatingEmojiSpec {
 
 const HERO_FLOATING_EMOJIS: FloatingEmojiSpec[] = [
   {
-    id: 'em-laugh',
-    emoji: '😂',
+    id: 'em-heart-hands',
+    emoji: '🫶🏻',
     positionClass: 'top-6 left-2 sm:top-10 sm:left-4 lg:left-6',
     sizeClass: 'text-2xl sm:text-3xl',
     animClass: 'animate-emoji-a',
@@ -70,6 +71,15 @@ const HERO_FLOATING_EMOJIS: FloatingEmojiSpec[] = [
     animClass: 'animate-emoji-b',
     dur: '5.6s',
     delay: '-1.8s',
+  },
+  {
+    id: 'em-wilted-rose',
+    emoji: '🥀',
+    positionClass: 'top-[18%] left-[12%] sm:top-[22%] sm:left-[44%] lg:top-[18%] lg:left-[46%]',
+    sizeClass: 'text-xl sm:text-2xl',
+    animClass: 'animate-emoji-c',
+    dur: '6.4s',
+    delay: '-1.5s',
   },
   {
     id: 'em-devil',
@@ -170,20 +180,20 @@ export function HeroSection({ isWholesomeMode, onPopConfetti }: HeroSectionProps
   return (
     <section
       id="top"
-      className="relative scroll-mt-16 overflow-hidden bg-gradient-to-b from-[#FFFDF8] via-[#FFF4F9] to-[#FFFDF8] pt-8 pb-14 sm:pt-12 sm:pb-20 lg:pt-14 lg:pb-22"
+      className="relative scroll-mt-16 overflow-hidden bg-gradient-to-b from-[#FFF6F9] via-[#FFF0F6] to-[#FFF6F9] pt-8 pb-14 sm:pt-12 sm:pb-20 lg:pt-14 lg:pb-22"
     >
       {/* Soft pastel ambient washes */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -top-24 -left-24 h-80 w-80 rounded-full bg-[#FFE4F0]/80 blur-3xl"
+        className="pointer-events-none absolute -top-24 -left-24 h-80 w-80 rounded-full bg-[#FFE6F0]/85 blur-3xl"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute top-24 -right-24 h-96 w-96 rounded-full bg-[#EBE3FF]/80 blur-3xl"
+        className="pointer-events-none absolute top-24 -right-24 h-96 w-96 rounded-full bg-[#F1E9FF]/85 blur-3xl"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-[#FFE898]/35 blur-3xl"
+        className="pointer-events-none absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-[#FFF3C4]/50 blur-3xl"
       />
 
       {/* Chaotic Playful Floating Emoji Layer */}
@@ -278,15 +288,17 @@ export function HeroSection({ isWholesomeMode, onPopConfetti }: HeroSectionProps
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5 lg:justify-start">
               <button
                 type="button"
+                data-testid="hero-pop-confetti-btn"
                 onClick={handleConfettiClick}
-                className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full bg-[#3B1535] px-7 py-3.5 text-sm font-semibold text-[#FFFDF8] shadow-[0_14px_28px_-8px_rgba(59,21,53,0.45)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#57214F] active:scale-[0.98] whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#C2377E]"
+                className="group inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#3A1233] to-[#9E2A5B] px-7 py-3 text-sm font-semibold text-[#FFFDFB] shadow-[0_10px_24px_-10px_rgba(58,18,51,0.48)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_14px_28px_-10px_rgba(158,42,91,0.52)] active:scale-[0.96] whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#D94B7D]"
               >
-                <span>Pop Confetti 🎉</span>
+                <SparkleBurstIconSvg className="h-5 w-5 shrink-0 text-[#FFFDFB] transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110" />
+                <span>Pop Confetti</span>
               </button>
 
               <a
                 href="#gift"
-                className="inline-flex min-h-[48px] items-center justify-center rounded-full border border-[#DEC4E8] bg-[#EBE3FF]/65 px-6 py-3 text-sm font-semibold text-[#3B1535] transition-colors duration-200 hover:bg-[#EBE3FF] whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3B1535]"
+                className="inline-flex min-h-[50px] items-center justify-center rounded-full border border-[#DEC9EC] bg-[#F1E9FF]/80 px-6 py-3 text-sm font-semibold text-[#3A1233] transition-colors duration-200 hover:bg-[#F1E9FF] whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3A1233]"
               >
                 Open Your Gift 🎁
               </a>
@@ -329,7 +341,7 @@ export function HeroSection({ isWholesomeMode, onPopConfetti }: HeroSectionProps
                   <>
                     <img
                       src={uploadedPhotoUrl}
-                      alt="Anamika Singh — The #1 Homegirl"
+                      alt="Anamika Singh — aka Morgan"
                       referrerPolicy="no-referrer"
                       className="h-full w-full object-cover object-center"
                     />
@@ -352,14 +364,14 @@ export function HeroSection({ isWholesomeMode, onPopConfetti }: HeroSectionProps
                   >
                     <PolaroidCameraDoodle className="h-24 w-24 transition-transform duration-300 group-hover:scale-105" />
                     <span className="font-display mt-2 text-lg font-semibold text-[#3B1535]">
-                      Anamika&rsquo;s Photo Slot
+                      Anamika&rsquo;s Photo
                     </span>
                     <span className="mt-1 max-w-[230px] text-xs leading-relaxed text-[#6E3C66]">
-                      Reserved exclusively for 1 iconic picture of Anamika (aka Morgan).
+                      Add 1 picture of Anamika (aka Morgan) here.
                     </span>
                     <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#3B1535] px-4 py-1.5 text-xs font-semibold text-[#FFFDF8] shadow-xs transition-transform group-hover:scale-105">
                       <ImagePlus className="h-3.5 w-3.5 text-[#FFE898]" aria-hidden="true" />
-                      <span>Tap to Place Photo</span>
+                      <span>Add Photo</span>
                     </span>
                   </button>
                 )}

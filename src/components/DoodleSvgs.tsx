@@ -148,7 +148,7 @@ export function RulerSparkleDoodle({ className = 'w-32 h-32' }: { className?: st
   );
 }
 
-/* Card 3: Rainbow / Sunglasses SVG ("Sarcastic Lesbian Icon") */
+/* Card 3: Rainbow / Sunglasses SVG ("Lesbian Daughter") */
 export function RainbowShadesDoodle({ className = 'w-32 h-32' }: { className?: string }) {
   return (
     <svg viewBox="0 0 180 160" fill="none" aria-hidden="true" className={className}>
@@ -452,7 +452,7 @@ export function WaxSealStampSvg({ className = 'w-32 h-32' }: { className?: strin
         letterSpacing="0.8"
         style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}
       >
-        MORGAN #1 HG
+        MORGAN &middot; HG
       </text>
       {/* Cute tiny heart/star dot at bottom */}
       <path
@@ -600,5 +600,169 @@ export function MoonPhaseDoodleSvg({ className = 'w-10 h-10' }: { className?: st
     </svg>
   );
 }
+
+/* Minimalist Sparkle-Burst Icon for the Hero "Pop Confetti" Button */
+export function SparkleBurstIconSvg({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+      {/* Main crisp 4-point sparkle */}
+      <path
+        d="M11 2.5L12.9 8.1L18.5 10L12.9 11.9L11 17.5L9.1 11.9L3.5 10L9.1 8.1L11 2.5Z"
+        fill="currentColor"
+      />
+      {/* Secondary accent sparkle */}
+      <path
+        d="M18.5 14L19.4 16.6L22 17.5L19.4 18.4L18.5 21L17.6 18.4L15 17.5L17.6 16.6L18.5 14Z"
+        fill="#FFF3C4"
+      />
+      {/* Minimal confetti flecks */}
+      <circle cx="18.2" cy="5.4" r="1.4" fill="#FFE6F0" />
+      <circle cx="5.2" cy="17.8" r="1.2" fill="#FFF3C4" />
+    </svg>
+  );
+}
+
+/* Crisp Minimalist Deep Plum / Rose Berry Confetti-Sparkle Icon for the Floating Button */
+export function ConfettiSparkleMinimalSvg({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+      {/* Main Deep Plum 4-point sparkle */}
+      <path
+        d="M10.5 3L12.3 8.2L17.5 10L12.3 11.8L10.5 17L8.7 11.8L3.5 10L8.7 8.2L10.5 3Z"
+        fill="#3A1233"
+      />
+      {/* Warm Rose Berry accent star */}
+      <path
+        d="M17.8 14L18.6 16.4L21 17.2L18.6 18L17.8 20.4L17 18L14.6 17.2L17 16.4L17.8 14Z"
+        fill="#D94B7D"
+      />
+      {/* Tiny crisp celebratory dots */}
+      <circle cx="18.4" cy="5.8" r="1.5" fill="#D94B7D" />
+      <circle cx="5.2" cy="17.6" r="1.25" fill="#3A1233" fillOpacity="0.65" />
+    </svg>
+  );
+}
+
+/* Scratch Card 1: Bold Playful Tilted Comic-Sticker "LOL!" Inline SVG */
+export function LolComicStickerSvg({ className = 'w-16 h-14' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 120 92" fill="none" aria-hidden="true" className={className}>
+      {/* Soft tilted comic sticker starburst backing */}
+      <g transform="rotate(-7 60 46)">
+        <path
+          d="M16 28L28 16L46 21L60 10L74 20L93 15L103 29L112 45L102 61L106 76L88 74L72 84L57 74L39 83L29 70L12 69L19 52L9 39L16 28Z"
+          fill="#FFF3C4"
+          stroke="#3A1233"
+          strokeWidth="2.8"
+          strokeLinejoin="round"
+        />
+        {/* Inner blush sticker pill */}
+        <rect
+          x="18"
+          y="25"
+          width="84"
+          height="42"
+          rx="14"
+          fill="#FFE6F0"
+          stroke="#D94B7D"
+          strokeWidth="2.2"
+        />
+        {/* Chunky comic shadow text */}
+        <text
+          x="62"
+          y="55"
+          textAnchor="middle"
+          fill="#3A1233"
+          fontSize="27"
+          fontWeight="900"
+          letterSpacing="1.5"
+          fontFamily="Plus Jakarta Sans, -apple-system, sans-serif"
+        >
+          LOL!
+        </text>
+        {/* Crisp Rose Berry foreground highlight text */}
+        <text
+          x="60"
+          y="53"
+          textAnchor="middle"
+          fill="#D94B7D"
+          stroke="#3A1233"
+          strokeWidth="1.2"
+          paintOrder="stroke"
+          fontSize="27"
+          fontWeight="900"
+          letterSpacing="1.5"
+          fontFamily="Plus Jakarta Sans, -apple-system, sans-serif"
+        >
+          LOL!
+        </text>
+      </g>
+
+      {/* Cute surrounding sparkles & stars */}
+      <path d="M13 15L14.6 19.4L19 21L14.6 22.6L13 27L11.4 22.6L7 21L11.4 19.4L13 15Z" fill="#D94B7D" />
+      <path d="M107 11L108.4 15L112.4 16.4L108.4 17.8L107 21.8L105.6 17.8L101.6 16.4L105.6 15L107 11Z" fill="#3A1233" />
+      <circle cx="105" cy="79" r="3" fill="#D94B7D" />
+      <circle cx="15" cy="76" r="2.6" fill="#3A1233" />
+    </svg>
+  );
+}
+
+/* Scratch Card 2: Celebratory Pizza Slice + Party Drink Inline SVG ("YOU Give Me a Party") */
+export function PartyTreatDoodleSvg({ className = 'w-16 h-16' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 112 104" fill="none" aria-hidden="true" className={className}>
+      <circle cx="56" cy="54" r="42" fill="#FFF2BE" fillOpacity="0.6" />
+      {/* Fizzy party drink cup (back right) */}
+      <path
+        d="M66 36H94L90 80C89.6 83.4 86.8 86 83.4 86H76.6C73.2 86 70.4 83.4 70 80L66 36Z"
+        fill="#FFE4F0"
+        stroke="#3B1535"
+        strokeWidth="2.8"
+        strokeLinejoin="round"
+      />
+      <path d="M68 50H92" stroke="#FF8FC2" strokeWidth="5" />
+      {/* Bent party straw */}
+      <path
+        d="M80 36L84 18L94 14"
+        stroke="#9A7CE8"
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <rect x="63" y="31" width="34" height="7" rx="3.5" fill="#EBE3FF" stroke="#3B1535" strokeWidth="2.6" />
+
+      {/* Big cheesy pizza slice (front left) */}
+      <g transform="rotate(-10 46 58)">
+        {/* Crust */}
+        <path
+          d="M18 38C30 28 54 28 68 38L64 46C52 38 32 38 22 46L18 38Z"
+          fill="#F4B956"
+          stroke="#3B1535"
+          strokeWidth="2.8"
+          strokeLinejoin="round"
+        />
+        {/* Cheesy triangle */}
+        <path
+          d="M22 45C32 38 52 38 64 45L43 88L22 45Z"
+          fill="#FFE898"
+          stroke="#3B1535"
+          strokeWidth="2.8"
+          strokeLinejoin="round"
+        />
+        {/* Toppings */}
+        <circle cx="38" cy="52" r="4.5" fill="#E04D92" stroke="#3B1535" strokeWidth="1.8" />
+        <circle cx="51" cy="57" r="4.2" fill="#E04D92" stroke="#3B1535" strokeWidth="1.8" />
+        <circle cx="43" cy="70" r="4" fill="#E04D92" stroke="#3B1535" strokeWidth="1.8" />
+        <circle cx="34" cy="61" r="2.2" fill="#4CAF7D" />
+        <circle cx="49" cy="48" r="2.2" fill="#4CAF7D" />
+      </g>
+
+      {/* Sparkles */}
+      <path d="M19 22L21 28L27 30L21 32L19 38L17 32L11 30L17 28L19 22Z" fill="#E04D92" />
+      <path d="M98 46L99.5 51L104.5 52.5L99.5 54L98 59L96.5 54L91.5 52.5L96.5 51L98 46Z" fill="#9A7CE8" />
+    </svg>
+  );
+}
+
 
 

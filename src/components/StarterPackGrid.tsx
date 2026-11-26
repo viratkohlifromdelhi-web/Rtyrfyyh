@@ -8,6 +8,7 @@ import {
   SparkleStarSvg,
   TrophyDoodle,
 } from './DoodleSvgs';
+import { soundEngine } from '../utils/soundEngine';
 
 interface SparkleBurstItem {
   id: string;
@@ -46,6 +47,7 @@ function InteractiveStarterCard({ card }: { card: StarterPackCard }) {
   const [sparkles, setSparkles] = useState<SparkleBurstItem[]>([]);
 
   const handleTap = () => {
+    soundEngine.playBubbleClick(showBonus ? 0.94 : 1.12);
     setShowBonus((prev) => !prev);
     setBouncing(true);
     window.setTimeout(() => setBouncing(false), 260);
@@ -122,7 +124,7 @@ function InteractiveStarterCard({ card }: { card: StarterPackCard }) {
           ) : (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#8C4D7F]">
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-              Tap for a sparkle &amp; bonus roast
+              Tap for a little extra
             </span>
           )}
         </div>
@@ -141,14 +143,14 @@ export function StarterPackGrid() {
         <div className="flex flex-col gap-2 text-center md:flex-row md:items-end md:justify-between md:text-left">
           <div>
             <p className="text-sm font-semibold text-[#C2377E]">
-              Inside-Joke Encyclopedia
+              Inside Jokes
             </p>
             <h2 className="font-display mt-1.5 text-balance text-3xl font-semibold tracking-tight text-[#3B1535] sm:text-4xl lg:text-5xl">
               The Morgan Starter Pack
             </h2>
           </div>
           <p className="text-sm text-[#6B3B64]">
-            Tap any card to bounce &amp; pop sparkles
+            Tap any card for a little extra
           </p>
         </div>
 

@@ -49,13 +49,13 @@ export function BackstorySection() {
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl">
             <p className="text-sm font-medium text-[#FFE898]">
-              Our Backstory Timeline
+              How We Got Here
             </p>
             <h2 className="font-display mt-2 text-balance text-3xl font-semibold tracking-tight text-[#FFFDF8] sm:text-4xl lg:text-5xl">
-              From Classmates to #1 HG
+              From Classmates to Greatest HG
             </h2>
             <p className="mt-2.5 text-sm leading-relaxed text-[#F5DCEF]/85 sm:text-base">
-              How an ordinary Pioneer Academy classmate somehow ended up taking over the entire friend list.
+              How a normal classmate from school ended up being my closest friend.
             </p>
           </div>
 

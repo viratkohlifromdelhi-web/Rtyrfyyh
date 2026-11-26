@@ -6,15 +6,17 @@ import {
   computeDodgePosition,
   getDodgeMessage,
   getScannerStageMessage,
+  rewindScannerProgress,
   RUNAWAY_TAUNTS,
+  SCANNER_DURATION_MS,
   SCANNER_MAX_PROGRESS,
   shouldAutoRevealScratch,
 } from './interactiveFun';
 
 test('getDodgeMessage cycles cleanly through cheeky taunts', () => {
-  assert.equal(getDodgeMessage(1), 'Nice try, bauni');
-  assert.equal(getDodgeMessage(2), 'Too slow, Morgan!');
-  assert.equal(getDodgeMessage(3), 'Stop fighting the truth');
+  assert.equal(getDodgeMessage(1), 'Nice try');
+  assert.equal(getDodgeMessage(2), 'Too slow, Morgan');
+  assert.equal(getDodgeMessage(3), 'Stop lying to yourself');
   assert.equal(getDodgeMessage(4), 'Just tap Yes already 😂');
   assert.equal(getDodgeMessage(RUNAWAY_TAUNTS.length + 1), RUNAWAY_TAUNTS[0]);
 });
@@ -61,20 +63,31 @@ test('computeDodgePosition keeps button strictly inside container bounds and avo
 });
 
 test('getScannerStageMessage progresses through all 3 funny scanning stages', () => {
-  assert.equal(getScannerStageMessage(12), 'Calibrating microscope...');
-  assert.equal(getScannerStageMessage(50), 'Zooming in 500x...');
-  assert.equal(getScannerStageMessage(88), 'Searching near the floor...');
-  assert.equal(getScannerStageMessage(99), 'Searching near the floor...');
+  assert.equal(getScannerStageMessage(12), 'Checking height...');
+  assert.equal(getScannerStageMessage(50), 'Still looking...');
+  assert.equal(getScannerStageMessage(88), 'Are you even standing up?');
+  assert.equal(getScannerStageMessage(99), 'Are you even standing up?');
 });
 
-test('advanceScannerProgress caps cleanly at 99% and flags verdict', () => {
-  const mid = advanceScannerProgress(0, 1200, 2400);
+test('advanceScannerProgress uses 3.2s hold duration, caps at 99%, and rewindScannerProgress smoothly resets to 0%', () => {
+  assert.equal(SCANNER_DURATION_MS, 3200);
+
+  const mid = advanceScannerProgress(0, 1600);
   assert.equal(mid.reachedVerdict, false);
   assert.ok(mid.progress > 45 && mid.progress < 55);
 
-  const end = advanceScannerProgress(90, 500, 2400);
+  const end = advanceScannerProgress(90, 500);
   assert.equal(end.progress, SCANNER_MAX_PROGRESS);
   assert.equal(end.reachedVerdict, true);
+
+  // Early release rewind smoothly steps down to 0%
+  const partialRewind = rewindScannerProgress(50, 140, 420);
+  assert.equal(partialRewind.done, false);
+  assert.ok(partialRewind.progress > 0 && partialRewind.progress < 50);
+
+  const completeRewind = rewindScannerProgress(partialRewind.progress, 500, 420);
+  assert.equal(completeRewind.progress, 0);
+  assert.equal(completeRewind.done, true);
 });
 
 test('calculateClearedRatio and shouldAutoRevealScratch detect 50% cleared foil accurately', () => {

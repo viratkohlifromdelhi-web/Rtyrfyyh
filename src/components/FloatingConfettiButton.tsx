@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react';
+import { ConfettiSparkleMinimalSvg } from './DoodleSvgs';
 
 interface FloatingConfettiButtonProps {
   onPop: (originX?: number, originY?: number) => void;
@@ -11,16 +12,22 @@ export function FloatingConfettiButton({ onPop }: FloatingConfettiButtonProps) {
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      aria-label="Pop Confetti!"
-      title="Pop Confetti!"
-      className="fixed right-4 bottom-4 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#FFE898] bg-[#3B1535] text-[#FFFDF8] shadow-[0_8px_20px_-6px_rgba(59,21,53,0.4)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#57214F] active:scale-95 sm:right-6 sm:bottom-6 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#C2377E]"
-    >
-      <span aria-hidden="true" className="text-xl leading-none">
-        🎉
-      </span>
-    </button>
+    <div className="fixed right-[14px] bottom-[14px] z-40 sm:right-5 sm:bottom-5">
+      <button
+        type="button"
+        data-testid="floating-confetti-btn"
+        onClick={handleClick}
+        aria-label="Pop Confetti!"
+        title="Pop Confetti!"
+        style={{
+          backgroundColor: 'rgba(255, 253, 250, 0.92)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+        }}
+        className="group inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border-[1.5px] border-[#F2B5CC] shadow-[0_6px_18px_-4px_rgba(58,18,51,0.18)] transition-all duration-150 hover:-translate-y-0.5 hover:border-[#D94B7D] hover:shadow-[0_10px_22px_-4px_rgba(217,75,125,0.26)] active:scale-[0.94] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
+      >
+        <ConfettiSparkleMinimalSvg className="h-5 w-5 transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110" />
+      </button>
+    </div>
   );
 }

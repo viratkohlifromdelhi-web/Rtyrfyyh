@@ -10,6 +10,7 @@ import {
   MoonPhaseDoodleSvg,
   SparkleStarSvg,
 } from './DoodleSvgs';
+import { soundEngine } from '../utils/soundEngine';
 
 const BIRTH_DATE = new Date(ANAMIKA_BIRTH_ISO);
 
@@ -25,6 +26,7 @@ export function LifeStatsSection() {
   }, []);
 
   const handleTileBounce = (id: string) => {
+    soundEngine.playBubbleClick(1.05);
     setActiveTile(id);
     window.setTimeout(() => {
       setActiveTile((curr) => (curr === id ? null : curr));
@@ -39,13 +41,13 @@ export function LifeStatsSection() {
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <p className="text-sm font-semibold text-[#C2377E]">
-            Live Earth Survival Tracker
+            Time on Earth
           </p>
           <h2 className="font-display mt-1.5 text-balance text-3xl font-semibold tracking-tight text-[#3B1535] sm:text-4xl lg:text-5xl">
             Anamika&rsquo;s Life Stats ⏳🎀
           </h2>
           <p className="mx-auto mt-2.5 max-w-xl text-base leading-relaxed tracking-normal [letter-spacing:0px] [word-spacing:normal] text-[#5E2E57]">
-            Live proof of how long the world has survived Morgan (since 03 Dec 2009).
+            Counting every second since 03 Dec 2009.
           </p>
         </div>
 
@@ -78,7 +80,7 @@ export function LifeStatsSection() {
                 {formatCommaNumber(stats.totalDays)}
               </div>
               <p className="mt-1.5 text-[15px] leading-relaxed font-medium tracking-normal [letter-spacing:0px] [word-spacing:normal] text-[#C2377E] sm:text-base">
-                Total Days on Earth since 03 Dec 2009
+                Days since 03 Dec 2009
               </p>
             </div>
           </div>
@@ -112,7 +114,7 @@ export function LifeStatsSection() {
               {formatCommaNumber(stats.totalHours)}
             </div>
             <p className="mt-2 text-[15px] leading-relaxed tracking-normal [letter-spacing:0px] [word-spacing:normal] text-[#5E2E57]">
-              Hours of pure chaos
+              Hours spent being annoying
             </p>
           </button>
 
@@ -125,10 +127,10 @@ export function LifeStatsSection() {
             }`}
           >
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-bold tracking-normal [letter-spacing:0px] [word-spacing:normal] text-[#6F43C2]">
+              <span className="text-xs font-bold tracking-normal [letter-spacing:0px] [word-spacing:normal] text-[#7A428A]">
                 Total Minutes Alive
               </span>
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EBE3FF] text-[#6F43C2] transition-transform duration-200 group-hover:scale-110">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F1E9FF] text-[#7A428A] transition-transform duration-200 group-hover:scale-110">
                 <Timer className="h-4.5 w-4.5" aria-hidden="true" />
               </span>
             </div>
@@ -139,7 +141,7 @@ export function LifeStatsSection() {
               {formatCommaNumber(stats.totalMinutes)}
             </div>
             <p className="mt-2 text-[15px] leading-relaxed tracking-normal [letter-spacing:0px] [word-spacing:normal] text-[#5E2E57]">
-              Minutes of certified bauni energy
+              Minutes of being a bauni
             </p>
           </button>
 
@@ -170,7 +172,7 @@ export function LifeStatsSection() {
               {formatCommaNumber(stats.totalSeconds)}
             </div>
             <p className="mt-2 text-[15px] leading-relaxed tracking-normal [letter-spacing:0px] [word-spacing:normal] text-[#FFE4F0]">
-              Seconds &amp; still undefeated as #1 HG
+              Seconds and still my greatest HG
             </p>
           </button>
 
@@ -195,12 +197,12 @@ export function LifeStatsSection() {
               {formatCommaNumber(stats.fullMoons)}
             </div>
             <p className="mt-2 text-[15px] leading-relaxed tracking-normal [letter-spacing:0px] [word-spacing:normal] text-[#5E2E57]">
-              Full moons survived by Morgan
+              Full moons seen
             </p>
           </button>
         </div>
 
-        {/* Funny Sarcastic Mini-Stat Strip (3 rounded pill badges requested by user) */}
+        {/* Casual Mini-Stat Strip */}
         <div
           data-testid="life-mini-strip"
           className="mt-6 flex flex-wrap items-center justify-center gap-3"
@@ -209,10 +211,10 @@ export function LifeStatsSection() {
             🎂 Turning: 17
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[#DDD0F7] bg-[#EBE3FF] px-4 py-2 text-xs font-bold text-[#3B1535] shadow-xs sm:text-sm">
-            📏 Height Growth Detected: Loading...
+            📏 Height Growth: Still 0%
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F0D37D] bg-[#FFE898] px-4 py-2 text-xs font-bold text-[#3B1535] shadow-xs sm:text-sm">
-            🏆 #1 Friend Spot Security: 100%
+            🏆 Friend List Rank: #2 (Behind Abhay)
           </span>
         </div>
       </div>

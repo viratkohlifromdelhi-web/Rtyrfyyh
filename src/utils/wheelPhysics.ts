@@ -23,7 +23,7 @@ export const WHEEL_SLICES: WheelSlice[] = [
     isTroll: true,
     fill: '#FFE4F0', // soft pastel pink
     textColor: '#3B1535',
-    resultMessage: 'So close to an actual gift! Spin again, Morgan 👀',
+    resultMessage: 'So close! Spin again, Morgan 👀',
     resultEmojis: ['🙃', '✨', '🎀', '👀'],
   },
   {
@@ -39,7 +39,7 @@ export const WHEEL_SLICES: WheelSlice[] = [
     isTroll: true,
     fill: '#FFE898', // butter yellow
     textColor: '#3B1535',
-    resultMessage: "LOL. That's it. That's your prize.",
+    resultMessage: "LOL. That's literally your prize.",
     resultEmojis: ['😂', '💀', '🤣', '✨'],
   },
   {
@@ -55,7 +55,7 @@ export const WHEEL_SLICES: WheelSlice[] = [
     isTroll: true,
     fill: '#FFFDF8', // warm cream
     textColor: '#3B1535',
-    resultMessage: "Hehehehhehehe did you really think you'd win cash?",
+    resultMessage: "Did you really think you'd get an iPhone or cash?",
     resultEmojis: ['😈', '💸', '😂', '✨'],
   },
   {
@@ -71,7 +71,7 @@ export const WHEEL_SLICES: WheelSlice[] = [
     isTroll: true,
     fill: '#E5DCFF', // soft lavender
     textColor: '#3B1535',
-    resultMessage: 'Certified 🐍 energy detected. Happy Birthday!',
+    resultMessage: 'Caught a snake. Happy Birthday! 🐍',
     resultEmojis: ['🐍', '🐍', '🐍', '🎂'],
   },
   {
@@ -87,7 +87,7 @@ export const WHEEL_SLICES: WheelSlice[] = [
     isTroll: true,
     fill: '#DDF6EC', // pastel mint
     textColor: '#3B1535',
-    resultMessage: "Even the wheel knows you're a certified bauni, bachawww 😂",
+    resultMessage: "Even the wheel knows you're a bauni, bachhaww 😂",
     resultEmojis: ['📏', '😂', '🎀', '🤏'],
   },
   {

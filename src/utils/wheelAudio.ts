@@ -1,3 +1,5 @@
+import { soundEngine } from './soundEngine';
+
 /**
  * Pure Web Audio API synthesizer for the rigged Birthday Spin Wheel.
  * Generates soft tactile peg ticks and a comical descending womp-womp / boing on landing
@@ -43,6 +45,7 @@ export class WheelAudioEngine {
    * Plays a crisp, soft wooden/plastic peg tick synced to a peg passing the top flapper.
    */
   public playPegTick(speedNorm: number): void {
+    if (!soundEngine.isEnabled()) return;
     const ctx = this.ensureContext();
     if (!ctx) return;
 
@@ -93,6 +96,7 @@ export class WheelAudioEngine {
    * Plays a funny descending "womp-womp / playful boing" synth when the wheel lands on a troll slice.
    */
   public playWompBoing(): void {
+    if (!soundEngine.isEnabled()) return;
     const ctx = this.ensureContext();
     if (!ctx) return;
 

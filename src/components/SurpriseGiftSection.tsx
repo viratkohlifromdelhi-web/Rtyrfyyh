@@ -1,5 +1,6 @@
 import { useState, type MouseEvent } from 'react';
 import { Gift, RotateCcw } from 'lucide-react';
+import { soundEngine } from '../utils/soundEngine';
 import { SparkleStarSvg, WrappedGiftBoxSvg } from './DoodleSvgs';
 
 interface SurpriseGiftSectionProps {
@@ -11,40 +12,42 @@ export function SurpriseGiftSection({ onRevealConfetti }: SurpriseGiftSectionPro
 
   const handleOpenGift = (e: MouseEvent<HTMLButtonElement>) => {
     setIsOpened(true);
+    soundEngine.playGiftFanfare();
     const rect = e.currentTarget.getBoundingClientRect();
     onRevealConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
   };
 
   const handleWrapBack = () => {
+    soundEngine.playBubbleClick();
     setIsOpened(false);
   };
 
   return (
     <section
       id="gift"
-      className="relative z-20 scroll-mt-16 bg-[#FFFDF8] py-14 sm:py-20"
+      className="relative z-20 scroll-mt-16 bg-[#FFF6F9] py-14 sm:py-20"
     >
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         <div
           data-testid="gift-box-stage"
           data-opened={String(isOpened)}
-          className="relative overflow-hidden rounded-[2rem] border border-[#E5D3F4] bg-gradient-to-br from-[#EBE3FF]/75 via-[#FFFDF8] to-[#FFE4F0]/80 px-6 py-10 text-center shadow-[0_24px_54px_-28px_rgba(59,21,53,0.22)] sm:px-12 sm:py-14"
+          className="relative overflow-hidden rounded-[2rem] border border-[#E6D4F3] bg-gradient-to-br from-[#F1E9FF]/80 via-[#FFFDFB] to-[#FFE6F0]/85 px-6 py-10 text-center shadow-[0_24px_54px_-28px_rgba(58,18,51,0.22)] sm:px-12 sm:py-14"
         >
           <SparkleStarSvg
             aria-hidden="true"
-            className="animate-twinkle pointer-events-none absolute top-7 left-7 h-7 w-7 text-[#E04D92]"
+            className="animate-twinkle pointer-events-none absolute top-7 left-7 h-7 w-7 text-[#D94B7D]"
           />
           <SparkleStarSvg
             aria-hidden="true"
-            className="animate-twinkle pointer-events-none absolute right-8 bottom-8 h-6 w-6 text-[#9A7CE8]"
+            className="animate-twinkle pointer-events-none absolute right-8 bottom-8 h-6 w-6 text-[#B78BD8]"
             style={{ animationDelay: '0.8s' }}
           />
 
-          <p className="text-sm font-semibold text-[#6F43C2]">
-            Exclusive 17th Birthday Delivery
+          <p className="text-sm font-semibold text-[#D94B7D]">
+            Birthday Delivery
           </p>
-          <h2 className="font-display mt-1.5 text-balance text-3xl font-semibold tracking-tight text-[#3B1535] sm:text-4xl">
-            Tap to Reveal Your Special Birthday Gift 🎁
+          <h2 className="font-display mt-1.5 text-balance text-3xl font-semibold tracking-tight text-[#3A1233] sm:text-4xl">
+            Tap to Open Your Birthday Gift 🎁
           </h2>
 
           {!isOpened ? (
@@ -73,7 +76,7 @@ export function SurpriseGiftSection({ onRevealConfetti }: SurpriseGiftSectionPro
               <div className="flex items-center justify-center gap-3 text-[#FFE898]">
                 <SparkleStarSvg className="animate-twinkle h-5 w-5" />
                 <span className="text-xs font-bold tracking-wide text-[#FFE4F0]">
-                  Official Birthday Certificate
+                  Special Delivery
                 </span>
                 <SparkleStarSvg
                   className="animate-twinkle h-5 w-5"
@@ -89,7 +92,7 @@ export function SurpriseGiftSection({ onRevealConfetti }: SurpriseGiftSectionPro
               </p>
 
               <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-[#FFE4F0] sm:text-lg">
-                Happy Birthday bachawww, did you really expect something serious? 😂
+                Happy birthday bachhaww, what else did you expect? 😂
               </p>
 
               <button

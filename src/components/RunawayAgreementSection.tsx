@@ -14,6 +14,7 @@ import {
   type Rect2D,
 } from '../utils/interactiveFun';
 import { SparkleStarSvg } from './DoodleSvgs';
+import { soundEngine } from '../utils/soundEngine';
 
 interface RunawayAgreementSectionProps {
   onAcceptConfetti: (originX?: number, originY?: number) => void;
@@ -116,6 +117,7 @@ export function RunawayAgreementSection({ onAcceptConfetti }: RunawayAgreementSe
     setNoPos(nextPos);
     setHasMeasured(true);
     setDodgeCount((c) => c + 1);
+    soundEngine.playDodgeZip();
   }, [noPos]);
 
   const handleAccept = (e: MouseEvent<HTMLButtonElement>) => {
@@ -125,6 +127,7 @@ export function RunawayAgreementSection({ onAcceptConfetti }: RunawayAgreementSe
   };
 
   const handleReset = () => {
+    soundEngine.playBubbleClick();
     setAccepted(false);
     setDodgeCount(0);
   };
@@ -151,15 +154,14 @@ export function RunawayAgreementSection({ onAcceptConfetti }: RunawayAgreementSe
           />
 
           <p className="text-sm font-semibold text-[#C2377E]">
-            Mandatory Birthday Paperwork
+            Quick Question
           </p>
           <h2 className="font-display mt-1.5 text-balance text-2xl font-semibold tracking-tight text-[#3B1535] sm:text-4xl">
-            Official Best-Friend Agreement 📜
+            Best-Friend Agreement 📜
           </h2>
 
           <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-[#572B50] sm:text-lg">
-            Do you officially accept that you&rsquo;re a certified bauni, peak bachawww, and an
-            absolute Gawaar?
+            Be honest, do you accept that you&rsquo;re a bauni and a Gawaar?
           </p>
 
           {!accepted ? (
@@ -239,13 +241,13 @@ export function RunawayAgreementSection({ onAcceptConfetti }: RunawayAgreementSe
               </div>
 
               <h3 className="font-display mt-4 text-balance text-2xl font-semibold text-[#3B1535] sm:text-3xl">
-                Legally Confirmed! Certified Bauni, Gawaar &amp; #1 Greatest HG ✅
+                Finally accepted the truth ✅
               </h3>
 
               <p className="mt-3 text-sm leading-relaxed text-[#572B50]">
                 {dodgeCount > 0
-                  ? `Signed under zero pressure (after only ${dodgeCount} heroic attempt${dodgeCount === 1 ? '' : 's'} to tap No 😂).`
-                  : 'Zero hesitation. Self-awareness level: 100/10, Morgan 👑.'}
+                  ? `Only took you ${dodgeCount} ${dodgeCount === 1 ? 'try' : 'tries'} to stop dodging 😂.`
+                  : "Didn't even try to deny it. Respect, Morgan 👑."}
               </p>
 
               <button

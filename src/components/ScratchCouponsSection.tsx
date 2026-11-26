@@ -12,51 +12,63 @@ import {
   shouldAutoRevealScratch,
 } from '../utils/interactiveFun';
 import {
-  CoffeeChatDoodleSvg,
   CrownSparkleDoodleSvg,
-  CupcakeTreatDoodleSvg,
+  LolComicStickerSvg,
+  PartyTreatDoodleSvg,
   SparkleStarSvg,
 } from './DoodleSvgs';
+import { soundEngine } from '../utils/soundEngine';
 
 interface ScratchCouponsSectionProps {
   onCardRevealConfetti: (originX?: number, originY?: number) => void;
 }
 
 interface CouponSpec {
-  id: 'rant' | 'treat' | 'troll';
+  id: 'nothing' | 'party' | 'troll';
   title: string;
   subtitle: string;
   badgeText?: string;
   badgeClass?: string;
+  iconBgClass: string;
   cardBgClass: string;
+  innerBgClass: string;
   isTroll?: boolean;
+  playExpiredSound?: boolean;
 }
 
 const COUPONS: readonly CouponSpec[] = [
   {
-    id: 'rant',
-    title: '1 Unlimited Rant Session',
-    subtitle: '(No Judging, Full Attention — Greatest HG Privilege)',
-    badgeText: 'VALID FOREVER ✅',
+    id: 'nothing',
+    title: 'LOL! You Get Nothing 😂',
+    subtitle: 'Seriously, nothing. Happy Birthday Morgan.',
+    badgeText: 'PRIZE: ZERO',
     badgeClass:
-      'border-[#A8DFBE] bg-gradient-to-r from-[#DCFCE7] to-[#FFE4F0] text-[#1D5B3A]',
-    cardBgClass: 'from-[#FFFDF8] via-[#F7FFF9] to-[#FFE4F0]/65',
+      'border-[#E9A5C1] bg-gradient-to-r from-[#FFE6F0] to-[#FAD3E4] text-[#6B1D4A]',
+    iconBgClass: 'bg-[#FFFDFB] border-[#F2B5CC]',
+    cardBgClass: 'from-[#FFEBF3] via-[#FFE6F0] to-[#FADCE9]',
+    innerBgClass: 'bg-[#FFE6F0]/70 border-[#E59EBC]',
+    playExpiredSound: true,
   },
   {
-    id: 'treat',
-    title: '1 Free Treat',
-    subtitle: "Your pick, anytime. Don't waste it, Morgan.",
-    badgeText: '100% REAL 🍰',
+    id: 'party',
+    title: 'YOU Give Me a Party 🍕',
+    subtitle: "Not the other way around. Your birthday = your treat, I'm not paying.",
+    badgeText: 'PAY UP, BAUNI 💸',
     badgeClass:
-      'border-[#F0CF72] bg-gradient-to-r from-[#FFE898] to-[#FFE4F0] text-[#5C3600]',
-    cardBgClass: 'from-[#FFFDF8] via-[#FFF9E6] to-[#FFE4F0]/65',
+      'border-[#E7C25F] bg-gradient-to-r from-[#FFF3C4] to-[#FFE6F0] text-[#5C3400]',
+    iconBgClass: 'bg-[#FFFDFB] border-[#EED17D]',
+    cardBgClass: 'from-[#FFF9E2] via-[#FFF3C4]/85 to-[#FFEEC0]',
+    innerBgClass: 'bg-[#FFF3C4]/55 border-[#E2C26F]',
   },
   {
     id: 'troll',
     title: '1 Day Without Being Called Gawaar',
-    subtitle: 'Nice try, bauni. Better luck next year 😂',
-    cardBgClass: 'from-[#FFFDF8] via-[#F3ECFF] to-[#FFE4F0]/75',
+    subtitle: 'Nice try, bauni. Maybe next year 😂',
+    iconBgClass: 'bg-[#FFFDFB] border-[#D3BDF2]',
+    cardBgClass: 'from-[#F6F0FF] via-[#F1E9FF] to-[#E8DBFF]',
+    innerBgClass: 'bg-[#F1E9FF]/70 border-[#CBB3EE]',
     isTroll: true,
+    playExpiredSound: true,
   },
 ];
 
@@ -94,85 +106,85 @@ function drawMiniStar(
   ctx.restore();
 }
 
-function paintMetallicPinkFoil(canvas: HTMLCanvasElement) {
+function paintMetallicPinkFoil(
+  canvas: HTMLCanvasElement,
+  cssW: number,
+  cssH: number,
+  dpr: number,
+) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return;
-
-  const w = canvas.width;
-  const h = canvas.height;
-  if (w === 0 || h === 0) return;
+  if (!ctx || cssW === 0 || cssH === 0) return;
 
   ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.globalCompositeOperation = 'source-over';
-  ctx.clearRect(0, 0, w, h);
+  ctx.clearRect(0, 0, cssW, cssH);
 
-  // Shimmering metallic pink / rose-gold foil gradient
-  const grad = ctx.createLinearGradient(0, 0, w, h);
-  grad.addColorStop(0, '#F48FB1');
-  grad.addColorStop(0.24, '#F8BBD0');
-  grad.addColorStop(0.48, '#FCE4EC');
-  grad.addColorStop(0.7, '#E68BA9');
-  grad.addColorStop(0.86, '#D87A98');
-  grad.addColorStop(1, '#F8BBD0');
+  // Shimmering metallic rose-gold pink foil gradient
+  const grad = ctx.createLinearGradient(0, 0, cssW, cssH);
+  grad.addColorStop(0, '#F085AC');
+  grad.addColorStop(0.22, '#F9C0D5');
+  grad.addColorStop(0.46, '#FDE7F0');
+  grad.addColorStop(0.68, '#E480A3');
+  grad.addColorStop(0.86, '#D67195');
+  grad.addColorStop(1, '#F8BDD3');
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, w, h);
+  ctx.fillRect(0, 0, cssW, cssH);
 
-  // Diagonal metallic shine streaks
+  // Diagonal glossy metallic shimmer streaks
   ctx.save();
-  ctx.translate(w / 2, h / 2);
-  ctx.rotate(-0.42);
+  ctx.translate(cssW / 2, cssH / 2);
+  ctx.rotate(-0.44);
   const streaks = [
-    { x: -w * 0.65, width: w * 0.14, alpha: 0.28 },
-    { x: -w * 0.25, width: w * 0.09, alpha: 0.2 },
-    { x: w * 0.08, width: w * 0.18, alpha: 0.34 },
-    { x: w * 0.44, width: w * 0.1, alpha: 0.22 },
+    { x: -cssW * 0.68, width: cssW * 0.13, alpha: 0.28 },
+    { x: -cssW * 0.28, width: cssW * 0.08, alpha: 0.2 },
+    { x: cssW * 0.06, width: cssW * 0.17, alpha: 0.36 },
+    { x: cssW * 0.44, width: cssW * 0.09, alpha: 0.24 },
   ];
   for (const s of streaks) {
     ctx.fillStyle = `rgba(255, 253, 248, ${s.alpha})`;
-    ctx.fillRect(s.x, -h * 1.4, s.width, h * 2.8);
+    ctx.fillRect(s.x, -cssH * 1.4, s.width, cssH * 2.8);
   }
   ctx.restore();
 
-  // Subtle dashed coupon outline inside foil
-  ctx.strokeStyle = 'rgba(255, 253, 248, 0.72)';
-  ctx.lineWidth = Math.max(2, Math.round(w * 0.006));
-  ctx.setLineDash([7, 6]);
-  ctx.strokeRect(12, 12, w - 24, h - 24);
+  // Delicate inner ticket frame on the foil
+  ctx.strokeStyle = 'rgba(255, 253, 248, 0.78)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 5]);
+  ctx.strokeRect(11, 11, cssW - 22, cssH - 22);
   ctx.setLineDash([]);
 
-  // Cute doodle stars on foil corners
-  const starScale = Math.max(8, Math.round(Math.min(w, h) * 0.045));
-  drawMiniStar(ctx, 32, 32, starScale, 'rgba(255, 253, 248, 0.9)');
-  drawMiniStar(ctx, w - 32, 34, starScale * 0.85, 'rgba(255, 232, 152, 0.95)');
-  drawMiniStar(ctx, 34, h - 32, starScale * 0.8, 'rgba(255, 232, 152, 0.9)');
-  drawMiniStar(ctx, w - 34, h - 32, starScale, 'rgba(255, 253, 248, 0.9)');
-  drawMiniStar(ctx, w * 0.22, h * 0.25, starScale * 0.55, 'rgba(255, 253, 248, 0.75)');
-  drawMiniStar(ctx, w * 0.78, h * 0.74, starScale * 0.55, 'rgba(255, 253, 248, 0.75)');
+  // Subtle corner sparkle stars
+  const starScale = Math.max(7, Math.round(Math.min(cssW, cssH) * 0.04));
+  drawMiniStar(ctx, 28, 28, starScale, 'rgba(255, 253, 248, 0.92)');
+  drawMiniStar(ctx, cssW - 28, 28, starScale * 0.85, 'rgba(255, 232, 152, 0.96)');
+  drawMiniStar(ctx, 28, cssH - 28, starScale * 0.82, 'rgba(255, 232, 152, 0.92)');
+  drawMiniStar(ctx, cssW - 28, cssH - 28, starScale, 'rgba(255, 253, 248, 0.92)');
 
-  // Centered crisp metallic foil label
-  const titleSize = Math.max(18, Math.round(w * 0.068));
+  // Crisp centered foil headline
+  const titleSize = Math.min(20, Math.max(16, Math.round(cssW * 0.062)));
   ctx.fillStyle = '#3B1535';
   ctx.font = `800 ${titleSize}px "Plus Jakarta Sans", -apple-system, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('SCRATCH HERE ✨', w / 2, h / 2 - 10);
+  ctx.fillText('SCRATCH HERE ✨', cssW / 2, cssH / 2 - 10);
 
-  const subSize = Math.max(12, Math.round(w * 0.038));
-  ctx.fillStyle = 'rgba(59, 21, 53, 0.8)';
+  const subSize = Math.min(13, Math.max(11, Math.round(cssW * 0.036)));
+  ctx.fillStyle = 'rgba(59, 21, 53, 0.78)';
   ctx.font = `600 ${subSize}px "Plus Jakarta Sans", -apple-system, sans-serif`;
-  ctx.fillText('Rub foil to unlock perk', w / 2, h / 2 + 18);
+  ctx.fillText('Rub with your finger', cssW / 2, cssH / 2 + 15);
 
   ctx.restore();
 }
 
 function CouponDoodleIcon({ id }: { id: CouponSpec['id'] }) {
   switch (id) {
-    case 'rant':
-      return <CoffeeChatDoodleSvg className="h-16 w-16" />;
-    case 'treat':
-      return <CupcakeTreatDoodleSvg className="h-16 w-16" />;
+    case 'nothing':
+      return <LolComicStickerSvg className="h-14 w-16" />;
+    case 'party':
+      return <PartyTreatDoodleSvg className="h-14 w-14" />;
     case 'troll':
-      return <CrownSparkleDoodleSvg className="h-16 w-16" />;
+      return <CrownSparkleDoodleSvg className="h-14 w-14" />;
   }
 }
 
@@ -191,11 +203,13 @@ function ScratchCouponCard({
 }: ScratchCouponCardProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const dprRef = useRef(1);
   const isScratchingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
   const lastCheckAtRef = useRef(0);
   const hasRevealedRef = useRef(revealed);
 
+  const [scratchPercent, setScratchPercent] = useState(0);
   const [sparkles, setSparkles] = useState<
     Array<{ id: string; sx: string; sy: string; sr: string; color: string; delay: string }>
   >([]);
@@ -204,6 +218,7 @@ function ScratchCouponCard({
   useEffect(() => {
     hasRevealedRef.current = revealed;
     if (revealed) {
+      setScratchPercent(0);
       setAnimVersion((v) => v + 1);
       const stamp = Date.now();
       const batch = SPARKLE_BURST_OFFSETS.map((o, idx) => ({
@@ -218,7 +233,7 @@ function ScratchCouponCard({
     }
   }, [revealed, coupon.id]);
 
-  // Size canvas cleanly to card dimensions and paint fresh metallic foil on mount / recoat
+  // Size DPR-scaled canvas cleanly to card dimensions and paint fresh metallic foil
   useEffect(() => {
     const canvas = canvasRef.current;
     const card = cardRef.current;
@@ -226,11 +241,14 @@ function ScratchCouponCard({
 
     const initFoil = () => {
       const rect = card.getBoundingClientRect();
-      const targetW = Math.max(240, Math.round(rect.width));
-      const targetH = Math.max(220, Math.round(rect.height));
-      canvas.width = targetW;
-      canvas.height = targetH;
-      paintMetallicPinkFoil(canvas);
+      const cssW = Math.max(240, Math.round(rect.width));
+      const cssH = Math.max(216, Math.round(rect.height));
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dprRef.current = dpr;
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      paintMetallicPinkFoil(canvas, cssW, cssH, dpr);
+      setScratchPercent(0);
     };
 
     initFoil();
@@ -243,62 +261,71 @@ function ScratchCouponCard({
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
+    const stride = Math.max(16, Math.round(16 * dprRef.current));
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    const clearedRatio = calculateClearedRatio(imgData, 16);
+    const clearedRatio = calculateClearedRatio(imgData, stride);
+    setScratchPercent(Math.min(99, Math.round(clearedRatio * 100)));
+
     if (shouldAutoRevealScratch(clearedRatio)) {
       hasRevealedRef.current = true;
       isScratchingRef.current = false;
+      setScratchPercent(0);
       const rect = canvas.getBoundingClientRect();
       onReveal(coupon.id, rect.left + rect.width / 2, rect.top + rect.height / 2);
     }
   }, [coupon.id, onReveal]);
 
-  const erasePoint = useCallback((clientX: number, clientY: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas || hasRevealedRef.current) return;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
+  const erasePoint = useCallback(
+    (clientX: number, clientY: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas || hasRevealedRef.current) return;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
 
-    const x = ((clientX - rect.left) / rect.width) * canvas.width;
-    const y = ((clientY - rect.top) / rect.height) * canvas.height;
+      const dpr = dprRef.current;
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
 
-    const brushRadius = 26;
-    ctx.save();
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.fillStyle = 'rgba(0,0,0,1)';
-    ctx.shadowColor = 'rgba(0,0,0,1)';
-    ctx.shadowBlur = 6;
+      const brushRadius = 26;
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = 'rgba(0,0,0,1)';
+      ctx.shadowColor = 'rgba(0,0,0,1)';
+      ctx.shadowBlur = 5;
 
-    const prev = lastPointRef.current;
-    if (prev) {
-      const dist = Math.hypot(x - prev.x, y - prev.y);
-      const steps = Math.max(1, Math.ceil(dist / 8));
-      for (let i = 1; i <= steps; i++) {
-        const t = i / steps;
-        const ix = prev.x + (x - prev.x) * t;
-        const iy = prev.y + (y - prev.y) * t;
+      const prev = lastPointRef.current;
+      if (prev) {
+        const dist = Math.hypot(x - prev.x, y - prev.y);
+        const steps = Math.max(1, Math.ceil(dist / 7));
+        for (let i = 1; i <= steps; i++) {
+          const t = i / steps;
+          const ix = prev.x + (x - prev.x) * t;
+          const iy = prev.y + (y - prev.y) * t;
+          ctx.beginPath();
+          ctx.arc(ix, iy, brushRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
         ctx.beginPath();
-        ctx.arc(ix, iy, brushRadius, 0, Math.PI * 2);
+        ctx.arc(x, y, brushRadius, 0, Math.PI * 2);
         ctx.fill();
       }
-    } else {
-      ctx.beginPath();
-      ctx.arc(x, y, brushRadius, 0, Math.PI * 2);
-      ctx.fill();
-    }
 
-    ctx.restore();
-    lastPointRef.current = { x, y };
+      ctx.restore();
+      lastPointRef.current = { x, y };
 
-    const now = performance.now();
-    if (now - lastCheckAtRef.current > 110) {
-      lastCheckAtRef.current = now;
-      checkClearedProgress();
-    }
-  }, [checkClearedProgress]);
+      const now = performance.now();
+      if (now - lastCheckAtRef.current > 100) {
+        lastCheckAtRef.current = now;
+        checkClearedProgress();
+      }
+    },
+    [checkClearedProgress],
+  );
 
   const handlePointerDown = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     if (hasRevealedRef.current) return;
@@ -328,7 +355,7 @@ function ScratchCouponCard({
 
   const revealAnimClass =
     revealed && animVersion > 0
-      ? coupon.isTroll
+      ? coupon.isTroll || coupon.playExpiredSound
         ? 'animate-scanner-glitch'
         : 'animate-pop-in'
       : '';
@@ -339,7 +366,7 @@ function ScratchCouponCard({
       ref={cardRef}
       data-testid={`scratch-card-${coupon.id}`}
       data-revealed={String(revealed)}
-      className={`relative flex min-h-[258px] flex-col justify-between overflow-hidden rounded-3xl border-2 border-[#EAB5D5] bg-gradient-to-br ${coupon.cardBgClass} p-6 text-center shadow-[0_18px_42px_-24px_rgba(59,21,53,0.24)] ${revealAnimClass}`}
+      className={`relative flex h-full min-h-[224px] flex-col overflow-hidden rounded-[20px] border-2 border-[#E9B4D4] bg-gradient-to-br ${coupon.cardBgClass} p-3 shadow-[0_14px_34px_-16px_rgba(59,21,53,0.22),0_4px_12px_-4px_rgba(194,55,126,0.12)] ${revealAnimClass}`}
     >
       {/* Sparkle burst on auto-reveal */}
       {sparkles.length > 0 && (
@@ -368,62 +395,73 @@ function ScratchCouponCard({
         </div>
       )}
 
-      {/* Subtle coupon notch cutouts */}
+      {/* Subtle semicircular side ticket notches */}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 -left-3 z-10 h-6 w-6 -translate-y-1/2 rounded-full border-r-2 border-[#EAB5D5] bg-[#FFF8FB]"
+        className="pointer-events-none absolute top-1/2 -left-3 z-30 h-6 w-6 -translate-y-1/2 rounded-full border-r-2 border-[#E9B4D4] bg-[#FFF8FB]"
       />
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 -right-3 z-10 h-6 w-6 -translate-y-1/2 rounded-full border-l-2 border-[#EAB5D5] bg-[#FFF8FB]"
+        className="pointer-events-none absolute top-1/2 -right-3 z-30 h-6 w-6 -translate-y-1/2 rounded-full border-l-2 border-[#E9B4D4] bg-[#FFF8FB]"
       />
 
-      {/* Revealed coupon content under the metallic foil */}
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-between gap-3">
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-[#FFFDF8]/90 shadow-xs">
+      {/* Inner dashed voucher frame with richer soft pastel tint and balanced spacing */}
+      <div
+        className={`relative z-10 flex flex-1 flex-col items-center justify-between gap-3.5 rounded-[14px] border border-dashed px-4 py-4 text-center ${coupon.innerBgClass}`}
+      >
+        <div
+          className={`flex h-16 w-20 shrink-0 items-center justify-center rounded-2xl border shadow-2xs ${coupon.iconBgClass}`}
+        >
           <CouponDoodleIcon id={coupon.id} />
         </div>
 
-        <div>
-          <h3 className="font-display text-xl font-bold leading-snug text-[#3B1535]">
+        <div className="flex flex-col items-center">
+          <h3 className="font-display text-lg font-bold leading-snug text-[#3B1535] sm:text-xl">
             {coupon.title}
           </h3>
-          <p className="mt-1.5 text-sm leading-relaxed text-[#5E2E57]">
+          <p className="mt-1 max-w-[26ch] text-xs leading-relaxed text-[#5E2E57] sm:text-sm">
             {coupon.subtitle}
           </p>
         </div>
 
-        {coupon.badgeText && (
-          <span
-            className={`mt-1 inline-flex items-center justify-center rounded-full border px-3.5 py-1 text-xs font-extrabold tracking-wide shadow-2xs ${coupon.badgeClass}`}
-          >
-            {coupon.badgeText}
-          </span>
-        )}
+        {/* Dedicated bottom badge / stamp slot — zero overlap at any width */}
+        <div className="mt-0.5 flex min-h-[34px] items-center justify-center">
+          {coupon.badgeText && (
+            <span
+              className={`inline-flex items-center justify-center rounded-full border px-3.5 py-1 text-[11px] font-extrabold tracking-wider shadow-2xs ${coupon.badgeClass}`}
+            >
+              {coupon.badgeText}
+            </span>
+          )}
 
-        {coupon.isTroll && (
-          <p className="mt-1 text-[11px] font-semibold text-[#8C4D7F]">
-            Expired on 02 Dec 2009
-          </p>
-        )}
+          {coupon.isTroll && (
+            <div
+              aria-label="EXPIRED — 02 Dec 2009"
+              className="inline-flex -rotate-[3deg] items-center gap-2 rounded-lg border-2 border-[#FFE4F0]/85 bg-[#3B1535] px-3 py-1 text-center shadow-[0_6px_14px_-4px_rgba(59,21,53,0.45)]"
+            >
+              <span className="text-[11px] font-black tracking-wider text-[#FFE898]">
+                EXPIRED ❌
+              </span>
+              <span className="border-l border-[#FFE4F0]/35 pl-2 text-[10px] font-semibold text-[#FFE4F0]">
+                02 Dec 2009
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Card 3 Troll Overlay: bold slightly tilted dark-berry EXPIRED stamp */}
-      {coupon.isTroll && (
-        <div
-          aria-label="EXPIRED — Expired on 02 Dec 2009"
-          className="pointer-events-none absolute top-4 right-3 z-10 rotate-[12deg] rounded-xl border-2 border-[#FFE4F0]/80 bg-[#3B1535] px-3 py-1.5 text-center shadow-[0_10px_24px_-6px_rgba(59,21,53,0.55)]"
+      {/* Live subtle scratch progress pill while rubbing */}
+      {!revealed && scratchPercent > 0 && (
+        <span
+          aria-live="polite"
+          data-testid={`scratch-progress-${coupon.id}`}
+          className="pointer-events-none absolute top-3 right-3 z-30 rounded-full border border-[#FFFDF8]/70 bg-[#3B1535]/85 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-[#FFE898] shadow-xs"
         >
-          <span className="block text-xs font-black tracking-wider text-[#FFE898]">
-            EXPIRED ❌
-          </span>
-          <span className="block text-[9px] font-medium text-[#FFE4F0]">
-            02 Dec 2009
-          </span>
-        </div>
+          {scratchPercent}% scratched
+        </span>
       )}
 
-      {/* HTML5 Canvas Metallic Pink Foil Overlay — touch-action:none & user-select:none strictly on canvas */}
+      {/* DPR-Scaled HTML5 Canvas Metallic Pink Foil Overlay — touch-action:none strictly on canvas */}
       <canvas
         ref={canvasRef}
         data-testid={`scratch-canvas-${coupon.id}`}
@@ -451,8 +489,8 @@ export function ScratchCouponsSection({
   onCardRevealConfetti,
 }: ScratchCouponsSectionProps) {
   const [revealedMap, setRevealedMap] = useState<Record<CouponSpec['id'], boolean>>({
-    rant: false,
-    treat: false,
+    nothing: false,
+    party: false,
     troll: false,
   });
   const [recoatVersion, setRecoatVersion] = useState(0);
@@ -463,22 +501,29 @@ export function ScratchCouponsSection({
         if (prev[id]) return prev;
         return { ...prev, [id]: true };
       });
+      if (id === 'troll' || id === 'nothing') {
+        soundEngine.playScratchExpired();
+      } else {
+        soundEngine.playScratchSparkle();
+      }
       onCardRevealConfetti(originX, originY);
     },
     [onCardRevealConfetti],
   );
 
   const handleRecoatAll = () => {
-    setRevealedMap({ rant: false, treat: false, troll: false });
+    soundEngine.playBubbleClick();
+    setRevealedMap({ nothing: false, party: false, troll: false });
     setRecoatVersion((v) => v + 1);
   };
 
   const handleRevealAll = () => {
-    setRevealedMap({ rant: true, treat: true, troll: true });
+    soundEngine.playScratchSparkle();
+    setRevealedMap({ nothing: true, party: true, troll: true });
     onCardRevealConfetti(window.innerWidth * 0.5, window.innerHeight * 0.45);
   };
 
-  const allRevealed = revealedMap.rant && revealedMap.treat && revealedMap.troll;
+  const allRevealed = revealedMap.nothing && revealedMap.party && revealedMap.troll;
 
   return (
     <section
@@ -488,20 +533,20 @@ export function ScratchCouponsSection({
       <div className="mx-auto max-w-6xl px-5 sm:px-6 lg:px-8">
         <div className="text-center">
           <p className="text-sm font-semibold text-[#C2377E]">
-            Morgan&rsquo;s Birthday Scratch Cards 🎟️✨
+            Birthday Scratch Cards 🎟️✨
           </p>
           <h2 className="font-display mt-1.5 text-balance text-3xl font-semibold tracking-tight text-[#3B1535] sm:text-4xl lg:text-5xl">
-            Birthday Scratch-Off Coupons ✨
+            Scratch-Off Cards ✨
           </h2>
           <p className="mx-auto mt-2.5 max-w-xl text-base text-[#5E2E57]">
-            Rub the metallic pink foil with your finger to unlock your perks, bachawww!
+            Rub the pink foil with your finger to see what you got.
           </p>
         </div>
 
-        {/* 3 Scratch-Off Coupons: generously spaced stack on mobile, 3-column grid on desktop */}
+        {/* 3 Scratch-Off Ticket Cards */}
         <div
           data-testid="scratch-cards-grid"
-          className="mt-9 grid grid-cols-1 gap-7 md:grid-cols-3 md:gap-6"
+          className="mt-9 grid grid-cols-1 gap-6 md:grid-cols-3 md:items-stretch"
         >
           {COUPONS.map((coupon) => (
             <ScratchCouponCard

@@ -4,6 +4,7 @@ import {
   SparkleStarSvg,
   WaxSealStampSvg,
 } from './DoodleSvgs';
+import { soundEngine } from '../utils/soundEngine';
 
 interface AdoptionCertificateSectionProps {
   onStampConfetti: (originX?: number, originY?: number) => void;
@@ -36,6 +37,7 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
   const handleStamp = (e: MouseEvent<HTMLButtonElement>) => {
     const nextCount = stampCount + 1;
     setStampCount(nextCount);
+    soundEngine.playWaxStamp();
 
     const rect = e.currentTarget.getBoundingClientRect();
     onStampConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
@@ -93,10 +95,10 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
             {/* Certificate Header */}
             <div className="mt-2 text-center">
               <p className="text-xs font-semibold tracking-widest text-[#C2377E]">
-                Certified Best-Friend Registry
+                Official-ish Paperwork
               </p>
               <h2 className="font-display mt-2 text-balance text-2xl font-bold tracking-wide text-[#3B1535] sm:text-3xl lg:text-4xl">
-                OFFICIAL SARCASTIC ADOPTION CERTIFICATE
+                ADOPTION CERTIFICATE
               </h2>
               <div
                 aria-hidden="true"
@@ -106,15 +108,15 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
 
             {/* Certificate Body Text */}
             <p className="mx-auto mt-6 max-w-2xl text-center text-base leading-relaxed text-[#4E2347] sm:text-lg sm:leading-loose">
-              This officially certifies that{' '}
+              This confirms that{' '}
               <strong className="font-display text-xl font-bold text-[#3B1535] underline decoration-[#F4B8D8] decoration-4 underline-offset-4">
                 Anamika Singh
               </strong>{' '}
-              is hereby recognized as my sarcastic lesbian daughter{' '}
-              <strong className="font-bold text-[#C2377E]">&lsquo;Morgan&rsquo;</strong>,
-              undisputed <strong className="font-bold text-[#3B1535]">#1 Greatest HG</strong>, and
-              permanent owner of the top spot on my friend list&mdash;officially overtaking every
-              single male friend.
+              is officially my lesbian daughter{' '}
+              <strong className="font-bold text-[#C2377E]">&lsquo;Morgan&rsquo;</strong> and my{' '}
+              <strong className="font-bold text-[#3B1535]">greatest HG</strong> &mdash; holding the{' '}
+              <strong className="font-bold text-[#3B1535]">#2 spot</strong> on my friend list right
+              behind Abhay.
             </p>
 
             {/* Footer details + bottom-right wax seal landing zone */}
@@ -123,11 +125,11 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
                 <div>
                   <p className="text-xs font-semibold text-[#8A4D7E]">Effective Since</p>
                   <p className="text-sm font-semibold text-[#3B1535]">
-                    22 July 2026 (The Instagram DM)
+                    22 July 2026 (First Instagram DM)
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-[#8A4D7E]">17th Birthday Edition</p>
+                  <p className="text-xs font-semibold text-[#8A4D7E]">17th Birthday</p>
                   <p className="text-sm font-semibold text-[#3B1535]">03 December 2026</p>
                 </div>
               </div>
@@ -182,7 +184,7 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
                     className="animate-wax-slam relative z-20 drop-shadow-[0_12px_18px_rgba(168,31,102,0.35)]"
                   >
                     <WaxSealStampSvg className="h-32 w-32 sm:h-36 sm:w-36" />
-                    <span className="sr-only">APPROVED • MORGAN #1 HG</span>
+                    <span className="sr-only">APPROVED · MORGAN · GREATEST HG</span>
                   </div>
                 )}
               </div>
@@ -201,7 +203,7 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
           </button>
           {isStamped && (
             <p className="animate-pop-in mt-2.5 text-xs font-semibold text-[#7A4B73]">
-              Sealed &amp; notarized: APPROVED &middot; MORGAN #1 HG
+              Stamped and approved: Morgan, Greatest HG 🎀
             </p>
           )}
         </div>

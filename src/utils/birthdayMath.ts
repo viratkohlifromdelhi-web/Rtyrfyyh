@@ -1,7 +1,9 @@
 export interface CalendarCell {
   key: string;
-  day: number | null;
+  day: number;
+  isCurrentMonth: boolean;
   isBirthday: boolean;
+  isWeekend: boolean;
 }
 
 export interface FriendshipDuration {
@@ -18,44 +20,121 @@ export interface FriendRankEntry {
   isAnamika?: boolean;
 }
 
-// 22 July 2026 — The Instagram plot twist date
+export interface BirthdayCountdown {
+  status: 'upcoming' | 'today' | 'passed';
+  daysLeft: number;
+  label: string;
+}
+
+// 22 July 2026 — First Instagram DM date
 export const FRIENDSHIP_START_ISO = '2026-07-22T00:00:00';
 
+const CHEEKY_DATE_TOASTS = [
+  'Wrong date, tap 3 👀',
+  'Just a normal boring day',
+  'Still a bauni on this day too',
+  'Nope, tap 3 for the actual birthday 😂',
+  'Regular day, zero birthday cake 🍰',
+  'Nice try, scroll your thumb to 3',
+] as const;
+
+export function getRandomDateToast(day: number): string {
+  const index = Math.abs(day) % CHEEKY_DATE_TOASTS.length;
+  return CHEEKY_DATE_TOASTS[index];
+}
+
 /**
- * Generates the exact monthly calendar grid for December 2026 (Sun–Sat).
- * December 1, 2026 falls on Tuesday (weekday index 2).
+ * Generates the exact 5-row monthly calendar grid for December 2026 (Sun–Sat).
+ * December 1, 2026 falls on Tuesday (weekday index 2), so leading cells are
+ * Nov 29 & 30 and trailing cells are Jan 1 & 2 (35 cells total).
  */
 export function buildDecember2026Calendar(): CalendarCell[] {
   const firstDayWeekday = new Date(2026, 11, 1).getDay(); // 2 = Tuesday
+  const prevMonthDays = new Date(2026, 11, 0).getDate(); // 30 days in Nov 2026
   const totalDays = 31;
   const cells: CalendarCell[] = [];
 
   for (let i = 0; i < firstDayWeekday; i++) {
+    const day = prevMonthDays - firstDayWeekday + 1 + i;
+    const col = cells.length % 7;
     cells.push({
-      key: `empty-start-${i}`,
-      day: null,
+      key: `prev-${day}`,
+      day,
+      isCurrentMonth: false,
       isBirthday: false,
+      isWeekend: col === 0 || col === 6,
     });
   }
 
   for (let day = 1; day <= totalDays; day++) {
+    const col = cells.length % 7;
     cells.push({
       key: `dec-${day}`,
       day,
+      isCurrentMonth: true,
       isBirthday: day === 3,
+      isWeekend: col === 0 || col === 6,
     });
   }
 
-  // Pad trailing blanks so grid rows stay clean
+  let nextDay = 1;
   while (cells.length % 7 !== 0) {
+    const col = cells.length % 7;
     cells.push({
-      key: `empty-end-${cells.length}`,
-      day: null,
+      key: `next-${nextDay}`,
+      day: nextDay,
+      isCurrentMonth: false,
       isBirthday: false,
+      isWeekend: col === 0 || col === 6,
     });
+    nextDay += 1;
   }
 
   return cells;
+}
+
+/**
+ * Computes a live birthday countdown strip message toward 03 December 2026.
+ */
+export function computeBirthdayCountdown(
+  now: Date,
+  birthdayDate: Date = new Date(2026, 11, 3, 0, 0, 0),
+): BirthdayCountdown {
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfBday = new Date(
+    birthdayDate.getFullYear(),
+    birthdayDate.getMonth(),
+    birthdayDate.getDate(),
+  ).getTime();
+
+  const dayDiff = Math.round((startOfBday - startOfToday) / 86400000);
+
+  if (dayDiff > 1) {
+    return {
+      status: 'upcoming',
+      daysLeft: dayDiff,
+      label: `${dayDiff} days left till Morgan turns 17`,
+    };
+  }
+  if (dayDiff === 1) {
+    return {
+      status: 'upcoming',
+      daysLeft: 1,
+      label: '1 day left till Morgan turns 17',
+    };
+  }
+  if (dayDiff === 0) {
+    return {
+      status: 'today',
+      daysLeft: 0,
+      label: "It's today — Happy 17th Birthday, Morgan!",
+    };
+  }
+  return {
+    status: 'passed',
+    daysLeft: 0,
+    label: 'Morgan turned 17 on 03 Dec 2026',
+  };
 }
 
 /**
@@ -77,6 +156,7 @@ export function computeFriendshipDuration(
 
 /**
  * Returns the friend leaderboard order before and after "Friend List Override".
+ * When override is active, Morgan moves right to #2 (below Abhay at #1 and above Ankit, Ayush, Harsh).
  */
 export function getOrderedFriendList(
   baseList: FriendRankEntry[],
@@ -87,7 +167,13 @@ export function getOrderedFriendList(
   }
   const anamika = baseList.find((item) => item.isAnamika);
   const others = baseList.filter((item) => !item.isAnamika);
-  return anamika ? [anamika, ...others] : [...baseList];
+  if (!anamika) {
+    return [...baseList];
+  }
+  if (others.length === 0) {
+    return [anamika];
+  }
+  return [others[0], anamika, ...others.slice(1)];
 }
 
 // 03 December 2009 — Anamika's birth timestamp

@@ -19,27 +19,36 @@ import { SurpriseGiftSection } from './components/SurpriseGiftSection';
 import { TopBar } from './components/TopBar';
 import { ANAMIKA } from './data/celebrationData';
 import { BirthdayMusicPlayer } from './utils/musicSynth';
+import { soundEngine } from './utils/soundEngine';
 
 export default function App() {
   const confettiRef = useRef<ConfettiCanvasHandle | null>(null);
   const musicPlayerRef = useRef<BirthdayMusicPlayer | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
+  const [sfxEnabled, setSfxEnabled] = useState(() => soundEngine.isEnabled());
   const [isWholesomeMode, setIsWholesomeMode] = useState(false);
-  const [friendOverride, setFriendOverride] = useState(false);
+  const [friendOverride, setFriendOverride] = useState(true);
   const [sparkleRain, setSparkleRain] = useState(true);
 
   useEffect(() => {
     musicPlayerRef.current = new BirthdayMusicPlayer();
+    const unsubscribe = soundEngine.subscribe(setSfxEnabled);
     return () => {
+      unsubscribe();
       musicPlayerRef.current?.dispose();
       musicPlayerRef.current = null;
     };
   }, []);
 
+  const handleToggleSfx = useCallback(() => {
+    soundEngine.toggle();
+  }, []);
+
   const handleToggleMusic = useCallback(() => {
     const player = musicPlayerRef.current;
     if (!player) return;
+    soundEngine.playBubbleClick(isPlaying ? 0.92 : 1.08);
     if (isPlaying) {
       player.stop();
       setIsPlaying(false);
@@ -50,31 +59,44 @@ export default function App() {
   }, [isPlaying]);
 
   const handleBurstConfetti = useCallback((originX?: number, originY?: number) => {
-    confettiRef.current?.pop(originX, originY, 64);
+    confettiRef.current?.pop(originX, originY, 56);
   }, []);
 
-  const handleCelebrationBurst = useCallback((originX?: number, originY?: number) => {
-    confettiRef.current?.pop(originX, originY, 68);
-    window.setTimeout(() => {
-      confettiRef.current?.pop(window.innerWidth * 0.28, window.innerHeight * 0.35, 28);
-      confettiRef.current?.pop(window.innerWidth * 0.72, window.innerHeight * 0.35, 28);
-    }, 120);
+  const handleCelebrationBurst = useCallback(() => {
+    confettiRef.current?.fireCannons();
+  }, []);
+
+  const handleToggleWholesome = useCallback(() => {
+    soundEngine.playBubbleClick(1.06);
+    setIsWholesomeMode((prev) => !prev);
+  }, []);
+
+  const handleToggleSparkleRain = useCallback(() => {
+    soundEngine.playBubbleClick(0.96);
+    setSparkleRain((prev) => !prev);
   }, []);
 
   const handleToggleFriendOverride = useCallback(() => {
     const next = !friendOverride;
     setFriendOverride(next);
     if (next) {
-      confettiRef.current?.pop(window.innerWidth * 0.65, window.innerHeight * 0.45, 50);
+      confettiRef.current?.pop(window.innerWidth * 0.65, window.innerHeight * 0.45, 52);
+    } else {
+      soundEngine.playBubbleClick(0.9);
     }
   }, [friendOverride]);
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#FFFDF8] text-[#3B1535]">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#FFF6F9] text-[#3A1233]">
       <AmbientOverlay enabled={sparkleRain} />
       <ConfettiCanvas ref={confettiRef} />
 
-      <TopBar isPlaying={isPlaying} onToggleMusic={handleToggleMusic} />
+      <TopBar
+        isPlaying={isPlaying}
+        onToggleMusic={handleToggleMusic}
+        sfxEnabled={sfxEnabled}
+        onToggleSfx={handleToggleSfx}
+      />
 
       <main className="overflow-x-hidden pt-14">
         {/* 1. Hero Section (Humorous Intro + The Only Photo Slot) */}
@@ -86,11 +108,11 @@ export default function App() {
         {/* 2. Interactive Toggles & Control Bar */}
         <InteractiveTogglesSection
           isWholesomeMode={isWholesomeMode}
-          onToggleWholesome={() => setIsWholesomeMode((prev) => !prev)}
+          onToggleWholesome={handleToggleWholesome}
           friendOverride={friendOverride}
           onToggleFriendOverride={handleToggleFriendOverride}
           sparkleRain={sparkleRain}
-          onToggleSparkleRain={() => setSparkleRain((prev) => !prev)}
+          onToggleSparkleRain={handleToggleSparkleRain}
         />
 
         {/* 3. December 2026 Calendar & Live Friendship Counter */}
@@ -127,11 +149,11 @@ export default function App() {
         <MakeAWishCake onBlowOutConfetti={handleCelebrationBurst} />
       </main>
 
-      <footer className="relative z-20 border-t border-[#ECD6EA] bg-[#FFFDF8] py-8 pb-24 sm:pb-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-center sm:flex-row sm:px-6 sm:text-left lg:px-8">
-          <div className="flex items-center gap-2 text-sm text-[#6B3B64]">
-            <SparkleStarSvg className="h-4 w-4 text-[#E04D92]" />
-            <span className="font-display italic text-[#3B1535]">
+      <footer className="relative z-20 border-t border-[#F2C6D8] bg-[#FFF6F9] py-8 pb-28 sm:pb-12">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 text-center sm:flex-row sm:px-6 sm:text-left lg:px-8">
+          <div className="flex items-center justify-center gap-2 text-sm text-[#6B3B64] sm:justify-start">
+            <SparkleStarSvg className="h-4 w-4 shrink-0 text-[#D94B7D]" />
+            <span className="font-display italic text-[#3A1233]">
               Made for {ANAMIKA.fullName} (aka {ANAMIKA.nickname}) &middot; Turning {ANAMIKA.age} on{' '}
               {ANAMIKA.birthdayLabel}
             </span>
@@ -139,7 +161,7 @@ export default function App() {
 
           <a
             href="#top"
-            className="text-xs font-semibold text-[#C2377E] transition-colors hover:text-[#3B1535] hover:underline underline-offset-4"
+            className="text-xs font-semibold text-[#D94B7D] transition-colors hover:text-[#3A1233] hover:underline underline-offset-4"
           >
             Back to top
           </a>
