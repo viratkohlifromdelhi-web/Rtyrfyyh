@@ -7,6 +7,7 @@ import {
   getRandomDateToast,
 } from '../utils/birthdayMath';
 import { trackEvent } from '../utils/analytics';
+import { haptics } from '../utils/haptics';
 import { soundEngine } from '../utils/soundEngine';
 
 function CalendarArrowSvg({ className = 'h-3 w-3' }: { className?: string }) {
@@ -59,6 +60,7 @@ export function CalendarAndCounterSection({
   const countdown = computeBirthdayCountdown(now);
 
   const handleTapDec3 = (e: MouseEvent<HTMLButtonElement>) => {
+    haptics.medium();
     setDateToast(null);
     setShowBirthdayPopup((prev) => !prev);
     trackEvent('calendar_date_tapped', 'December 3 Birthday Date', {
@@ -70,6 +72,7 @@ export function CalendarAndCounterSection({
   };
 
   const handleTapOtherDate = (day: number) => {
+    haptics.tap();
     soundEngine.playBubbleClick(0.95 + (day % 4) * 0.04);
     trackEvent('calendar_date_tapped', `December ${day} Calendar Date`, {
       day,
@@ -85,7 +88,7 @@ export function CalendarAndCounterSection({
   return (
     <section
       id="calendar"
-      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
+      className="cv-auto-section relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">

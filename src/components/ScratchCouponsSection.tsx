@@ -523,6 +523,7 @@ export function ScratchCouponsSection({
   );
 
   const handleRecoatAll = () => {
+    haptics.tap();
     soundEngine.playBubbleClick();
     setRevealedMap({ nothing: false, party: false, troll: false });
     setRecoatVersion((v) => v + 1);
@@ -549,7 +550,7 @@ export function ScratchCouponsSection({
   return (
     <section
       id="scratch-cards"
-      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
+      className="cv-auto-section relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-6xl px-5 sm:px-6 lg:px-8">
         <div className="text-center">

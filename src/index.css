@@ -18,7 +18,7 @@
     background-color: #FFF8FB;
     color: #3A1233;
     scroll-padding-top: 4.5rem;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   h1, h2, h3, .font-display {
@@ -478,7 +478,6 @@
 .bouncy-letter {
   display: inline-block;
   transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), color 200ms ease;
-  will-change: transform;
 }
 
 .bouncy-letter:hover,
@@ -1209,35 +1208,407 @@
   background: linear-gradient(180deg, rgba(255, 248, 251, 0) 0%, #FFF8FB 100%);
 }
 
-/* Backstory timeline Chapter 3 node ignition ripple & breathing halo (GPU-composited) */
-@keyframes timeline-node-ripple {
+/* Cohesive Rich Warm Rose Berry tactile stationery CTA button */
+.btn-rose-berry {
+  background: linear-gradient(180deg, #D94B7D 0%, #C23568 100%);
+  color: #FFFDF9;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 3px 0 #941E4A,
+    0 10px 20px -8px rgba(201, 59, 107, 0.40);
+  transform: translate3d(0, 0, 0);
+  transition:
+    transform 130ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 130ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 150ms ease;
+}
+
+.btn-rose-berry:hover,
+.group:hover .btn-rose-berry {
+  filter: brightness(1.04);
+}
+
+.btn-rose-berry:active,
+.group:active .btn-rose-berry {
+  transform: translate3d(0, 2px, 0);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 1px 0 #941E4A,
+    0 5px 12px -6px rgba(201, 59, 107, 0.34);
+}
+
+/* Backstory Chapter 3 divider tab arrival confetti flecks (GPU-composited) */
+@keyframes notebook-tab-fleck {
   0% {
-    transform: scale(1);
-    opacity: 0.6;
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.45) rotate(0deg);
+  }
+  18% {
+    opacity: 1;
+  }
+  74% {
+    opacity: 0.9;
   }
   100% {
-    transform: scale(2.1);
     opacity: 0;
+    transform: translate3d(var(--fx, 18px), var(--fy, -28px), 0) scale(1) rotate(var(--fr, 95deg));
   }
 }
 
-@keyframes timeline-gold-breathe {
+.animate-notebook-fleck {
+  animation: notebook-tab-fleck 760ms cubic-bezier(0.16, 1, 0.3, 1) var(--fdelay, 0ms) forwards;
+}
+
+/* Closing Sign-Off Footer ultra-subtle 3.6s idle breathing bob anchored at feet */
+@keyframes chibi-idle-breathe {
   0%, 100% {
-    transform: scale(1);
-    opacity: 0.42;
+    transform: scaleY(1);
   }
   50% {
-    transform: scale(1.42);
-    opacity: 0.72;
+    transform: scaleY(1.015);
   }
 }
 
-.animate-timeline-node-ripple {
-  animation: timeline-node-ripple 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+.animate-chibi-breathe {
+  transform-origin: 130px 140px;
+  animation: chibi-idle-breathe 3.6s ease-in-out infinite;
 }
 
-.animate-timeline-gold-breathe {
-  animation: timeline-gold-breathe 2.8s ease-in-out infinite;
+/* ============================================================
+   The Little Coop — 60fps GPU-Composited Comic Keyframes
+   ============================================================ */
+@keyframes coop-cloud-drift-a {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(10px, 0, 0);
+  }
+}
+
+@keyframes coop-cloud-drift-b {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-11px, 0, 0);
+  }
+}
+
+@keyframes coop-waddle-hop-left {
+  0% {
+    transform: translate3d(-58px, 0, 0) rotate(0deg);
+  }
+  16% {
+    transform: translate3d(-44px, -6px, 0) rotate(6deg);
+  }
+  33% {
+    transform: translate3d(-34px, 0, 0) rotate(-4deg);
+  }
+  50% {
+    transform: translate3d(-22px, -6px, 0) rotate(6deg);
+  }
+  67% {
+    transform: translate3d(-12px, 0, 0) rotate(-4deg);
+  }
+  84% {
+    transform: translate3d(-4px, -5px, 0) rotate(5deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+@keyframes coop-waddle-hop-right {
+  0% {
+    transform: translate3d(58px, 0, 0) rotate(0deg);
+  }
+  16% {
+    transform: translate3d(44px, -6px, 0) rotate(-6deg);
+  }
+  33% {
+    transform: translate3d(34px, 0, 0) rotate(4deg);
+  }
+  50% {
+    transform: translate3d(22px, -6px, 0) rotate(-6deg);
+  }
+  67% {
+    transform: translate3d(12px, 0, 0) rotate(4deg);
+  }
+  84% {
+    transform: translate3d(4px, -5px, 0) rotate(-5deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+@keyframes coop-shy-blink {
+  0%, 34%, 50%, 100% {
+    transform: scaleY(1);
+  }
+  42% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes coop-heart-bloom {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0) scale(0.2);
+  }
+  26% {
+    opacity: 1;
+    transform: translate3d(var(--hx-mid, 4px), -14px, 0) scale(1.06);
+  }
+  72% {
+    opacity: 0.92;
+    transform: translate3d(var(--hx-end, 10px), -30px, 0) scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--hx-end, 10px), -40px, 0) scale(0.85);
+  }
+}
+
+@keyframes coop-tanya-excited-bounce {
+  0%, 100% {
+    transform: translate3d(12px, 0, 0) rotate(0deg);
+  }
+  22% {
+    transform: translate3d(12px, -9px, 0) rotate(-5deg);
+  }
+  44% {
+    transform: translate3d(12px, 0, 0) rotate(2deg);
+  }
+  68% {
+    transform: translate3d(12px, -8px, 0) rotate(-4deg);
+  }
+  88% {
+    transform: translate3d(12px, 0, 0) rotate(0deg);
+  }
+}
+
+@keyframes coop-comic-star-twinkle {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(-25deg);
+  }
+  32% {
+    opacity: 1;
+    transform: scale(1.15) rotate(10deg);
+  }
+  72% {
+    opacity: 0.9;
+    transform: scale(0.92) rotate(22deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.45) rotate(36deg);
+  }
+}
+
+@keyframes coop-anamika-pop-hop {
+  0% {
+    transform: translate3d(-12px, 0, 0) scaleX(1) scaleY(1);
+  }
+  22% {
+    transform: translate3d(-13px, 2px, 0) scaleX(1.12) scaleY(0.86);
+  }
+  52% {
+    transform: translate3d(-15px, -11px, 0) scaleX(0.92) scaleY(1.1);
+  }
+  80% {
+    transform: translate3d(-16px, 1px, 0) scaleX(1.06) scaleY(0.94);
+  }
+  100% {
+    transform: translate3d(-16px, 0, 0) scaleX(1) scaleY(1);
+  }
+}
+
+@keyframes coop-egg-drop-wobble {
+  0% {
+    opacity: 0;
+    transform: translate3d(-24px, -14px, 0) scale(0.45) rotate(-14deg);
+  }
+  18% {
+    opacity: 1;
+    transform: translate3d(-6px, -16px, 0) scale(1.04) rotate(8deg);
+  }
+  34% {
+    opacity: 1;
+    transform: translate3d(0, 1px, 0) scale(1.05, 0.92) rotate(0deg);
+  }
+  44% {
+    opacity: 1;
+    transform: translate3d(0, -3px, 0) scale(0.98, 1.03) rotate(0deg);
+  }
+  52% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  64% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(-11deg);
+  }
+  78% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(11deg);
+  }
+  90% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.03) rotate(-8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.05) rotate(0deg);
+  }
+}
+
+@keyframes coop-hatch-confetti {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.3) rotate(0deg);
+  }
+  20% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--cx, 18px), var(--cy, -26px), 0) scale(1) rotate(var(--cr, 90deg));
+  }
+}
+
+@keyframes coop-ayush-pop-bounce {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.3);
+  }
+  26% {
+    opacity: 1;
+    transform: translate3d(0, -5px, 0) scale(1.12);
+  }
+  42% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(0.97, 1.03);
+  }
+  58% {
+    opacity: 1;
+    transform: translate3d(0, -7px, 0) scale(1.04);
+  }
+  72% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  86% {
+    opacity: 1;
+    transform: translate3d(0, -5px, 0) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes coop-ayush-wing-wiggle {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-16deg);
+  }
+  55% {
+    transform: rotate(10deg);
+  }
+  80% {
+    transform: rotate(-8deg);
+  }
+}
+
+@keyframes coop-ayush-label-pop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.75);
+  }
+  65% {
+    opacity: 1;
+    transform: translate3d(0, -1px, 0) scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.animate-coop-cloud-a {
+  animation: coop-cloud-drift-a 12s ease-in-out infinite;
+}
+
+.animate-coop-cloud-b {
+  animation: coop-cloud-drift-b 15s ease-in-out infinite;
+}
+
+.animate-coop-waddle-left {
+  animation: coop-waddle-hop-left 1080ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-coop-waddle-right {
+  animation: coop-waddle-hop-right 1080ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-coop-shy-blink {
+  animation: coop-shy-blink 660ms ease-in-out 1;
+}
+
+.animate-coop-heart {
+  animation: coop-heart-bloom 1020ms cubic-bezier(0.16, 1, 0.3, 1) var(--hdelay, 0ms) forwards;
+}
+
+.animate-coop-tanya-bounce {
+  animation: coop-tanya-excited-bounce 960ms cubic-bezier(0.22, 1, 0.36, 1) 140ms forwards;
+}
+
+.animate-coop-comic-star {
+  animation: coop-comic-star-twinkle 880ms ease-out var(--sdelay, 0ms) forwards;
+}
+
+.animate-coop-anamika-hop {
+  animation: coop-anamika-pop-hop 540ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-coop-egg-wobble {
+  animation: coop-egg-drop-wobble 1040ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-coop-confetti {
+  animation: coop-hatch-confetti 660ms cubic-bezier(0.16, 1, 0.3, 1) var(--cdelay, 0ms) forwards;
+}
+
+.animate-coop-ayush-pop {
+  animation: coop-ayush-pop-bounce 980ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-coop-ayush-wing {
+  animation: coop-ayush-wing-wiggle 1.6s ease-in-out infinite;
+}
+
+.animate-coop-ayush-label {
+  animation: coop-ayush-label-pop 440ms cubic-bezier(0.34, 1.56, 0.64, 1) 160ms both;
+}
+
+/* Viewport-gated rendering for standalone below-the-fold sections (never applied to sticky ancestors) */
+.cv-auto-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
+}
+
+/* Automatically pause offscreen, curtain-covered, or hidden-tab CSS animations */
+.anim-paused,
+.anim-paused * {
+  animation-play-state: paused !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1292,8 +1663,25 @@
   .animate-hero-emoji-bob,
   .animate-hero-emoji-bounce,
   .animate-hero-emoji-spark,
-  .animate-timeline-node-ripple,
-  .animate-timeline-gold-breathe {
+  .animate-notebook-fleck,
+  .animate-chibi-breathe,
+  .animate-coop-cloud-a,
+  .animate-coop-cloud-b,
+  .animate-coop-waddle-left,
+  .animate-coop-waddle-right,
+  .animate-coop-shy-blink,
+  .animate-coop-heart,
+  .animate-coop-tanya-bounce,
+  .animate-coop-comic-star,
+  .animate-coop-anamika-hop,
+  .animate-coop-egg-wobble,
+  .animate-coop-confetti,
+  .animate-coop-ayush-pop,
+  .animate-coop-ayush-wing,
+  .animate-coop-ayush-label,
+  .animate-bluff-shake,
+  .animate-bluff-reveal,
+  .animate-bluff-clown-nod {
     animation: none !important;
   }
 
@@ -1302,11 +1690,69 @@
   .animate-editorial-spark,
   .animate-hero-btn-ripple,
   .animate-hero-btn-tap-sheen,
-  .animate-hero-emoji-spark {
+  .animate-hero-emoji-spark,
+  .animate-notebook-fleck,
+  .animate-coop-heart,
+  .animate-coop-comic-star,
+  .animate-coop-confetti {
     opacity: 0 !important;
   }
 
   .bouncy-letter {
     transition-duration: 0.01ms !important;
   }
+}
+
+@keyframes bluff-shake {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  20% {
+    transform: translate3d(-4px, 0, 0);
+  }
+  45% {
+    transform: translate3d(4px, 0, 0);
+  }
+  70% {
+    transform: translate3d(-3px, 0, 0);
+  }
+  88% {
+    transform: translate3d(2px, 0, 0);
+  }
+}
+
+.animate-bluff-shake {
+  animation: bluff-shake 260ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes bluff-reveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translate3d(0, 6px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+.animate-bluff-reveal {
+  animation: bluff-reveal 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes bluff-clown-nod {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  35% {
+    transform: translate3d(0, -3px, 0) rotate(-2.2deg);
+  }
+  70% {
+    transform: translate3d(0, -1.5px, 0) rotate(2.2deg);
+  }
+}
+
+.animate-bluff-clown-nod {
+  animation: bluff-clown-nod 2.8s ease-in-out infinite;
+  will-change: transform;
 }

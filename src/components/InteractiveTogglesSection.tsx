@@ -89,7 +89,7 @@ export function InteractiveTogglesSection({
   return (
     <section
       id="toggles"
-      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
+      className="cv-auto-section relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-2 text-center sm:text-left">
@@ -319,7 +319,7 @@ export function InteractiveTogglesSection({
                           }
                         : undefined),
                     }}
-                    className={`absolute inset-x-0 top-0 flex items-center justify-between gap-3 rounded-2xl border pr-3.5 will-change-transform sm:pr-4 ${
+                    className={`absolute inset-x-0 top-0 flex items-center justify-between gap-3 rounded-2xl border pr-3.5 sm:pr-4 ${
                       isMorganHighlighted
                         ? 'z-20 pl-4 shadow-[0_10px_24px_-16px_rgba(217,75,125,0.34)] sm:pl-5'
                         : isRankOne

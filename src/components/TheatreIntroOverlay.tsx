@@ -44,6 +44,10 @@ interface TheatreIntroOverlayProps {
   onIntroAudioFinished: (fadeMs?: number) => void;
   /** Fired once both visual exit AND hidden background audio fade have fully completed */
   onFinishUnmount: () => void;
+  /** Fired once the intro video has buffered and begun smooth playback (triggers idle warmup) */
+  onVideoSmoothPlayback?: () => void;
+  /** Fired once the intro video reaches currentTime > 1.0s (triggers gentle MP3 preload upgrade) */
+  onVideoPastOneSecond?: () => void;
 }
 
 type TheatrePhase = 'loading' | 'opening' | 'playing' | 'exiting' | 'audioOnly' | 'done';
@@ -147,6 +151,8 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
       onVisualExitDone,
       onIntroAudioFinished,
       onFinishUnmount,
+      onVideoSmoothPlayback,
+      onVideoPastOneSecond,
     },
     ref,
   ) {
@@ -199,6 +205,8 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
     const audioFinishedRef = useRef(false);
     const suppressBgMusicHandoffRef = useRef(false);
     const bgMusicHandoffTriggeredRef = useRef(false);
+    const smoothPlaybackNotifiedRef = useRef(false);
+    const pastOneSecondNotifiedRef = useRef(false);
     const lastGlintsRef = useRef(false);
     const lastCaptionPhaseRef = useRef<'initial' | 'finale'>('initial');
 
@@ -217,11 +225,27 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
     const onVisualExitDoneRef = useRef(onVisualExitDone);
     const onIntroAudioFinishedRef = useRef(onIntroAudioFinished);
     const onFinishUnmountRef = useRef(onFinishUnmount);
+    const onVideoSmoothPlaybackRef = useRef(onVideoSmoothPlayback);
+    const onVideoPastOneSecondRef = useRef(onVideoPastOneSecond);
     onBeginMainRevealRef.current = onBeginMainReveal;
     onFireRevealConfettiRef.current = onFireRevealConfetti;
     onVisualExitDoneRef.current = onVisualExitDone;
     onIntroAudioFinishedRef.current = onIntroAudioFinished;
     onFinishUnmountRef.current = onFinishUnmount;
+    onVideoSmoothPlaybackRef.current = onVideoSmoothPlayback;
+    onVideoPastOneSecondRef.current = onVideoPastOneSecond;
+
+    const notifySmoothPlaybackOnce = useCallback(() => {
+      if (smoothPlaybackNotifiedRef.current) return;
+      smoothPlaybackNotifiedRef.current = true;
+      onVideoSmoothPlaybackRef.current?.();
+    }, []);
+
+    const notifyPastOneSecondOnce = useCallback(() => {
+      if (pastOneSecondNotifiedRef.current) return;
+      pastOneSecondNotifiedRef.current = true;
+      onVideoPastOneSecondRef.current?.();
+    }, []);
 
     const setPhaseSync = useCallback((next: TheatrePhase) => {
       phaseRef.current = next;
@@ -803,9 +827,12 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
       ],
     );
 
-    // Lightweight milestone guard: checks 12.5s red-mark beat & 13.5s exit trigger strictly once
+    // Lightweight milestone guard: checks 1.0s warmup, 12.5s red-mark beat & 13.5s exit trigger strictly once
     const evaluatePlaybackMilestones = useCallback(
       (currentTimeSec: number) => {
+        if (currentTimeSec > 1.0) {
+          notifyPastOneSecondOnce();
+        }
         if (exitTriggeredRef.current) return;
         const cues = getPlaybackCues(currentTimeSec);
 
@@ -821,7 +848,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
           startExitSequence(false);
         }
       },
-      [startExitSequence],
+      [notifyPastOneSecondOnce, startExitSequence],
     );
 
     // Lightweight rAF playback watcher (zero setState except at exact 12.5s / 13.5s milestones)
@@ -878,9 +905,16 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
 
       const video = videoRef.current;
       if (!video || videoMissingRef.current) {
+        notifySmoothPlaybackOnce();
         startFallbackTimeline();
         return;
       }
+
+      const handlePlayingSignal = () => {
+        video.removeEventListener('playing', handlePlayingSignal);
+        notifySmoothPlaybackOnce();
+      };
+      video.addEventListener('playing', handlePlayingSignal, { once: true });
 
       try {
         // Avoid redundant currentTime = 0 seek flash when frame 1 is already decoded at start
@@ -893,21 +927,34 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
         await video.play();
         audioUnlockedRef.current = true;
         setShowSoundPill(false);
+        if (video.readyState >= 3) {
+          notifySmoothPlaybackOnce();
+        }
         startPlaybackMilestoneWatcher();
       } catch {
         try {
           video.muted = true;
           await video.play();
           setShowSoundPill(true);
+          if (video.readyState >= 3) {
+            notifySmoothPlaybackOnce();
+          }
           startPlaybackMilestoneWatcher();
         } catch {
+          video.removeEventListener('playing', handlePlayingSignal);
           videoMissingRef.current = true;
           setVideoMissingFallback(true);
           setShowSoundPill(false);
+          notifySmoothPlaybackOnce();
           startFallbackTimeline();
         }
       }
-    }, [evaluatePlaybackMilestones, startExitSequence, startPlaybackMilestoneWatcher]);
+    }, [
+      evaluatePlaybackMilestones,
+      notifySmoothPlaybackOnce,
+      startExitSequence,
+      startPlaybackMilestoneWatcher,
+    ]);
 
     /**
      * Seamless 60fps Opening Loop (0.0s -> 1.55s, clamped dt <= 0.05s, zero setState inside rAF):

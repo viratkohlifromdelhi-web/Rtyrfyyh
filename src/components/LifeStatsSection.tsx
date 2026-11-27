@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Clock, Sparkles, Timer } from 'lucide-react';
 import {
   ANAMIKA_BIRTH_ISO,
@@ -10,7 +10,9 @@ import {
   MoonPhaseDoodleSvg,
   SparkleStarSvg,
 } from './DoodleSvgs';
+import { haptics } from '../utils/haptics';
 import { soundEngine } from '../utils/soundEngine';
+import { useInViewAnimation } from '../utils/useInViewAnimation';
 
 const BIRTH_DATE = new Date(ANAMIKA_BIRTH_ISO);
 
@@ -19,19 +21,22 @@ interface LifeStatsSectionProps {
 }
 
 export function LifeStatsSection({ paused = false }: LifeStatsSectionProps) {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const animationsActive = useInViewAnimation(sectionRef, { enabled: !paused });
   const [stats, setStats] = useState(() => computeLifeStats(new Date(), BIRTH_DATE));
   const [activeTile, setActiveTile] = useState<string | null>(null);
 
   useEffect(() => {
-    if (paused) return;
+    if (paused || !animationsActive) return;
     setStats(computeLifeStats(new Date(), BIRTH_DATE));
     const id = window.setInterval(() => {
       setStats(computeLifeStats(new Date(), BIRTH_DATE));
     }, 1000);
     return () => window.clearInterval(id);
-  }, [paused]);
+  }, [animationsActive, paused]);
 
   const handleTileBounce = (id: string) => {
+    haptics.tap();
     soundEngine.playBubbleClick(1.05);
     setActiveTile(id);
     window.setTimeout(() => {
@@ -41,8 +46,12 @@ export function LifeStatsSection({ paused = false }: LifeStatsSectionProps) {
 
   return (
     <section
+      ref={sectionRef}
       id="life-stats"
-      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
+      data-animations-active={String(animationsActive)}
+      className={`cv-auto-section relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20 ${
+        animationsActive ? '' : 'anim-paused'
+      }`}
     >
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">

@@ -8,6 +8,7 @@ import {
   SparkleStarSvg,
   TrophyDoodle,
 } from './DoodleSvgs';
+import { haptics } from '../utils/haptics';
 import { soundEngine } from '../utils/soundEngine';
 
 interface SparkleBurstItem {
@@ -47,6 +48,7 @@ function InteractiveStarterCard({ card }: { card: StarterPackCard }) {
   const [sparkles, setSparkles] = useState<SparkleBurstItem[]>([]);
 
   const handleTap = () => {
+    haptics.tap();
     soundEngine.playBubbleClick(showBonus ? 0.94 : 1.12);
     setShowBonus((prev) => !prev);
     setBouncing(true);
@@ -137,7 +139,7 @@ export function StarterPackGrid() {
   return (
     <section
       id="starter-pack"
-      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
+      className="cv-auto-section relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-2 text-center md:flex-row md:items-end md:justify-between md:text-left">

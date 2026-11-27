@@ -219,46 +219,169 @@ export function TrophyDoodle({ className = 'w-32 h-32' }: { className?: string }
   );
 }
 
-/* Section 6: Wiggling Wrapped Gift Box SVG */
+/* Section 6: Soft Illustrated Pastel Gift Box SVG (Matches Bakery Cake — Zero Thick Black Strokes) */
 export function WrappedGiftBoxSvg({ className = 'w-44 h-44' }: { className?: string }) {
   return (
     <svg viewBox="0 0 220 210" fill="none" aria-hidden="true" className={className}>
-      {/* Soft shadow */}
-      <ellipse cx="110" cy="190" rx="74" ry="12" fill="#3B1535" fillOpacity="0.12" />
-      {/* Box base */}
-      <rect x="44" y="88" width="132" height="96" rx="16" fill="#FFE4F0" stroke="#3B1535" strokeWidth="3.4" />
-      {/* Vertical lavender ribbon on box */}
-      <rect x="96" y="88" width="28" height="96" fill="#D5C2FF" stroke="#3B1535" strokeWidth="3" />
-      {/* Subtle polka dots on box */}
-      <circle cx="66" cy="116" r="5" fill="#FFFDF8" />
-      <circle cx="74" cy="152" r="4" fill="#FFE898" />
-      <circle cx="152" cy="120" r="4.5" fill="#FFE898" />
-      <circle cx="144" cy="156" r="5" fill="#FFFDF8" />
+      <defs>
+        {/* Warm grounded contact shadow */}
+        <radialGradient id="giftGroundShadow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#6B3258" stopOpacity="0.2" />
+          <stop offset="65%" stopColor="#6B3258" stopOpacity="0.08" />
+          <stop offset="100%" stopColor="#6B3258" stopOpacity="0" />
+        </radialGradient>
 
-      {/* Gift lid */}
-      <rect x="34" y="60" width="152" height="34" rx="12" fill="#EBE3FF" stroke="#3B1535" strokeWidth="3.4" />
-      <rect x="94" y="60" width="32" height="34" fill="#FFE898" stroke="#3B1535" strokeWidth="3" />
+        {/* Plush blush-pink box base shading */}
+        <linearGradient id="giftBoxBase" x1="0" y1="0" x2="1" y2="0.15">
+          <stop offset="0%" stopColor="#FAD0E2" />
+          <stop offset="26%" stopColor="#FFEBF3" />
+          <stop offset="68%" stopColor="#FFE1EE" />
+          <stop offset="100%" stopColor="#F5BDD5" />
+        </linearGradient>
 
-      {/* Big fluffy ribbon bow on top */}
+        {/* Plush pastel lid shading */}
+        <linearGradient id="giftLidFill" x1="0" y1="0" x2="1" y2="0.2">
+          <stop offset="0%" stopColor="#F8C8DD" />
+          <stop offset="28%" stopColor="#FFF2F7" />
+          <stop offset="72%" stopColor="#FDE5F0" />
+          <stop offset="100%" stopColor="#F3B8D3" />
+        </linearGradient>
+
+        {/* Satin cream-gold vertical ribbon */}
+        <linearGradient id="giftRibbonGold" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#F0CE89" />
+          <stop offset="32%" stopColor="#FFF6DC" />
+          <stop offset="68%" stopColor="#FAE6B5" />
+          <stop offset="100%" stopColor="#E6BD74" />
+        </linearGradient>
+
+        {/* Soft lilac satin accent ribbon */}
+        <linearGradient id="giftRibbonLilac" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#F2E7FF" />
+          <stop offset="55%" stopColor="#DEC8FA" />
+          <stop offset="100%" stopColor="#C9AEEB" />
+        </linearGradient>
+
+        {/* Soft layered pastel bow loop gradient */}
+        <linearGradient id="giftBowLoop" x1="0" y1="0" x2="0.8" y2="1">
+          <stop offset="0%" stopColor="#FFF8E2" />
+          <stop offset="52%" stopColor="#F9DF9F" />
+          <stop offset="100%" stopColor="#E9C074" />
+        </linearGradient>
+
+        {/* Warm blush-rose center bow knot */}
+        <radialGradient id="giftBowKnot" cx="35%" cy="30%" r="70%">
+          <stop offset="0%" stopColor="#FFD9E8" />
+          <stop offset="58%" stopColor="#F39CC0" />
+          <stop offset="100%" stopColor="#DB729E" />
+        </radialGradient>
+      </defs>
+
+      {/* Soft Grounded Shadow Ellipse */}
+      <ellipse cx="110" cy="190" rx="76" ry="11" fill="url(#giftGroundShadow)" />
+
+      {/* Gift Box Base */}
+      <rect x="44" y="88" width="132" height="98" rx="16" fill="url(#giftBoxBase)" />
+
+      {/* Soft underside shading along bottom curve */}
       <path
-        d="M110 60C82 28 54 36 60 56C66 72 94 64 110 60Z"
-        fill="#FFE898"
-        stroke="#3B1535"
-        strokeWidth="3.2"
-        strokeLinejoin="round"
+        d="M44 166C44 177 51 186 60 186H160C169 186 176 177 176 166V171C176 179.3 169.3 186 161 186H59C50.7 186 44 179.3 44 171V166Z"
+        fill="#D88AB0"
+        fillOpacity="0.24"
+      />
+
+      {/* Soft studio light highlight on left front */}
+      <rect x="54" y="102" width="13" height="72" rx="6.5" fill="#FFFFFF" fillOpacity="0.48" />
+
+      {/* Delicate pearl dots on box */}
+      <circle cx="72" cy="120" r="4" fill="#FFFDF8" fillOpacity="0.85" />
+      <circle cx="80" cy="154" r="3.4" fill="#F6D893" fillOpacity="0.85" />
+      <circle cx="150" cy="122" r="3.8" fill="#F6D893" fillOpacity="0.85" />
+      <circle cx="142" cy="156" r="4" fill="#FFFDF8" fillOpacity="0.85" />
+      <circle cx="64" cy="166" r="2.6" fill="#DEC8FA" fillOpacity="0.75" />
+      <circle cx="156" cy="142" r="2.6" fill="#DEC8FA" fillOpacity="0.75" />
+
+      {/* Vertical Cream-Gold & Lilac Satin Ribbon on Box */}
+      <rect x="94" y="88" width="32" height="98" fill="url(#giftRibbonLilac)" fillOpacity="0.7" />
+      <rect x="97.5" y="88" width="25" height="98" fill="url(#giftRibbonGold)" />
+      <rect x="103" y="92" width="4.5" height="90" rx="2.2" fill="#FFFFFF" fillOpacity="0.45" />
+
+      {/* Soft Cast Shadow of Lid Overhang onto Box Base */}
+      <rect x="44" y="91" width="132" height="10" fill="#B55B86" fillOpacity="0.16" />
+
+      {/* Plush Pastel Gift Lid */}
+      <rect x="34" y="60" width="152" height="34" rx="13" fill="url(#giftLidFill)" />
+      {/* Lid top specular rim highlight */}
+      <path
+        d="M48 66H172"
+        stroke="#FFFFFF"
+        strokeOpacity="0.72"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+      />
+      {/* Subtle underside lip shading on lid */}
+      <path
+        d="M36 86C38 91 42 94 47 94H173C178 94 182 91 184 86C181 89 177 90.5 172 90.5H48C43 90.5 39 89 36 86Z"
+        fill="#D683AB"
+        fillOpacity="0.24"
+      />
+
+      {/* Lid Satin Ribbon Center Band */}
+      <rect x="92.5" y="60" width="35" height="34" rx="3" fill="url(#giftRibbonLilac)" fillOpacity="0.72" />
+      <rect x="96.5" y="60" width="27" height="34" rx="2" fill="url(#giftRibbonGold)" />
+      <rect x="102.5" y="63" width="4.5" height="28" rx="2.2" fill="#FFFFFF" fillOpacity="0.5" />
+
+      {/* Soft Cast Shadow Beneath Bow */}
+      <ellipse cx="110" cy="63" rx="38" ry="5.5" fill="#B86B92" fillOpacity="0.18" />
+
+      {/* Soft Lilac Satin Bow Tails Tucked Behind Loops */}
+      <path
+        d="M104 59C90 67 78 74 71 81C77 83 84 81 91 77C98 72 103 66 108 61Z"
+        fill="url(#giftRibbonLilac)"
       />
       <path
-        d="M110 60C138 28 166 36 160 56C154 72 126 64 110 60Z"
-        fill="#FFE898"
-        stroke="#3B1535"
-        strokeWidth="3.2"
-        strokeLinejoin="round"
+        d="M116 59C130 67 142 74 149 81C143 83 136 81 129 77C122 72 117 66 112 61Z"
+        fill="url(#giftRibbonLilac)"
       />
-      <circle cx="110" cy="58" r="10" fill="#FF9FCA" stroke="#3B1535" strokeWidth="3" />
 
-      {/* Twinkling sparkles around box */}
-      <path d="M26 42L29 51L38 54L29 57L26 66L23 57L14 54L23 51L26 42Z" fill="#E04D92" />
-      <path d="M194 40L196.5 48L204.5 50.5L196.5 53L194 61L191.5 53L183.5 50.5L191.5 48L194 40Z" fill="#9A7CE8" />
+      {/* Plush Layered Left & Right Satin Bow Loops */}
+      <path
+        d="M109 59C84 26 52 34 59 54C64 68 92 64 109 59Z"
+        fill="url(#giftBowLoop)"
+      />
+      <path
+        d="M105 58C88 42 70 44 73 53C76 60 91 59 105 58Z"
+        fill="#DDA95E"
+        fillOpacity="0.28"
+      />
+      <path
+        d="M72 41C81 36 93 41 101 50"
+        stroke="#FFFFFF"
+        strokeOpacity="0.65"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+
+      <path
+        d="M111 59C136 26 168 34 161 54C156 68 128 64 111 59Z"
+        fill="url(#giftBowLoop)"
+      />
+      <path
+        d="M115 58C132 42 150 44 147 53C144 60 129 59 115 58Z"
+        fill="#DDA95E"
+        fillOpacity="0.28"
+      />
+      <path
+        d="M148 41C139 36 127 41 119 50"
+        stroke="#FFFFFF"
+        strokeOpacity="0.65"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+
+      {/* Plump Rose-Blush Center Knot */}
+      <rect x="98.5" y="47.5" width="23" height="21" rx="9.5" fill="url(#giftBowKnot)" />
+      <ellipse cx="106.5" cy="53.5" rx="4.5" ry="2.2" fill="#FFFFFF" fillOpacity="0.52" />
     </svg>
   );
 }

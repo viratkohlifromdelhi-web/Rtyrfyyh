@@ -1474,6 +1474,56 @@ class SoundEffectsEngine {
   }
 
   /**
+   * Soft pastel notebook divider tab paper-turn tick (gain 0.13).
+   */
+  public playNotebookTabTurn(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      if (this.noiseBuffer) {
+        const noise = ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(1150, now);
+        bp.frequency.exponentialRampToValueAtTime(1950, now + 0.085);
+        bp.Q.setValueAtTime(1.8, now);
+
+        const nGain = ctx.createGain();
+        nGain.gain.setValueAtTime(0.0001, now);
+        nGain.gain.linearRampToValueAtTime(0.13, now + 0.012);
+        nGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.092);
+
+        noise.connect(bp);
+        bp.connect(nGain);
+        nGain.connect(ctx.destination);
+        noise.start(now);
+        noise.stop(now + 0.1);
+      }
+
+      const tickOsc = ctx.createOscillator();
+      const tickGain = ctx.createGain();
+      tickOsc.type = 'sine';
+      tickOsc.frequency.setValueAtTime(560, now + 0.012);
+      tickOsc.frequency.exponentialRampToValueAtTime(720, now + 0.052);
+
+      tickGain.gain.setValueAtTime(0.0001, now + 0.012);
+      tickGain.gain.linearRampToValueAtTime(0.036, now + 0.02);
+      tickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.065);
+
+      tickOsc.connect(tickGain);
+      tickGain.connect(ctx.destination);
+      tickOsc.start(now + 0.012);
+      tickOsc.stop(now + 0.07);
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
    * Tiny soft crystalline twinkle chime when Sparkle Rain is toggled ON.
    */
   public playSparkleTwinkle(): void {
@@ -1499,6 +1549,263 @@ class SoundEffectsEngine {
         osc.start(start);
         osc.stop(start + 0.21);
       });
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Gentle, warm 2-note pastel marimba chime for Closing Sign-Off Footer replay (gain 0.12).
+   */
+  public playPastelMarimbaChime(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      // Warm major-third / fifth wooden marimba pair (E5 -> B5)
+      const notes = [
+        { freq: 659.25, offset: 0, peak: 0.12, decay: 0.28 },
+        { freq: 987.77, offset: 0.115, peak: 0.105, decay: 0.36 },
+      ];
+
+      notes.forEach((n) => {
+        const start = now + n.offset;
+        const fund = ctx.createOscillator();
+        const fundGain = ctx.createGain();
+        fund.type = 'sine';
+        fund.frequency.setValueAtTime(n.freq, start);
+
+        fundGain.gain.setValueAtTime(0.0001, start);
+        fundGain.gain.linearRampToValueAtTime(n.peak, start + 0.008);
+        fundGain.gain.exponentialRampToValueAtTime(0.0001, start + n.decay);
+
+        // Soft wooden marimba overtone bar click (4th harmonic decaying fast)
+        const over = ctx.createOscillator();
+        const overGain = ctx.createGain();
+        over.type = 'triangle';
+        over.frequency.setValueAtTime(n.freq * 3.98, start);
+
+        overGain.gain.setValueAtTime(0.0001, start);
+        overGain.gain.linearRampToValueAtTime(n.peak * 0.18, start + 0.004);
+        overGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.045);
+
+        fund.connect(fundGain);
+        fundGain.connect(ctx.destination);
+        over.connect(overGain);
+        overGain.connect(ctx.destination);
+
+        fund.start(start);
+        over.start(start);
+        fund.stop(start + n.decay + 0.02);
+        over.stop(start + 0.06);
+      });
+    } catch {
+      // Ignore Web Audio errors when autoplay is restricted
+    }
+  }
+
+  /**
+   * The Little Coop — Stage 3 tiny cute soft kiss pop (gain 0.11).
+   */
+  public playCoopKissPop(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(1180, now + 0.055);
+      osc.frequency.exponentialRampToValueAtTime(860, now + 0.095);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.11, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.105);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.115);
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * The Little Coop — Stage 4 playful tiny cartoon rubbery boing blip (gain 0.10).
+   */
+  public playCoopBoing(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(490, now + 0.095);
+      osc.frequency.exponentialRampToValueAtTime(320, now + 0.17);
+      osc.frequency.exponentialRampToValueAtTime(415, now + 0.23);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.1, now + 0.014);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.26);
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * The Little Coop — Stage 5 crisp tiny eggshell crack tick (gain 0.12).
+   */
+  public playCoopShellCrack(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      if (this.noiseBuffer) {
+        const crack = ctx.createBufferSource();
+        crack.buffer = this.noiseBuffer;
+
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(2900, now);
+        bp.Q.setValueAtTime(2.6, now);
+
+        const nGain = ctx.createGain();
+        nGain.gain.setValueAtTime(0.0001, now);
+        nGain.gain.linearRampToValueAtTime(0.12, now + 0.004);
+        nGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.048);
+
+        crack.connect(bp);
+        bp.connect(nGain);
+        nGain.connect(ctx.destination);
+        crack.start(now);
+        crack.stop(now + 0.055);
+      }
+
+      const snap = ctx.createOscillator();
+      const sGain = ctx.createGain();
+      snap.type = 'triangle';
+      snap.frequency.setValueAtTime(1760, now + 0.005);
+      snap.frequency.exponentialRampToValueAtTime(920, now + 0.045);
+
+      sGain.gain.setValueAtTime(0.0001, now + 0.005);
+      sGain.gain.linearRampToValueAtTime(0.07, now + 0.009);
+      sGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+
+      snap.connect(sGain);
+      sGain.connect(ctx.destination);
+      snap.start(now + 0.005);
+      snap.stop(now + 0.06);
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * The Little Coop — Stage 6 cute tiny 2-note baby-chick chirp for AYUSH (gain 0.12).
+   */
+  public playCoopBabyChirp(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      const chirps = [
+        { offset: 0, startHz: 1420, peakHz: 2150, endHz: 1780 },
+        { offset: 0.125, startHz: 1580, peakHz: 2380, endHz: 1960 },
+      ];
+
+      chirps.forEach((c) => {
+        const t = now + c.offset;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(c.startHz, t);
+        osc.frequency.exponentialRampToValueAtTime(c.peakHz, t + 0.048);
+        osc.frequency.exponentialRampToValueAtTime(c.endHz, t + 0.095);
+
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.linearRampToValueAtTime(0.12, t + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.105);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.115);
+      });
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Playful cheeky trombone + comic blip for the Secret Passcode 1507 Clown Bluff reveal (gain 0.11).
+   * Strictly standalone Web Audio oscillators — never pauses or alters background MP3 playback.
+   */
+  public playBluffClownTrombone(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      const wahSteps = [
+        { offset: 0, from: 392.0, to: 369.99, dur: 0.15 },
+        { offset: 0.16, from: 349.23, to: 277.18, dur: 0.28 },
+      ];
+
+      wahSteps.forEach((step) => {
+        const start = now + step.offset;
+        const osc = ctx.createOscillator();
+        const filter = ctx.createBiquadFilter();
+        const gain = ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(step.from, start);
+        osc.frequency.exponentialRampToValueAtTime(step.to, start + step.dur);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(980, start);
+        filter.frequency.exponentialRampToValueAtTime(520, start + step.dur);
+
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.linearRampToValueAtTime(0.11, start + 0.018);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + step.dur + 0.03);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + step.dur + 0.05);
+      });
+
+      // Cheeky clown-nose honk / spring blip tail
+      const blipStart = now + 0.46;
+      const blip = ctx.createOscillator();
+      const bGain = ctx.createGain();
+      blip.type = 'triangle';
+      blip.frequency.setValueAtTime(290, blipStart);
+      blip.frequency.exponentialRampToValueAtTime(540, blipStart + 0.08);
+      blip.frequency.exponentialRampToValueAtTime(340, blipStart + 0.17);
+
+      bGain.gain.setValueAtTime(0.0001, blipStart);
+      bGain.gain.linearRampToValueAtTime(0.11, blipStart + 0.015);
+      bGain.gain.exponentialRampToValueAtTime(0.0001, blipStart + 0.19);
+
+      blip.connect(bGain);
+      bGain.connect(ctx.destination);
+      blip.start(blipStart);
+      blip.stop(blipStart + 0.21);
     } catch {
       // Ignore Web Audio errors
     }

@@ -45,14 +45,19 @@ export function getSparkleParticleCount(viewportWidth: number): number {
 }
 
 /**
- * Caps devicePixelRatio at 2 for crisp high-DPI rendering without mobile GPU bloat.
+ * Caps devicePixelRatio at 1.5 on mobile viewports (< 768px) and 2 on desktop
+ * for crisp high-DPI rendering without mobile GPU memory bloat.
  */
-export function getCappedDpr(devicePixelRatio: number | undefined): number {
+export function getCappedDpr(
+  devicePixelRatio: number | undefined,
+  viewportWidth = 1024,
+): number {
   const raw =
     typeof devicePixelRatio === 'number' && Number.isFinite(devicePixelRatio)
       ? devicePixelRatio
       : 1;
-  return Math.min(Math.max(raw, 1), 2);
+  const maxDpr = viewportWidth < 768 ? 1.5 : 2;
+  return Math.min(Math.max(raw, 1), maxDpr);
 }
 
 /**

@@ -11,6 +11,7 @@ import { splitHeadlineWords } from '../utils/celebration';
 import { haptics } from '../utils/haptics';
 import { smoothScrollToTarget } from '../utils/smoothScroll';
 import { soundEngine } from '../utils/soundEngine';
+import { useInViewAnimation } from '../utils/useInViewAnimation';
 import { AnamikaEditorialCard } from './AnamikaEditorialCard';
 import { RibbonSquiggleSvg } from './DoodleSvgs';
 
@@ -208,9 +209,17 @@ function MinimalGiftBoxIconSvg({ className = 'h-[17px] w-[17px]' }: { className?
 interface HeroSectionProps {
   isBirthdayTruce: boolean;
   onPopConfetti: (originX?: number, originY?: number) => void;
+  isSiteRevealed?: boolean;
+  onPhotoLightboxChange?: (open: boolean) => void;
 }
 
-export function HeroSection({ onPopConfetti }: HeroSectionProps) {
+export function HeroSection({
+  onPopConfetti,
+  isSiteRevealed = true,
+  onPhotoLightboxChange,
+}: HeroSectionProps) {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const animationsActive = useInViewAnimation(sectionRef, { enabled: isSiteRevealed });
   const lineOneWords = splitHeadlineWords('Happy 17th Birthday,');
   const lineTwoWords = splitHeadlineWords(`${ANAMIKA.firstName}!`);
 
@@ -262,6 +271,7 @@ export function HeroSection({ onPopConfetti }: HeroSectionProps) {
   };
 
   const handleConfettiClick = (e: MouseEvent<HTMLButtonElement>) => {
+    haptics.heroPopConfetti();
     const buttonEl = e.currentTarget;
     const rect = buttonEl.getBoundingClientRect();
     const originX = rect.left + rect.width / 2;
@@ -322,9 +332,13 @@ export function HeroSection({ onPopConfetti }: HeroSectionProps) {
 
   return (
     <section
+      ref={sectionRef}
       id="top"
       data-testid="hero-section"
-      className="hero-pastel-mesh relative scroll-mt-16 overflow-hidden pt-8 pb-14 sm:pt-12 sm:pb-20 lg:pt-14 lg:pb-22"
+      data-animations-active={String(animationsActive)}
+      className={`hero-pastel-mesh relative scroll-mt-16 overflow-hidden pt-8 pb-14 sm:pt-12 sm:pb-20 lg:pt-14 lg:pb-22 ${
+        animationsActive ? '' : 'anim-paused'
+      }`}
     >
       {/* Soft, Background-Blended Perimeter Floating Emojis (16px–19px, opacity 0.42–0.50) */}
       <div
@@ -353,7 +367,7 @@ export function HeroSection({ onPopConfetti }: HeroSectionProps) {
                   filter: isBright ? 'saturate(1) contrast(1)' : 'saturate(0.78) contrast(0.92)',
                 } as CSSProperties
               }
-              className={`animate-hero-emoji-bob pointer-events-auto absolute inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-[16px] leading-none transition-[opacity,filter] duration-500 ease-out hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] sm:text-[18px] lg:text-[19px] will-change-transform ${item.positionClass} ${
+              className={`animate-hero-emoji-bob pointer-events-auto absolute inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-[16px] leading-none transition-[opacity,filter] duration-500 ease-out hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] sm:text-[18px] lg:text-[19px] ${item.positionClass} ${
                 isBright ? 'opacity-95' : item.idleOpacityClass
               }`}
             >
@@ -374,7 +388,7 @@ export function HeroSection({ onPopConfetti }: HeroSectionProps) {
                           '--sp-y': vec.y,
                         } as CSSProperties
                       }
-                      className="animate-hero-emoji-spark absolute h-1.5 w-1.5 rounded-full will-change-[transform,opacity]"
+                      className="animate-hero-emoji-spark absolute h-1.5 w-1.5 rounded-full"
                     />
                   ))}
                 </span>
@@ -383,7 +397,7 @@ export function HeroSection({ onPopConfetti }: HeroSectionProps) {
               <span
                 key={`glyph-${burstCount}`}
                 aria-hidden="true"
-                className={`inline-block will-change-transform ${
+                className={`inline-block ${
                   burstCount > 0 ? 'animate-hero-emoji-bounce' : ''
                 }`}
               >
@@ -503,7 +517,7 @@ export function HeroSection({ onPopConfetti }: HeroSectionProps) {
 
                   <span
                     key={`icon-${popBurstCount}`}
-                    className={`relative z-10 inline-flex shrink-0 items-center justify-center will-change-transform ${
+                    className={`relative z-10 inline-flex shrink-0 items-center justify-center ${
                       popBurstCount > 0 ? 'animate-hero-popper-recoil' : ''
                     }`}
                   >
@@ -547,7 +561,7 @@ export function HeroSection({ onPopConfetti }: HeroSectionProps) {
           {/* Right Column: Anamika's Authentic Printed Photo Card */}
           <div className="relative z-[3] mx-auto flex w-full justify-center lg:col-span-5">
             <div className="pointer-events-auto">
-              <AnamikaEditorialCard />
+              <AnamikaEditorialCard onLightboxChange={onPhotoLightboxChange} />
             </div>
           </div>
         </div>

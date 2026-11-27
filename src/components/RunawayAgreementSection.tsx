@@ -128,6 +128,7 @@ export function RunawayAgreementSection({ onAcceptConfetti }: RunawayAgreementSe
   }, [noPos]);
 
   const handleAccept = (e: MouseEvent<HTMLButtonElement>) => {
+    haptics.celebrate();
     setAccepted(true);
     trackEvent('yes_button_clicked', 'Best-Friend Agreement Yes Button');
     const rect = e.currentTarget.getBoundingClientRect();
@@ -135,6 +136,7 @@ export function RunawayAgreementSection({ onAcceptConfetti }: RunawayAgreementSe
   };
 
   const handleReset = () => {
+    haptics.tap();
     soundEngine.playBubbleClick();
     setAccepted(false);
     setDodgeCount(0);
@@ -143,7 +145,7 @@ export function RunawayAgreementSection({ onAcceptConfetti }: RunawayAgreementSe
   return (
     <section
       id="agreement"
-      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
+      className="cv-auto-section relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         <div

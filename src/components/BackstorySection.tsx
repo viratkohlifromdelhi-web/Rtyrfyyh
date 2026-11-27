@@ -1,10 +1,10 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { BACKSTORY_CHAPTERS, type BackstoryChapter } from '../data/celebrationData';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import { smoothScrollToTarget } from '../utils/smoothScroll';
 import { soundEngine } from '../utils/soundEngine';
-import { computeTimelineRailProgress } from '../utils/timelineProgress';
+import { computeStickyCardScale } from '../utils/timelineProgress';
 
 function DownwardReceiptArrowSvg({ className = 'h-[13px] w-[13px]' }: { className?: string }) {
   return (
@@ -24,86 +24,136 @@ function DownwardReceiptArrowSvg({ className = 'h-[13px] w-[13px]' }: { classNam
   );
 }
 
-function getCardVisualStyles(variant: BackstoryChapter['variant']) {
-  if (variant === 'climax') {
+const CHAPTER_3_TAB_FLECKS = [
+  { id: 'f1', fx: '-34px', fy: '-24px', fr: '-72deg', delay: '0ms', color: '#E8749E', w: 6, h: 3.5 },
+  { id: 'f2', fx: '-18px', fy: '-36px', fr: '48deg', delay: '25ms', color: '#F2C97D', w: 5, h: 5 },
+  { id: 'f3', fx: '-4px', fy: '-40px', fr: '-110deg', delay: '45ms', color: '#D94B7D', w: 6.5, h: 3.5 },
+  { id: 'f4', fx: '12px', fy: '-38px', fr: '84deg', delay: '20ms', color: '#F7B7CF', w: 5, h: 5 },
+  { id: 'f5', fx: '26px', fy: '-30px', fr: '126deg', delay: '55ms', color: '#E9BA6C', w: 6, h: 3.5 },
+  { id: 'f6', fx: '36px', fy: '-16px', fr: '-64deg', delay: '35ms', color: '#E8749E', w: 4.5, h: 4.5 },
+  { id: 'f7', fx: '-26px', fy: '-12px', fr: '92deg', delay: '65ms', color: '#F4D497', w: 4.5, h: 4.5 },
+  { id: 'f8', fx: '18px', fy: '-18px', fr: '-95deg', delay: '75ms', color: '#D94B7D', w: 5.5, h: 3 },
+] as const;
+
+const PAPER_STACK_SHADOW =
+  '0 -8px 22px -10px rgba(154, 48, 88, 0.14), 0 14px 28px -12px rgba(154, 48, 88, 0.14)';
+
+function getNotebookSheetTheme(variant: BackstoryChapter['variant']) {
+  if (variant === 'buttercream') {
     return {
-      surface: {
-        background:
-          'linear-gradient(145deg, rgba(217, 75, 125, 0.16) 0%, rgba(42, 14, 38, 0.72) 65%, rgba(232, 200, 146, 0.12) 100%)',
-        border: '1px solid rgba(232, 200, 146, 0.45)',
-        boxShadow: '0 20px 44px -22px rgba(0, 0, 0, 0.58), 0 0 0 1px rgba(232, 200, 146, 0.08)',
-      },
-      eyebrowColor: '#F3D293',
-      titleColor: '#FFFDF9',
-      bodyColor: 'rgba(255, 244, 249, 0.92)',
-      watermarkColor: '#F7D994',
-      nodeLitClass:
-        'border-[#FFF5DC] bg-[#F7D994] shadow-[0_0_14px_rgba(247,217,148,0.8),0_0_0_3px_rgba(247,217,148,0.22)]',
+      tabBg: '#FBF0D9',
+      tabBridgeBg: '#FFFDF5',
+      tabBorderColor: 'rgba(196, 146, 74, 0.34)',
+      tabInk: '#8C5A28',
+      cardStyle: {
+        backgroundColor: '#FFFDF5',
+        backgroundImage:
+          'repeating-linear-gradient(transparent, transparent 27px, rgba(217, 75, 125, 0.065) 28px)',
+        border: '1px solid rgba(196, 146, 74, 0.30)',
+        boxShadow: PAPER_STACK_SHADOW,
+      } as CSSProperties,
+      cardRadiusClass: 'rounded-[18px] rounded-tl-[14px]',
+      eyebrowColor: '#9C6A30',
+      watermarkColor: '#B88446',
+      hasRuledMargin: true,
     };
   }
 
-  if (variant === 'quiet') {
+  if (variant === 'lilac') {
     return {
-      surface: {
-        background: 'rgba(255, 246, 249, 0.03)',
-        border: '1px solid rgba(218, 198, 224, 0.12)',
-      },
-      eyebrowColor: '#C9B3CE',
-      titleColor: '#F8EEF9',
-      bodyColor: 'rgba(244, 232, 246, 0.82)',
-      watermarkColor: '#E5D3EC',
-      nodeLitClass:
-        'border-[#ECD4F7] bg-[#DFC0EE] shadow-[0_0_12px_rgba(223,192,238,0.6),0_0_0_3px_rgba(223,192,238,0.16)]',
+      tabBg: '#F0E4F7',
+      tabBridgeBg: '#FAF5FD',
+      tabBorderColor: 'rgba(154, 118, 192, 0.34)',
+      tabInk: '#6E498C',
+      cardStyle: {
+        backgroundColor: '#FCF9FE',
+        backgroundImage:
+          'radial-gradient(rgba(154, 118, 192, 0.14) 1px, transparent 1px), linear-gradient(165deg, #FCF9FE 0%, #F5ECF9 100%)',
+        backgroundSize: '18px 18px, 100% 100%',
+        border: '1px solid rgba(154, 118, 192, 0.28)',
+        boxShadow: PAPER_STACK_SHADOW,
+      } as CSSProperties,
+      cardRadiusClass: 'rounded-[18px]',
+      eyebrowColor: '#765196',
+      watermarkColor: '#8B66AB',
+      hasRuledMargin: false,
     };
   }
 
-  // archival (Chapter 01)
+  // roseClimax (Sheet 3 — Radiant Petal Rose-Blush)
   return {
-    surface: {
-      background: 'rgba(255, 246, 249, 0.045)',
-      border: '1px solid rgba(255, 246, 249, 0.14)',
-    },
-    eyebrowColor: '#DFC49A',
-    titleColor: '#FFFBF8',
-    bodyColor: 'rgba(252, 239, 246, 0.86)',
-    watermarkColor: '#F8E3EB',
-    nodeLitClass:
-      'border-[#FFF5F9] bg-[#FBEAF2] shadow-[0_0_12px_rgba(251,234,242,0.58),0_0_0_3px_rgba(251,234,242,0.16)]',
+    tabBg: '#FCDCE8',
+    tabBridgeBg: '#FFF2F6',
+    tabBorderColor: 'rgba(209, 68, 118, 0.38)',
+    tabInk: '#B52C5C',
+    cardStyle: {
+      background: 'linear-gradient(150deg, #FFF1F6 0%, #FFF8EE 100%)',
+      border: '1.5px solid rgba(209, 68, 118, 0.34)',
+      boxShadow: `inset 0 0 0 5px rgba(255, 255, 255, 0.55), ${PAPER_STACK_SHADOW}`,
+    } as CSSProperties,
+    cardRadiusClass: 'rounded-[18px] rounded-tr-[14px]',
+    eyebrowColor: '#C23467',
+    watermarkColor: '#D14476',
+    hasRuledMargin: false,
   };
 }
 
-export function BackstorySection() {
-  const grainId = useId().replace(/:/g, '');
-  const railListRef = useRef<HTMLOListElement | null>(null);
-  const railFillRef = useRef<HTMLSpanElement | null>(null);
-  const cardRefs = useRef<(HTMLLIElement | null)[]>([]);
-  const climaxHapticFiredRef = useRef(false);
+interface BackstorySectionProps {
+  isSiteRevealed?: boolean;
+}
+
+export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProps = {}) {
+  const anchorRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const stickyRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const sheetScaleRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const viewedChaptersRef = useRef<Set<string>>(new Set());
+  const climaxArrivalFiredRef = useRef(false);
   const cancelScrollRef = useRef<(() => void) | null>(null);
+  const fleckTimerRef = useRef<number | null>(null);
 
-  const [litNodes, setLitNodes] = useState<Record<string, boolean>>({});
+  const [showClimaxFlecks, setShowClimaxFlecks] = useState(false);
 
-  // 60fps scroll-linked luminous vertical timeline beam (zero React setState inside scroll/rAF)
+  // 60fps scroll-linked subtle scale settle (1 -> 0.965) via direct DOM refs — zero setState per scroll frame
   useEffect(() => {
     let rafId: number | null = null;
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const updateRailProgress = () => {
+    const updateStackDepth = () => {
       rafId = null;
-      const listEl = railListRef.current;
-      const fillEl = railFillRef.current;
-      if (!listEl || !fillEl) return;
+      if (prefersReducedMotion) return;
 
-      const rect = listEl.getBoundingClientRect();
-      const progress = computeTimelineRailProgress(rect.top, rect.height, window.innerHeight);
-      fillEl.style.transform = `scaleY(${progress.toFixed(4)})`;
-      fillEl.setAttribute('data-progress', progress.toFixed(3));
+      for (let i = 0; i < BACKSTORY_CHAPTERS.length; i++) {
+        const scaleEl = sheetScaleRefs.current[i];
+        if (!scaleEl) continue;
+
+        const nextStickyEl = stickyRefs.current[i + 1];
+        if (!nextStickyEl) {
+          scaleEl.style.transform = 'scale(1)';
+          scaleEl.setAttribute('data-stack-scale', '1.000');
+          continue;
+        }
+
+        const nextRect = nextStickyEl.getBoundingClientRect();
+        const scale = computeStickyCardScale({
+          nextTop: nextRect.top,
+          currentStickyTop: BACKSTORY_CHAPTERS[i].stickyTopPx,
+          nextStickyTop: BACKSTORY_CHAPTERS[i + 1].stickyTopPx,
+        });
+
+        scaleEl.style.transform = `scale(${scale.toFixed(4)})`;
+        scaleEl.setAttribute('data-stack-scale', scale.toFixed(3));
+      }
     };
 
     const scheduleUpdate = () => {
       if (rafId !== null) return;
-      rafId = window.requestAnimationFrame(updateRailProgress);
+      rafId = window.requestAnimationFrame(updateStackDepth);
     };
 
-    updateRailProgress();
+    updateStackDepth();
     window.addEventListener('scroll', scheduleUpdate, { passive: true });
     window.addEventListener('resize', scheduleUpdate, { passive: true });
 
@@ -118,49 +168,69 @@ export function BackstorySection() {
         cancelScrollRef.current();
         cancelScrollRef.current = null;
       }
+      if (fleckTimerRef.current !== null) {
+        window.clearTimeout(fleckTimerRef.current);
+        fleckTimerRef.current = null;
+      }
     };
   }, []);
 
-  // Sequential per-card IntersectionObserver (threshold 0.45) for staggered card glide + node ignition
+  // Track viewed chapters + trigger Chapter 3 arrival haptic tick & 8 tiny confetti flecks once (after reveal)
   useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') {
-      const allLit: Record<string, boolean> = {};
-      for (const ch of BACKSTORY_CHAPTERS) {
-        allLit[ch.id] = true;
-      }
-      setLitNodes(allLit);
-      return;
-    }
+    if (!isSiteRevealed || typeof IntersectionObserver === 'undefined') return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
-          const chapterId = entry.target.getAttribute('data-chapter-id');
-          if (!chapterId) continue;
+          const chapterNum = entry.target.getAttribute('data-chapter-numeral');
+          if (!chapterNum) continue;
 
-          setLitNodes((prev) => {
-            if (prev[chapterId]) return prev;
-            return { ...prev, [chapterId]: true };
-          });
+          if (!viewedChaptersRef.current.has(chapterNum)) {
+            viewedChaptersRef.current.add(chapterNum);
+            trackEvent('timeline_chapter_viewed', 'Backstory Notebook', {
+              chapter: chapterNum,
+            });
+          }
 
-          if (chapterId === 'ch-3' && !climaxHapticFiredRef.current) {
-            climaxHapticFiredRef.current = true;
+          if (chapterNum === '03' && !climaxArrivalFiredRef.current) {
+            climaxArrivalFiredRef.current = true;
             haptics.timelineNodeClimax();
+            setShowClimaxFlecks(true);
+            fleckTimerRef.current = window.setTimeout(() => {
+              setShowClimaxFlecks(false);
+              fleckTimerRef.current = null;
+            }, 950);
           }
 
           observer.unobserve(entry.target);
         }
       },
-      { threshold: 0.45 },
+      { threshold: 0.55 },
     );
 
-    for (const el of cardRefs.current) {
+    for (const el of stickyRefs.current) {
       if (el) observer.observe(el);
     }
 
     return () => observer.disconnect();
-  }, []);
+  }, [isSiteRevealed]);
+
+  const handleTabJump = (index: number, chapter: BackstoryChapter) => {
+    haptics.timelineReceiptJump();
+    soundEngine.playNotebookTabTurn();
+    trackEvent('timeline_chapter_viewed', 'Backstory Notebook Tab Tap', {
+      chapter: chapter.numeral,
+    });
+
+    const anchorEl = anchorRefs.current[index];
+    if (anchorEl) {
+      if (cancelScrollRef.current) {
+        cancelScrollRef.current();
+      }
+      cancelScrollRef.current = smoothScrollToTarget(anchorEl, 760);
+    }
+  };
 
   const handleJumpToReceipt = () => {
     haptics.timelineReceiptJump();
@@ -180,216 +250,223 @@ export function BackstorySection() {
     <section
       id="backstory"
       data-testid="backstory-section"
-      className="relative z-[2] scroll-mt-16 bg-transparent px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20"
+      className="relative z-[2] scroll-mt-16 overflow-x-clip bg-transparent px-4 py-14 sm:px-6 sm:py-18 lg:px-8"
     >
-      <div
-        data-testid="backstory-velvet-container"
-        className="relative mx-auto max-w-5xl overflow-hidden rounded-[28px] px-5 pt-10 pb-14 text-[#FFFDF8] sm:px-10 sm:pt-14 sm:pb-16 lg:px-14 lg:pt-16"
-        style={{
-          background: 'linear-gradient(170deg, #1E0B1C 0%, #150814 55%, #240D20 100%)',
-          border: '1px solid rgba(232, 200, 146, 0.14)',
-          boxShadow:
-            '0 28px 64px -26px rgba(21, 8, 20, 0.56), 0 8px 20px -10px rgba(58, 18, 51, 0.25)',
-        }}
-      >
-        {/* Subtle 2.5% Editorial Fine Paper Grain Overlay */}
-        <svg
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.025]"
+      <div className="mx-auto max-w-2xl">
+        {/* Airy Centered Editorial Header Directly on Warm Page Canvas */}
+        <div className="mx-auto max-w-xl text-center">
+          <p className="text-[10.5px] font-semibold tracking-[0.16em] text-[#C93B6B] uppercase">
+            HOW WE GOT HERE
+          </p>
+          <h2 className="font-display mt-2.5 text-balance text-[27px] leading-[1.15] font-semibold tracking-tight text-[#3A1233] sm:text-4xl">
+            From Classmates to Greatest HG
+          </h2>
+          <p className="mx-auto mt-2.5 max-w-md text-[13.5px] leading-relaxed text-[#7A4A63] sm:text-[15px]">
+            Scroll through the notebook, or tap any divider tab to jump back.
+          </p>
+        </div>
+
+        {/* Sticky Stacking Pastel Notebook Sheets (NO overflow: hidden on ancestors so sticky works reliably) */}
+        <div
+          data-testid="backstory-notebook-stack"
+          className="relative mt-9 flex flex-col pb-8 sm:mt-11"
         >
-          <filter id={`backstory-grain-${grainId}`}>
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.82"
-              numOctaves="3"
-              stitchTiles="stitch"
-            />
-          </filter>
-          <rect width="100%" height="100%" filter={`url(#backstory-grain-${grainId})`} />
-        </svg>
+          {BACKSTORY_CHAPTERS.map((chapter, index) => {
+            const theme = getNotebookSheetTheme(chapter.variant);
+            const isClimax = chapter.variant === 'roseClimax';
 
-        <div className="relative z-10">
-          {/* Section Header */}
-          <div className="max-w-2xl">
-            <p className="text-[11px] font-semibold tracking-[0.16em] text-[#DFC49A] uppercase">
-              HOW WE GOT HERE
-            </p>
-            <h2 className="font-display mt-2.5 text-balance text-3xl font-semibold tracking-tight text-[#FFFDF9] sm:text-4xl lg:text-[2.75rem]">
-              From Classmates to Greatest HG
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-[#EAD8E8]/80 sm:text-base">
-              How a normal classmate from school ended up being my closest friend.
-            </p>
-          </div>
+            const tabRowJustify =
+              chapter.tabAlign === 'left'
+                ? 'justify-start pl-[14px]'
+                : chapter.tabAlign === 'center'
+                  ? 'justify-center'
+                  : 'justify-end pr-[14px]';
 
-          {/* 3-Chapter Progressive Timeline with Self-Drawing Luminous Rail */}
-          <ol
-            ref={railListRef}
-            data-testid="backstory-timeline-list"
-            className="relative mt-10 space-y-5 sm:mt-12 sm:space-y-6"
-          >
-            {/* Quiet Base Vertical Rail + Self-Drawing Luminous Progress Rail */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute top-[26px] bottom-[26px] left-[15px] w-[2px] -translate-x-1/2 sm:left-[21px]"
-            >
-              <span
-                className="block h-full w-full rounded-full"
-                style={{ background: 'rgba(255, 246, 249, 0.12)' }}
-              />
-              <span
-                ref={railFillRef}
-                data-testid="timeline-progress-rail"
-                data-progress="0.000"
-                className="absolute inset-0 block h-full w-full origin-top rounded-full will-change-transform"
-                style={{
-                  background: 'linear-gradient(180deg, #F3B8CE 0%, #D94B7D 52%, #F3D293 100%)',
-                  transform: 'scaleY(0)',
-                  boxShadow: '0 0 10px rgba(243, 184, 206, 0.35)',
-                }}
-              />
-            </div>
+            return (
+              <Fragment key={chapter.id}>
+                {/* Invisible Natural Unstacked Flow Scroll Anchor */}
+                <div
+                  aria-hidden="true"
+                  className={`pointer-events-none relative h-0 w-full ${index > 0 ? 'mt-[36px]' : ''}`}
+                >
+                  <span
+                    ref={(el) => {
+                      anchorRefs.current[index] = el;
+                    }}
+                    data-testid={`notebook-anchor-${chapter.numeral}`}
+                    className="pointer-events-none absolute left-0 h-px w-px"
+                    style={{ top: `${72 - chapter.stickyTopPx}px` }}
+                  />
+                </div>
 
-            {BACKSTORY_CHAPTERS.map((chapter, index) => {
-              const isLit = Boolean(litNodes[chapter.id]);
-              const isClimax = chapter.variant === 'climax';
-              const styles = getCardVisualStyles(chapter.variant);
-
-              return (
-                <li
-                  key={chapter.id}
+                {/* Sticky Sheet Wrapper (Direct Child of Flex Column for Genuine CSS Sticky Stacking) */}
+                <div
                   ref={(el) => {
-                    cardRefs.current[index] = el;
+                    stickyRefs.current[index] = el;
                   }}
                   data-chapter-id={chapter.id}
+                  data-chapter-numeral={chapter.numeral}
                   data-testid={`backstory-chapter-${chapter.numeral}`}
-                  data-lit={String(isLit)}
-                  className="relative pl-10 sm:pl-14"
+                  className="sticky"
+                  style={{
+                    top: `${chapter.stickyTopPx}px`,
+                    zIndex: index + 1,
+                  }}
                 >
-                  {/* Left Timeline Node Dot (Center-aligned with eyebrow/title header at top: 26px) */}
-                  <span
-                    aria-hidden="true"
-                    data-testid={`timeline-node-${chapter.numeral}`}
-                    className="pointer-events-none absolute top-[26px] left-[15px] z-20 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center sm:left-[21px]"
+                  <div
+                    ref={(el) => {
+                      sheetScaleRefs.current[index] = el;
+                    }}
+                    data-testid={`notebook-scale-${chapter.numeral}`}
+                    data-stack-scale="1.000"
+                    className="origin-top"
                   >
-                    {/* Chapter 3 Radiant Breathing Halo + One-Shot Expanding Ring Ripple */}
-                    {isClimax && isLit && (
-                      <>
+                    {/* Physical Protruding Divider Tab (Fused Seamlessly into Sheet Top Edge) */}
+                    <div className={`relative z-[2] flex ${tabRowJustify}`}>
+                      <button
+                        type="button"
+                        data-testid={`notebook-tab-${chapter.numeral}`}
+                        onClick={() => handleTabJump(index, chapter)}
+                        aria-label={`Jump to ${chapter.tabLabel}`}
+                        className="relative inline-flex h-[34px] cursor-pointer items-center whitespace-nowrap rounded-t-[12px] px-[14px] text-[11.5px] font-semibold tracking-[0.04em] transition-transform duration-150 active:translate-y-[1px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C93B6B]"
+                        style={{
+                          marginBottom: '-1px',
+                          backgroundColor: theme.tabBg,
+                          color: theme.tabInk,
+                          borderTop: `1px solid ${theme.tabBorderColor}`,
+                          borderLeft: `1px solid ${theme.tabBorderColor}`,
+                          borderRight: `1px solid ${theme.tabBorderColor}`,
+                          borderBottom: 'none',
+                          boxShadow: '0 -4px 12px -6px rgba(154, 48, 88, 0.14)',
+                        }}
+                      >
+                        <span>{chapter.tabLabel}</span>
+
+                        {/* Seamless cardstock fusion bridge covering the card top border beneath the tab */}
                         <span
-                          className="animate-timeline-gold-breathe absolute inset-[-5px] rounded-full will-change-[transform,opacity]"
+                          aria-hidden="true"
+                          className="pointer-events-none absolute right-0 -bottom-[2px] left-0 h-[4px]"
                           style={{
-                            background:
-                              'radial-gradient(circle, rgba(247, 217, 148, 0.55) 0%, rgba(247, 217, 148, 0) 72%)',
+                            background: `linear-gradient(180deg, ${theme.tabBg} 0%, ${theme.tabBridgeBg} 100%)`,
                           }}
                         />
+
+                        {/* Chapter 3 Arrival Celebration: 8 Delicate Blush & Champagne Confetti Flecks */}
+                        {isClimax && showClimaxFlecks && (
+                          <span
+                            aria-hidden="true"
+                            data-testid="notebook-climax-flecks"
+                            className="pointer-events-none absolute inset-x-0 top-1 flex items-center justify-center"
+                          >
+                            {CHAPTER_3_TAB_FLECKS.map((fleck) => (
+                              <span
+                                key={fleck.id}
+                                className="animate-notebook-fleck absolute rounded-[2px]"
+                                style={
+                                  {
+                                    width: `${fleck.w}px`,
+                                    height: `${fleck.h}px`,
+                                    backgroundColor: fleck.color,
+                                    '--fx': fleck.fx,
+                                    '--fy': fleck.fy,
+                                    '--fr': fleck.fr,
+                                    '--fdelay': fleck.delay,
+                                  } as CSSProperties
+                                }
+                              />
+                            ))}
+                          </span>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Pastel Stationery Postcard Body */}
+                    <article
+                      data-testid={`notebook-card-${chapter.numeral}`}
+                      className={`relative z-[1] min-h-[245px] overflow-hidden px-5 sm:px-7 ${
+                        isClimax ? 'py-[24px] sm:py-6' : 'pt-[44px] pb-[22px] sm:pt-[44px] sm:pb-6'
+                      } ${theme.cardRadiusClass}`}
+                      style={theme.cardStyle}
+                    >
+                      {/* Subtle Vertical Left Pink Notebook Margin Line (Sheet 1 Only) */}
+                      {theme.hasRuledMargin && (
                         <span
-                          data-testid="timeline-climax-ripple"
-                          className="animate-timeline-node-ripple absolute inset-0 rounded-full border border-[#F7D994] will-change-[transform,opacity]"
+                          aria-hidden="true"
+                          className="pointer-events-none absolute top-0 bottom-0 left-[16px] w-px sm:left-[22px]"
+                          style={{ backgroundColor: 'rgba(217, 75, 125, 0.16)' }}
                         />
-                      </>
-                    )}
+                      )}
 
-                    <span
-                      className={`relative block rounded-full border-2 transition-[transform,background-color,border-color,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                        isClimax ? 'h-[15px] w-[15px]' : 'h-[13px] w-[13px]'
-                      } ${
-                        isLit
-                          ? `${styles.nodeLitClass} scale-100`
-                          : 'scale-90 border-[#FFF6F9]/30 bg-[#230E20]'
-                      }`}
-                    />
-                  </span>
-
-                  {/* Ambient Radial Glow Strictly Behind Chapter 3 Climax Card */}
-                  {isClimax && (
-                    <div
-                      aria-hidden="true"
-                      className="pointer-events-none absolute -inset-3 z-0 rounded-[28px] transition-opacity duration-700"
-                      style={{
-                        opacity: isLit ? 1 : 0.25,
-                        background:
-                          'radial-gradient(ellipse at 32% 50%, rgba(217, 75, 125, 0.22) 0%, rgba(232, 200, 146, 0.10) 48%, rgba(21, 8, 20, 0) 76%)',
-                      }}
-                    />
-                  )}
-
-                  {/* Staggered Glide-In Chapter Card (GPU transform & opacity only) */}
-                  <article
-                    className="relative z-10 overflow-hidden rounded-[20px] px-5 py-5 will-change-[transform,opacity] sm:px-7 sm:py-6"
-                    style={{
-                      ...styles.surface,
-                      transform: isLit ? 'translate3d(0, 0, 0)' : 'translate3d(14px, 10px, 0)',
-                      opacity: isLit ? 1 : 0,
-                      transition:
-                        'transform 550ms cubic-bezier(0.22, 1, 0.36, 1), opacity 550ms cubic-bezier(0.22, 1, 0.36, 1)',
-                    }}
-                  >
-                    {/* Subtle 3px Warm Rose-Berry-to-Gold Left Accent Bar on Chapter 3 */}
-                    {isClimax && (
+                      {/* Subtle Top-Right Faint Archival Serif Numeral */}
                       <span
                         aria-hidden="true"
-                        className="pointer-events-none absolute top-4 bottom-4 left-0 w-[3px] rounded-r-full"
+                        className={`font-display pointer-events-none absolute right-4 select-none text-[50px] leading-none font-semibold tracking-tight sm:right-6 sm:text-[56px] ${
+                          isClimax ? 'top-3 sm:top-3.5' : 'top-[42px] sm:top-[42px]'
+                        }`}
                         style={{
-                          background: 'linear-gradient(180deg, #D94B7D 0%, #F3D293 100%)',
+                          color: theme.watermarkColor,
+                          opacity: 0.11,
                         }}
-                      />
-                    )}
+                      >
+                        {chapter.numeral}
+                      </span>
 
-                    {/* Oversized Ultra-Faint Serif Watermark Numeral (01, 02, 03) */}
-                    <span
-                      aria-hidden="true"
-                      className="font-display pointer-events-none absolute top-2 right-4 select-none text-[56px] leading-none font-semibold tracking-tight sm:top-2.5 sm:right-6"
-                      style={{
-                        color: styles.watermarkColor,
-                        opacity: 0.055,
-                      }}
-                    >
-                      {chapter.numeral}
-                    </span>
-
-                    {/* Single-Line Eyebrow Header */}
-                    <p
-                      data-testid={`chapter-eyebrow-${chapter.numeral}`}
-                      className="relative z-10 pr-12 text-[10.5px] leading-snug font-semibold tracking-[0.14em] uppercase sm:text-[11px]"
-                      style={{ color: styles.eyebrowColor }}
-                    >
-                      {chapter.eyebrow}
-                    </p>
-
-                    <h3
-                      className="font-display relative z-10 mt-2 text-xl font-semibold tracking-tight sm:text-[24px]"
-                      style={{ color: styles.titleColor }}
-                    >
-                      {chapter.title}
-                    </h3>
-
-                    <p
-                      className="relative z-10 mt-2 max-w-2xl text-[14.5px] leading-[1.65] sm:text-[15.5px]"
-                      style={{ color: styles.bodyColor }}
-                    >
-                      {chapter.description}
-                    </p>
-
-                    {/* Chapter 3 Interactive Jump Pill to Case File #0721 */}
-                    {isClimax && (
-                      <div className="relative z-10 mt-5">
-                        <button
-                          type="button"
-                          data-testid="timeline-receipt-jump-btn"
-                          onClick={handleJumpToReceipt}
-                          className="inline-flex min-h-[38px] cursor-pointer items-center gap-2 rounded-full bg-[#F7D994]/[0.07] px-4 py-1.5 text-xs font-semibold tracking-[0.02em] text-[#F5DBA3] transition-all duration-200 hover:bg-[#F7D994]/[0.15] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F7D994]"
-                          style={{ border: '1px solid rgba(232, 200, 146, 0.48)' }}
+                      <div
+                        className={`relative z-10 ${theme.hasRuledMargin ? 'pl-3 sm:pl-4' : ''}`}
+                      >
+                        <p
+                          data-testid={`chapter-eyebrow-${chapter.numeral}`}
+                          className="pr-12 text-[10.5px] leading-snug font-semibold tracking-[0.14em] uppercase sm:text-[11px]"
+                          style={{ color: theme.eyebrowColor }}
                         >
-                          <span>See the 12:29 AM receipt</span>
-                          <DownwardReceiptArrowSvg className="h-[13px] w-[13px] shrink-0 text-[#F7D994]" />
-                        </button>
+                          {chapter.eyebrow}
+                        </p>
+
+                        <h3 className="font-display mt-2 text-[22px] leading-snug font-semibold tracking-tight text-[#3A1233] sm:text-[26px]">
+                          {chapter.title}
+                        </h3>
+
+                        {chapter.metaPill && (
+                          <p className="mt-2.5">
+                            <span
+                              data-testid="chapter-3-meta-pill"
+                              className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.03em] text-[#B52C5C]"
+                              style={{
+                                backgroundColor: 'rgba(255, 255, 255, 0.78)',
+                                border: '1px solid rgba(209, 68, 118, 0.24)',
+                              }}
+                            >
+                              {chapter.metaPill}
+                            </span>
+                          </p>
+                        )}
+
+                        <p className="mt-3 max-w-xl text-[14.5px] leading-[1.68] text-[#4F2547] sm:text-[15.5px]">
+                          {chapter.description}
+                        </p>
+
+                        {/* Chapter 3 Interactive Jump Pill to Case File #0721 */}
+                        {isClimax && (
+                          <div className="mt-5">
+                            <button
+                              type="button"
+                              data-testid="timeline-receipt-jump-btn"
+                              onClick={handleJumpToReceipt}
+                              className="inline-flex min-h-[40px] cursor-pointer items-center gap-2 rounded-full bg-[#FFFFFF] px-4 py-2 text-xs font-semibold tracking-[0.02em] text-[#B52F5E] shadow-[0_6px_16px_-8px_rgba(181,47,94,0.28)] transition-all duration-150 hover:bg-[#FFF8FB] active:translate-y-[1px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C93B6B]"
+                              style={{ border: '1px solid rgba(201, 59, 107, 0.34)' }}
+                            >
+                              <span>See the 12:29 AM receipt</span>
+                              <DownwardReceiptArrowSvg className="h-[13px] w-[13px] shrink-0 text-[#C93B6B]" />
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </article>
-                </li>
-              );
-            })}
-          </ol>
+                    </article>
+                  </div>
+                </div>
+              </Fragment>
+            );
+          })}
         </div>
       </div>
     </section>

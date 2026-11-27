@@ -1,4 +1,14 @@
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { Music, Pause, Volume2, VolumeX } from 'lucide-react';
+import { trackEvent } from '../utils/analytics';
+import { haptics } from '../utils/haptics';
+import {
+  HEADER_EASTER_EGG_MESSAGE,
+  HEADER_EASTER_EGG_TOAST_FADE_MS,
+  HEADER_EASTER_EGG_TOAST_VISIBLE_MS,
+  advanceHeaderTapStreak,
+} from '../utils/headerEasterEgg';
+import { soundEngine } from '../utils/soundEngine';
 
 interface TopBarProps {
   isPlaying: boolean;
@@ -6,6 +16,7 @@ interface TopBarProps {
   sfxEnabled: boolean;
   onToggleSfx: () => void;
   showMusicHint?: boolean;
+  onHeaderEasterEgg?: (originX: number, originY: number) => void;
 }
 
 export function TopBar({
@@ -14,17 +25,100 @@ export function TopBar({
   sfxEnabled,
   onToggleSfx,
   showMusicHint = false,
+  onHeaderEasterEgg,
 }: TopBarProps) {
+  const tapCountRef = useRef(0);
+  const lastTapTimeRef = useRef<number | null>(null);
+  const dismissTimerRef = useRef<number | null>(null);
+  const fadeTimerRef = useRef<number | null>(null);
+
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastFading, setToastFading] = useState(false);
+
+  const clearToastTimers = useCallback(() => {
+    if (dismissTimerRef.current !== null) {
+      window.clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = null;
+    }
+    if (fadeTimerRef.current !== null) {
+      window.clearTimeout(fadeTimerRef.current);
+      fadeTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => clearToastTimers, [clearToastTimers]);
+
+  const handleBrandTap = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      const result = advanceHeaderTapStreak(
+        {
+          count: tapCountRef.current,
+          lastTapMs: lastTapTimeRef.current,
+        },
+        Date.now(),
+      );
+
+      tapCountRef.current = result.nextCount;
+      lastTapTimeRef.current = result.nextLastTapMs;
+
+      if (!result.unlocked) {
+        try {
+          haptics.tap();
+        } catch {
+          // silent
+        }
+        return;
+      }
+
+      try {
+        haptics.celebrate();
+      } catch {
+        // silent
+      }
+      try {
+        soundEngine.playPastelMarimbaChime();
+      } catch {
+        // silent
+      }
+      try {
+        trackEvent('header_easter_egg_unlocked', 'Sticky Header');
+      } catch {
+        // silent
+      }
+
+      const rect = event.currentTarget.getBoundingClientRect();
+      onHeaderEasterEgg?.(rect.left + rect.width / 2, rect.bottom + 8);
+
+      clearToastTimers();
+      setToastFading(false);
+      setToastVisible(true);
+
+      dismissTimerRef.current = window.setTimeout(() => {
+        setToastFading(true);
+        dismissTimerRef.current = null;
+        fadeTimerRef.current = window.setTimeout(() => {
+          setToastVisible(false);
+          setToastFading(false);
+          fadeTimerRef.current = null;
+        }, HEADER_EASTER_EGG_TOAST_FADE_MS);
+      }, HEADER_EASTER_EGG_TOAST_VISIBLE_MS);
+    },
+    [clearToastTimers, onHeaderEasterEgg],
+  );
+
   return (
-    <header className="fixed top-0 right-0 left-0 z-40 h-14 border-b border-[#EFE0EE] bg-[#FFFDF8]/95 backdrop-blur-md">
-      <div className="mx-auto flex h-full max-w-6xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6 lg:px-8">
-        {/* Zone 1: Single-line Brand wordmark */}
-        <a
-          href="#top"
-          className="font-display text-lg font-semibold italic tracking-tight text-[#3A1233] whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D94B7D]"
-        >
-          Anamika&rsquo;s 17th
-        </a>
+    <>
+      <header className="fixed top-0 right-0 left-0 z-40 h-14 border-b border-[#EFE0EE] bg-[#FFFDF8]/95 backdrop-blur-md">
+        <div className="mx-auto flex h-full max-w-6xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6 lg:px-8">
+          {/* Zone 1: Single-line Brand wordmark */}
+          <button
+            type="button"
+            data-testid="header-brand-btn"
+            onClick={handleBrandTap}
+            className="font-display border-0 bg-transparent p-0 text-left text-lg font-semibold italic tracking-tight text-[#3A1233] whitespace-nowrap shrink-0 cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D94B7D]"
+          >
+            Anamika&rsquo;s 17th
+          </button>
 
         {/* Zone 2: Clean single-line navigation links */}
         <nav
@@ -125,7 +219,21 @@ export function TopBar({
             )}
           </button>
         </div>
-      </div>
-    </header>
+        </div>
+      </header>
+
+      {toastVisible && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="header-easter-egg-toast"
+          className={`pointer-events-none fixed top-[64px] left-1/2 z-[60] w-max max-w-[92vw] -translate-x-1/2 rounded-full border border-[#E7A8C2] bg-[#FFFDF8]/98 px-4 py-2 text-center text-[11.5px] font-semibold tracking-tight text-[#3A1233] shadow-[0_14px_30px_-10px_rgba(184,50,101,0.34)] backdrop-blur-md transition-opacity duration-[240ms] ease-out sm:text-[13px] ${
+            toastFading ? 'opacity-0' : 'opacity-100'
+          }`}
+        >
+          {HEADER_EASTER_EGG_MESSAGE}
+        </div>
+      )}
+    </>
   );
 }

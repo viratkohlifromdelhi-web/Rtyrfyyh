@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react';
+import { haptics } from '../utils/haptics';
 import { ConfettiSparkleMinimalSvg } from './DoodleSvgs';
 
 interface FloatingConfettiButtonProps {
@@ -7,6 +8,7 @@ interface FloatingConfettiButtonProps {
 
 export function FloatingConfettiButton({ onPop }: FloatingConfettiButtonProps) {
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    haptics.tap();
     const rect = e.currentTarget.getBoundingClientRect();
     onPop(rect.left + rect.width / 2, rect.top);
   };

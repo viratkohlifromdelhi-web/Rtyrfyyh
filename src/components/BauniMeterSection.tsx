@@ -184,11 +184,12 @@ export function BauniMeterSection() {
   };
 
   const handleReset = () => {
+    stopScannerHaptics();
+    haptics.tap();
     soundEngine.playBubbleClick();
     soundEngine.stopScannerHold();
     bgMusicPlayer.endScannerAbort();
     modeRef.current = 'none';
-    stopScannerHaptics();
     stopLoop();
     progressRef.current = 0;
     setProgress(0);
@@ -204,7 +205,7 @@ export function BauniMeterSection() {
     : getScannerStageMessage(progress);
 
   return (
-    <section id="bauni-meter" className="relative z-[2] scroll-mt-16">
+    <section id="bauni-meter" className="cv-auto-section relative z-[2] scroll-mt-16">
       <WavyDivider fill="#3B1535" />
 
       <div className="bg-[#3B1535] py-12 text-[#FFFDF8] sm:py-16">

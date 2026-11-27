@@ -1,0 +1,267 @@
+/**
+ * Staggered idle background preloader for SparkleBirth.
+ *
+ * Runs strictly AFTER the intro video begins smooth playback (or after a brief 300ms
+ * grace window if the intro is skipped/bypassed) so it never competes with initial
+ * paint or video startup bandwidth.
+ *
+ * Priority order (120ms breathing gaps between idle tasks):
+ *   1. GPU image pre-decode (`img.decode()` inside try/catch):
+ *      - Anamika's hero portrait (`IMG_20261126_131911_725.jpg`)
+ *      - Case File 21 July screenshot (`Screenshot_2026-11-26-13-11-51-847_com.instagram.android.png`)
+ *   2. Lazy below-the-fold JS chunks in exact top-to-bottom visual scroll order
+ *      (never loads OwnerAnalyticsDashboard)
+ *   3. Gentle background MP3 preload upgrade (`preload="metadata"` -> `preload="auto"`)
+ */
+
+export const PRELOAD_GAP_MS = 120;
+export const PRELOAD_IDLE_TIMEOUT_MS = 1200;
+
+export type PreloadTaskKind = 'image' | 'chunk' | 'audio';
+
+export interface PreloadTask {
+  id: string;
+  kind: PreloadTaskKind;
+  run: () => Promise<void>;
+}
+
+export interface WarmupScheduler {
+  scheduleIdle: (fn: () => void, timeoutMs: number) => () => void;
+  delay: (ms: number, fn: () => void) => () => void;
+}
+
+export interface BackgroundWarmupOptions {
+  imageUrls: readonly string[];
+  chunkLoaders: ReadonlyArray<() => Promise<unknown>>;
+  onUpgradeAudioPreload?: () => void;
+  gapMs?: number;
+  idleTimeoutMs?: number;
+  decodeImage?: (url: string) => Promise<void>;
+  scheduler?: WarmupScheduler;
+  onTaskComplete?: (taskId: string, kind: PreloadTaskKind) => void;
+}
+
+export function getDefaultPreloadImageUrls(baseUrl = '/'): readonly string[] {
+  const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  return [
+    `${normalizedBase}${encodeURIComponent('IMG_20261126_131911_725.jpg')}`,
+    `${normalizedBase}${encodeURIComponent('Screenshot_2026-11-26-13-11-51-847_com.instagram.android.png')}`,
+  ];
+}
+
+/**
+ * Preloads and GPU-decodes an image cleanly via `img.decode()` wrapped in try/catch
+ * so unsupported browsers or transient network glitches never reject the queue.
+ */
+export async function preDecodeImageUrl(url: string): Promise<void> {
+  if (typeof window === 'undefined' || typeof Image === 'undefined') return;
+  try {
+    const img = new Image();
+    img.decoding = 'async';
+    img.referrerPolicy = 'no-referrer';
+    img.src = url;
+
+    if (typeof img.decode === 'function') {
+      await img.decode();
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      if (img.complete) {
+        resolve();
+        return;
+      }
+      const done = () => {
+        img.onload = null;
+        img.onerror = null;
+        resolve();
+      };
+      img.onload = done;
+      img.onerror = done;
+    });
+  } catch {
+    // Non-fatal: browser will still decode image naturally when rendered
+  }
+}
+
+export function createBrowserWarmupScheduler(): WarmupScheduler {
+  const win = typeof window !== 'undefined'
+    ? (window as Window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+        cancelIdleCallback?: (id: number) => void;
+      })
+    : undefined;
+
+  return {
+    scheduleIdle(fn: () => void, timeoutMs: number): () => void {
+      if (win && typeof win.requestIdleCallback === 'function') {
+        const id = win.requestIdleCallback(fn, { timeout: timeoutMs });
+        return () => {
+          win.cancelIdleCallback?.(id);
+        };
+      }
+      // Safari / non-rIC fallback
+      const timerId = setTimeout(fn, 16);
+      return () => {
+        clearTimeout(timerId);
+      };
+    },
+    delay(ms: number, fn: () => void): () => void {
+      const timerId = setTimeout(fn, ms);
+      return () => {
+        clearTimeout(timerId);
+      };
+    },
+  };
+}
+
+/**
+ * Builds the exact ordered warmup queue:
+ * Priority 1 (images) -> Priority 2 (lazy chunks) -> Priority 3 (audio preload upgrade).
+ */
+export function buildWarmupQueue(options: BackgroundWarmupOptions): PreloadTask[] {
+  const decodeFn = options.decodeImage ?? preDecodeImageUrl;
+  const tasks: PreloadTask[] = [];
+
+  options.imageUrls.forEach((url, index) => {
+    tasks.push({
+      id: `image:${index}`,
+      kind: 'image',
+      run: async () => {
+        try {
+          await decodeFn(url);
+        } catch {
+          // Always resilient
+        }
+      },
+    });
+  });
+
+  options.chunkLoaders.forEach((loader, index) => {
+    tasks.push({
+      id: `chunk:${index}`,
+      kind: 'chunk',
+      run: async () => {
+        try {
+          await loader();
+        } catch {
+          // Retry naturally when React.lazy mounts
+        }
+      },
+    });
+  });
+
+  if (options.onUpgradeAudioPreload) {
+    const upgradeAudio = options.onUpgradeAudioPreload;
+    tasks.push({
+      id: 'audio:upgrade',
+      kind: 'audio',
+      run: async () => {
+        try {
+          upgradeAudio();
+        } catch {
+          // Non-fatal
+        }
+      },
+    });
+  }
+
+  return tasks;
+}
+
+/**
+ * Executes a staggered idle warmup queue with `gapMs` breathing gaps between tasks.
+ * Returns a cancellation function that halts any pending timers or idle callbacks.
+ */
+export function runWarmupQueue(
+  tasks: readonly PreloadTask[],
+  options: {
+    gapMs?: number;
+    idleTimeoutMs?: number;
+    scheduler?: WarmupScheduler;
+    onTaskComplete?: (taskId: string, kind: PreloadTaskKind) => void;
+    onAllComplete?: () => void;
+  } = {},
+): () => void {
+  const gapMs = options.gapMs ?? PRELOAD_GAP_MS;
+  const idleTimeoutMs = options.idleTimeoutMs ?? PRELOAD_IDLE_TIMEOUT_MS;
+  const scheduler = options.scheduler ?? createBrowserWarmupScheduler();
+
+  let cancelled = false;
+  let cancelPending: (() => void) | null = null;
+  let cursor = 0;
+
+  const scheduleNext = () => {
+    if (cancelled) return;
+    if (cursor >= tasks.length) {
+      options.onAllComplete?.();
+      return;
+    }
+
+    const currentTask = tasks[cursor++];
+    cancelPending = scheduler.scheduleIdle(() => {
+      cancelPending = null;
+      if (cancelled) return;
+
+      void currentTask.run().finally(() => {
+        if (cancelled) return;
+        options.onTaskComplete?.(currentTask.id, currentTask.kind);
+        if (cursor >= tasks.length) {
+          options.onAllComplete?.();
+          return;
+        }
+        cancelPending = scheduler.delay(gapMs, scheduleNext);
+      });
+    }, idleTimeoutMs);
+  };
+
+  scheduleNext();
+
+  return () => {
+    cancelled = true;
+    if (cancelPending) {
+      cancelPending();
+      cancelPending = null;
+    }
+  };
+}
+
+let sessionWarmupStarted = false;
+let activeCancelWarmup: (() => void) | null = null;
+
+/**
+ * Starts the idempotent session-level background warmup queue once.
+ */
+export function startBackgroundWarmup(options: BackgroundWarmupOptions): () => void {
+  if (sessionWarmupStarted) {
+    return () => {};
+  }
+  sessionWarmupStarted = true;
+
+  const tasks = buildWarmupQueue(options);
+  const cancel = runWarmupQueue(tasks, {
+    gapMs: options.gapMs,
+    idleTimeoutMs: options.idleTimeoutMs,
+    scheduler: options.scheduler,
+    onTaskComplete: options.onTaskComplete,
+    onAllComplete: () => {
+      activeCancelWarmup = null;
+    },
+  });
+  activeCancelWarmup = cancel;
+
+  return () => {
+    cancel();
+    if (activeCancelWarmup === cancel) {
+      activeCancelWarmup = null;
+    }
+  };
+}
+
+export function resetBackgroundWarmupForTesting(): void {
+  if (activeCancelWarmup) {
+    activeCancelWarmup();
+    activeCancelWarmup = null;
+  }
+  sessionWarmupStarted = false;
+}

@@ -3,6 +3,7 @@ import { SparkleStarSvg } from './DoodleSvgs';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import { bgMusicPlayer } from '../utils/musicSynth';
+import { useInViewAnimation } from '../utils/useInViewAnimation';
 import { WheelAudioEngine } from '../utils/wheelAudio';
 import {
   applyFlapperImpulse,
@@ -78,6 +79,8 @@ function buildOutcomeParticles(slice: WheelSlice, spinId: number): EmojiBurstPar
 }
 
 export function SpinWheelSection() {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const animationsActive = useInViewAnimation(sectionRef);
   const wheelDiscRef = useRef<SVGGElement | null>(null);
   const wheelGlowRef = useRef<HTMLDivElement | null>(null);
   const flapperRef = useRef<HTMLDivElement | null>(null);
@@ -146,20 +149,22 @@ export function SpinWheelSection() {
     };
   }, []);
 
-  // Animate the 20 chasing fairy/carnival bulbs across idle, spinning, and landed states
+  // Animate the 20 chasing fairy/carnival bulbs across idle, spinning, and landed states (paused offscreen)
   useEffect(() => {
+    if (!animationsActive && !isSpinning) return;
     const intervalMs =
       bulbMode === 'spinning' ? 75 : bulbMode === 'landed' ? 165 : 480;
     const id = window.setInterval(() => {
       setBulbPhase((prev) => (prev + 1) % BULB_COUNT);
     }, intervalMs);
     return () => window.clearInterval(id);
-  }, [bulbMode]);
+  }, [animationsActive, bulbMode, isSpinning]);
 
   const startSpin = useCallback(() => {
     if (isSpinning) return;
 
-    // Unlock Web Audio cleanly on user tap & duck background music to 0.12 (0.3s) while spinning
+    // Immediate tactile feedback + unlock Web Audio cleanly on user tap & duck background music
+    haptics.wheelSpinStart();
     audioRef.current?.unlock();
     bgMusicPlayer.beginWheelSpin();
     trackEvent('wheel_spun', 'Spin the Wheel');
@@ -303,8 +308,12 @@ export function SpinWheelSection() {
 
   return (
     <section
+      ref={sectionRef}
       id="wheel"
-      className="relative z-[2] scroll-mt-16 overflow-x-hidden bg-transparent py-14 sm:py-20"
+      data-animations-active={String(animationsActive)}
+      className={`cv-auto-section relative z-[2] scroll-mt-16 overflow-x-hidden bg-transparent py-14 sm:py-20 ${
+        animationsActive ? '' : 'anim-paused'
+      }`}
     >
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}

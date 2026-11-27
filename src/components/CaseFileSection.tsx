@@ -140,7 +140,11 @@ function FrontPocketCardstockSvg() {
   );
 }
 
-export function CaseFileSection() {
+interface CaseFileSectionProps {
+  onLightboxChange?: (open: boolean) => void;
+}
+
+export function CaseFileSection({ onLightboxChange }: CaseFileSectionProps = {}) {
   const [phase, setPhase] = useState<FolderPhase>('closed');
   const [isZoomed, setIsZoomed] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
@@ -246,6 +250,17 @@ export function CaseFileSection() {
       bgMusicPlayer.endCaseFileOpen();
     };
   }, [applyClosedPose, cancelAnimationLoop]);
+
+  // Notify parent when lightbox opens/closes so background Sparkle Rain canvas pauses cleanly
+  useEffect(() => {
+    onLightboxChange?.(isZoomed);
+  }, [isZoomed, onLightboxChange]);
+
+  useEffect(() => {
+    return () => {
+      onLightboxChange?.(false);
+    };
+  }, [onLightboxChange]);
 
   // Lock body scroll and bind Escape key while full-screen tap-to-zoom lightbox is open
   useEffect(() => {
@@ -428,6 +443,7 @@ export function CaseFileSection() {
     setShowStampSparkles(false);
     setPhaseSync('closing');
 
+    haptics.tap();
     soundEngine.playCardstockSlide();
 
     const prefersReducedMotion =
@@ -528,12 +544,14 @@ export function CaseFileSection() {
 
   const handleOpenZoom = useCallback(() => {
     if (phaseRef.current !== 'open') return;
+    haptics.tap();
     trackEvent('case_file_zoomed', 'Case File #0721 Receipt Lightbox');
     soundEngine.playBubbleClick(1.06);
     setIsZoomed(true);
   }, []);
 
   const handleCloseZoom = useCallback(() => {
+    haptics.tap();
     soundEngine.playBubbleClick(0.92);
     setIsZoomed(false);
   }, []);
@@ -546,7 +564,7 @@ export function CaseFileSection() {
       id="case-file"
       data-testid="case-file-section"
       data-folder-phase={phase}
-      className="relative z-[2] scroll-mt-16 bg-transparent py-16 sm:py-24"
+      className="cv-auto-section relative z-[2] scroll-mt-16 bg-transparent py-16 sm:py-24"
     >
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
@@ -675,6 +693,10 @@ export function CaseFileSection() {
                       <img
                         src={RECEIPT_IMG_SRC}
                         alt="First Instagram message screenshot from 21 July 2026 at 12:29 AM"
+                        width={720}
+                        height={960}
+                        loading="lazy"
+                        decoding="async"
                         referrerPolicy="no-referrer"
                         onError={() => setImgFailed(true)}
                         className="block h-[238px] w-full max-h-[360px] object-cover object-top transition-transform duration-200 group-hover:scale-[1.015]"
@@ -873,6 +895,7 @@ export function CaseFileSection() {
                 <img
                   src={RECEIPT_IMG_SRC}
                   alt="Full uncropped 21 July 12:29 AM first-text chat screenshot"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   onError={() => setImgFailed(true)}
                   className="block rounded-[14px] border border-[#FFF6F9]/20 bg-[#1B0918] shadow-2xl"

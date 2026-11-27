@@ -12,6 +12,7 @@ import {
   type MidnightCountdownParts,
 } from '../utils/midnightLock';
 import { trackEvent } from '../utils/analytics';
+import { haptics } from '../utils/haptics';
 import { soundEngine } from '../utils/soundEngine';
 
 interface MidnightLockOverlayProps {
@@ -122,6 +123,7 @@ export function MidnightLockOverlay({
     if (unlockTriggeredRef.current) return;
     unlockTriggeredRef.current = true;
     writeMidnightBypass();
+    haptics.success();
     soundEngine.playVaultUnlock();
 
     setModalOpen(false);
@@ -149,6 +151,7 @@ export function MidnightLockOverlay({
         return;
       }
 
+      haptics.error();
       soundEngine.playVaultWrongCode();
       setErrorMsg('Wait for midnight 👀');
       setShakeCount((c) => c + 1);
@@ -173,6 +176,7 @@ export function MidnightLockOverlay({
 
   const handleKeyTap = useCallback(
     (key: (typeof KEYPAD_KEYS)[number]) => {
+      haptics.tap();
       soundEngine.playVaultKeypadTap();
       if (key === 'CLEAR') {
         setDigits('');
@@ -349,6 +353,7 @@ export function MidnightLockOverlay({
         data-testid="midnight-bypass-key-btn"
         aria-label="Unlock with secret key"
         onClick={() => {
+          haptics.tap();
           soundEngine.playBubbleClick(1.0);
           setDigits('');
           setErrorMsg(null);

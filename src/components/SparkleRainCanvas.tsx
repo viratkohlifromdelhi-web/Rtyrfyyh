@@ -59,7 +59,10 @@ export function SparkleRainCanvas({
   const viewportRef = useRef<{ width: number; height: number; dpr: number }>({
     width: typeof window !== 'undefined' ? window.innerWidth : 1280,
     height: typeof window !== 'undefined' ? window.innerHeight : 800,
-    dpr: typeof window !== 'undefined' ? getCappedDpr(window.devicePixelRatio) : 1,
+    dpr:
+      typeof window !== 'undefined'
+        ? getCappedDpr(window.devicePixelRatio, window.innerWidth)
+        : 1,
   });
 
   const [mounted, setMounted] = useState<boolean>(active);
@@ -94,7 +97,7 @@ export function SparkleRainCanvas({
     const syncCanvasSize = (reseedIfEmpty: boolean) => {
       const width = Math.max(window.innerWidth, 1);
       const height = Math.max(window.innerHeight, 1);
-      const dpr = getCappedDpr(window.devicePixelRatio);
+      const dpr = getCappedDpr(window.devicePixelRatio, width);
       const prevWidth = viewportRef.current.width;
 
       viewportRef.current = { width, height, dpr };

@@ -99,7 +99,11 @@ function PhotoCornerMountSvg({ position }: { position: 'tl' | 'tr' | 'bl' | 'br'
   );
 }
 
-export function AnamikaEditorialCard() {
+interface AnamikaEditorialCardProps {
+  onLightboxChange?: (open: boolean) => void;
+}
+
+export function AnamikaEditorialCard({ onLightboxChange }: AnamikaEditorialCardProps = {}) {
   const paperGrainId = useId().replace(/:/g, '');
   const [isFlipped, setIsFlipped] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
@@ -143,6 +147,8 @@ export function AnamikaEditorialCard() {
       window.cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
     }
+    if (tiltWrapperRef.current) tiltWrapperRef.current.style.willChange = 'auto';
+    if (glossSheenRef.current) glossSheenRef.current.style.willChange = 'auto';
   }, []);
 
   const startTiltLoop = useCallback(() => {
@@ -161,6 +167,8 @@ export function AnamikaEditorialCard() {
       return;
     }
 
+    if (tiltWrapperRef.current) tiltWrapperRef.current.style.willChange = 'transform';
+    if (glossSheenRef.current) glossSheenRef.current.style.willChange = 'transform, opacity';
     lastFrameTsRef.current = performance.now();
 
     const tick = (now: number) => {
@@ -185,6 +193,8 @@ export function AnamikaEditorialCard() {
 
       if (settled && rollSettled) {
         rafIdRef.current = null;
+        if (tiltWrapperRef.current) tiltWrapperRef.current.style.willChange = 'auto';
+        if (glossSheenRef.current) glossSheenRef.current.style.willChange = 'auto';
         return;
       }
       rafIdRef.current = window.requestAnimationFrame(tick);
@@ -237,6 +247,16 @@ export function AnamikaEditorialCard() {
     [updateTiltFromClientPoint],
   );
 
+  // Notify parent when lightbox opens/closes (so Sparkle Rain pauses cleanly behind modal)
+  useEffect(() => {
+    onLightboxChange?.(lightboxOpen);
+    return () => {
+      if (lightboxOpen) {
+        onLightboxChange?.(false);
+      }
+    };
+  }, [lightboxOpen, onLightboxChange]);
+
   // Lock body scroll and bind Escape key while full-screen lightbox is open
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -259,16 +279,14 @@ export function AnamikaEditorialCard() {
   }, [lightboxOpen]);
 
   const handleFlipToggle = useCallback(() => {
-    setIsFlipped((prev) => {
-      const next = !prev;
-      soundEngine.playEditorialCardFlip();
-      haptics.cardFlip();
-      trackEvent('photo_card_flipped', 'Anamika Printed Photo Card', {
-        side: next ? 'back' : 'front',
-      });
-      return next;
+    const next = !isFlipped;
+    haptics.cardFlip();
+    soundEngine.playEditorialCardFlip();
+    trackEvent('photo_card_flipped', 'Anamika Printed Photo Card', {
+      side: next ? 'back' : 'front',
     });
-  }, []);
+    setIsFlipped(next);
+  }, [isFlipped]);
 
   const handleCardKeyDown = useCallback(
     (e: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -283,12 +301,14 @@ export function AnamikaEditorialCard() {
 
   const handleOpenZoom = useCallback((e: ReactMouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
+    haptics.tap();
     soundEngine.playBubbleClick(1.06);
     trackEvent('photo_card_zoomed', 'Anamika Photo Lightbox');
     setLightboxOpen(true);
   }, []);
 
   const handleCloseZoom = useCallback(() => {
+    haptics.tap();
     soundEngine.playBubbleClick(0.92);
     setLightboxOpen(false);
   }, []);
@@ -367,7 +387,7 @@ export function AnamikaEditorialCard() {
           <div
             ref={tiltWrapperRef}
             data-testid="anamika-tilt-wrapper"
-            className="relative w-full will-change-transform"
+            className="relative w-full"
             style={{
               transformStyle: 'preserve-3d',
               WebkitTransformStyle: 'preserve-3d',
@@ -377,7 +397,7 @@ export function AnamikaEditorialCard() {
             {/* Inner 3D Flipper (0.68s weighted physical print flip) */}
             <div
               data-testid="anamika-card-flipper"
-              className="relative w-full will-change-transform"
+              className="relative w-full"
               style={{
                 transformStyle: 'preserve-3d',
                 WebkitTransformStyle: 'preserve-3d',
@@ -438,6 +458,10 @@ export function AnamikaEditorialCard() {
                   <img
                     src={ANAMIKA_PHOTO_SRC}
                     alt="Anamika Singh aka Morgan, sunglasses and lit lighter portrait"
+                    width={900}
+                    height={1200}
+                    loading="eager"
+                    decoding="async"
                     referrerPolicy="no-referrer"
                     draggable={false}
                     onError={() => setPhotoFailed(true)}
@@ -459,7 +483,7 @@ export function AnamikaEditorialCard() {
                   ref={glossSheenRef}
                   aria-hidden="true"
                   data-testid="photo-gloss-sheen"
-                  className="pointer-events-none absolute -inset-1/2 z-10 will-change-[transform,opacity]"
+                  className="pointer-events-none absolute -inset-1/2 z-10"
                   style={{
                     opacity: 0,
                     background:
@@ -645,6 +669,7 @@ export function AnamikaEditorialCard() {
               <img
                 src={ANAMIKA_PHOTO_SRC}
                 alt="Anamika Singh aka Morgan"
+                decoding="async"
                 referrerPolicy="no-referrer"
                 className="block rounded-[12px] border-4 border-[#FFFFFF] shadow-2xl"
                 style={{

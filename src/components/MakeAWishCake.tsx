@@ -14,6 +14,7 @@ import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
+import { useInViewAnimation } from '../utils/useInViewAnimation';
 
 interface MakeAWishCakeProps {
   onBlowOutConfetti: (originX?: number, originY?: number) => void;
@@ -125,6 +126,8 @@ const PEARL_SPRINKLES = [
 
 export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
   const svgPrefix = useId().replace(/:/g, '');
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const animationsActive = useInViewAnimation(sectionRef);
   const [cake, setCake] = useState(createInitialCakeState);
   const [animPhase, setAnimPhase] = useState<CandleAnimPhase>('lit');
   const [seqId, setSeqId] = useState(0);
@@ -169,6 +172,7 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
   const handleRelight = () => {
     if (animPhase === 'relighting') return;
     clearPendingTimer();
+    haptics.tap();
     soundEngine.playBubbleClick(1.12);
     setCake((prev) => relightCandles(prev));
     setSeqId((s) => s + 1);
@@ -192,8 +196,12 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
 
   return (
     <section
+      ref={sectionRef}
       id="make-a-wish"
-      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-18"
+      data-animations-active={String(animationsActive)}
+      className={`cv-auto-section relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-18 ${
+        animationsActive ? '' : 'anim-paused'
+      }`}
     >
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         <div
@@ -758,9 +766,9 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
                   type="button"
                   data-testid="cake-blow-btn"
                   onClick={handleBlowOut}
-                  className="inline-flex min-h-[46px] cursor-pointer items-center gap-2 rounded-full bg-[#3A1233] px-7 py-3 text-sm font-semibold whitespace-nowrap text-[#FFFDFB] shadow-[0_12px_26px_-8px_rgba(58,18,51,0.42)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#521A48] active:scale-[0.97] shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
+                  className="btn-rose-berry inline-flex min-h-[46px] shrink-0 cursor-pointer items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
                 >
-                  <CandleFlameButtonSvg className="h-4 w-4 text-[#F3D9A6]" />
+                  <CandleFlameButtonSvg className="h-4 w-4 text-[#FFF4DC]" />
                   <span>Blow Out Candles</span>
                 </button>
               ) : (

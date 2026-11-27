@@ -113,10 +113,14 @@ export const FRIEND_LEADERBOARD_BASE: FriendRankEntry[] = [
 export interface BackstoryChapter {
   id: string;
   numeral: '01' | '02' | '03';
+  tabLabel: string;
+  tabAlign: 'left' | 'center' | 'right';
+  stickyTopPx: number;
   eyebrow: string;
   title: string;
   description: string;
-  variant: 'archival' | 'quiet' | 'climax';
+  metaPill?: string;
+  variant: 'buttercream' | 'lilac' | 'roseClimax';
   highlight?: boolean;
 }
 
@@ -124,29 +128,39 @@ export const BACKSTORY_CHAPTERS: BackstoryChapter[] = [
   {
     id: 'ch-1',
     numeral: '01',
+    tabLabel: '01 · Till 8th',
+    tabAlign: 'left',
+    stickyTopPx: 82,
     eyebrow: 'CHAPTER 01 · TILL CLASS 8TH',
     title: 'Pioneer Academy, Lalganj',
     description:
       'We studied together till Class 8th and were just normal classmates.',
-    variant: 'archival',
+    variant: 'buttercream',
   },
   {
     id: 'ch-2',
     numeral: '02',
+    tabLabel: '02 · After 8th',
+    tabAlign: 'center',
+    stickyTopPx: 122,
     eyebrow: 'CHAPTER 02 · AFTER CLASS 8TH',
     title: 'Different Schools',
     description:
       'Then I moved to another school and we barely even talked.',
-    variant: 'quiet',
+    variant: 'lilac',
   },
   {
     id: 'ch-3',
     numeral: '03',
-    eyebrow: 'CHAPTER 03 · 12:29 AM · INSTAGRAM DM',
+    tabLabel: '03 · 21 July',
+    tabAlign: 'right',
+    stickyTopPx: 162,
+    eyebrow: 'CHAPTER 03 · 21 JULY 2026',
     title: '21 July 2026',
+    metaPill: '12:29 AM · Instagram DM',
     description:
       'Then we reconnected on Instagram when I messaged you first at 12:29 AM, and everything changed.',
-    variant: 'climax',
+    variant: 'roseClimax',
     highlight: true,
   },
 ];

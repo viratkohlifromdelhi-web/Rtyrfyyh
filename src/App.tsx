@@ -1,26 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AdoptionCertificateSection } from './components/AdoptionCertificateSection';
-import { BackstorySection } from './components/BackstorySection';
-import { BauniMeterSection } from './components/BauniMeterSection';
-import { BirthdaySummaryCard } from './components/BirthdaySummaryCard';
-import { CalendarAndCounterSection } from './components/CalendarAndCounterSection';
-import { CaseFileSection } from './components/CaseFileSection';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { ConfettiCanvas, type ConfettiCanvasHandle } from './components/ConfettiCanvas';
 import { SparkleStarSvg } from './components/DoodleSvgs';
 import { FloatingConfettiButton } from './components/FloatingConfettiButton';
 import { HeroSection } from './components/HeroSection';
-import { InfinityVaultSection } from './components/InfinityVaultSection';
-import { InteractiveTogglesSection } from './components/InteractiveTogglesSection';
-import { LifeStatsSection } from './components/LifeStatsSection';
-import { MakeAWishCake } from './components/MakeAWishCake';
 import { MidnightLockOverlay } from './components/MidnightLockOverlay';
-import { OwnerAnalyticsDashboard } from './components/OwnerAnalyticsDashboard';
-import { RunawayAgreementSection } from './components/RunawayAgreementSection';
-import { ScratchCouponsSection } from './components/ScratchCouponsSection';
 import { SparkleRainCanvas } from './components/SparkleRainCanvas';
-import { SpinWheelSection } from './components/SpinWheelSection';
-import { StarterPackGrid } from './components/StarterPackGrid';
-import { SurpriseGiftSection } from './components/SurpriseGiftSection';
 import {
   TheatreIntroOverlay,
   type TheatreIntroOverlayHandle,
@@ -33,8 +17,105 @@ import { haptics } from './utils/haptics';
 import type { OneTimeSummaryGiftData } from './utils/infinityVault';
 import { shouldShowMidnightLock } from './utils/midnightLock';
 import { bgMusicPlayer } from './utils/musicSynth';
+import { getDefaultPreloadImageUrls, startBackgroundWarmup } from './utils/preloader';
+import {
+  BACKGROUND_SECTION_LOADERS,
+  loadAdoptionCertificateSection,
+  loadBackstorySection,
+  loadBauniMeterSection,
+  loadBirthdaySummaryCard,
+  loadCalendarAndCounterSection,
+  loadCaseFileSection,
+  loadChickenFarmSection,
+  loadClosingSignOffFooter,
+  loadInfinityVaultSection,
+  loadInteractiveTogglesSection,
+  loadKeepsakePreviewModal,
+  loadLifeStatsSection,
+  loadMakeAWishCake,
+  loadOwnerAnalyticsDashboard,
+  loadRunawayAgreementSection,
+  loadScratchCouponsSection,
+  loadSecretBluffGateSection,
+  loadSpinWheelSection,
+  loadStarterPackGrid,
+  loadSurpriseGiftSection,
+} from './utils/sectionLoaders';
 import { soundEngine } from './utils/soundEngine';
 import { BG_MUSIC_AUTOPLAY_FADE_MS } from './utils/theatrePhysics';
+
+// Code-split below-the-fold sections & owner-only dashboard into independent lazy chunks
+const InteractiveTogglesSection = lazy(() =>
+  loadInteractiveTogglesSection().then((m) => ({ default: m.InteractiveTogglesSection })),
+);
+const CalendarAndCounterSection = lazy(() =>
+  loadCalendarAndCounterSection().then((m) => ({ default: m.CalendarAndCounterSection })),
+);
+const LifeStatsSection = lazy(() =>
+  loadLifeStatsSection().then((m) => ({ default: m.LifeStatsSection })),
+);
+const BackstorySection = lazy(() =>
+  loadBackstorySection().then((m) => ({ default: m.BackstorySection })),
+);
+const StarterPackGrid = lazy(() =>
+  loadStarterPackGrid().then((m) => ({ default: m.StarterPackGrid })),
+);
+const RunawayAgreementSection = lazy(() =>
+  loadRunawayAgreementSection().then((m) => ({ default: m.RunawayAgreementSection })),
+);
+const BauniMeterSection = lazy(() =>
+  loadBauniMeterSection().then((m) => ({ default: m.BauniMeterSection })),
+);
+const AdoptionCertificateSection = lazy(() =>
+  loadAdoptionCertificateSection().then((m) => ({ default: m.AdoptionCertificateSection })),
+);
+const CaseFileSection = lazy(() =>
+  loadCaseFileSection().then((m) => ({ default: m.CaseFileSection })),
+);
+const ScratchCouponsSection = lazy(() =>
+  loadScratchCouponsSection().then((m) => ({ default: m.ScratchCouponsSection })),
+);
+const InfinityVaultSection = lazy(() =>
+  loadInfinityVaultSection().then((m) => ({ default: m.InfinityVaultSection })),
+);
+const SpinWheelSection = lazy(() =>
+  loadSpinWheelSection().then((m) => ({ default: m.SpinWheelSection })),
+);
+const SurpriseGiftSection = lazy(() =>
+  loadSurpriseGiftSection().then((m) => ({ default: m.SurpriseGiftSection })),
+);
+const MakeAWishCake = lazy(() =>
+  loadMakeAWishCake().then((m) => ({ default: m.MakeAWishCake })),
+);
+const BirthdaySummaryCard = lazy(() =>
+  loadBirthdaySummaryCard().then((m) => ({ default: m.BirthdaySummaryCard })),
+);
+const ChickenFarmSection = lazy(() =>
+  loadChickenFarmSection().then((m) => ({ default: m.ChickenFarmSection })),
+);
+const ClosingSignOffFooter = lazy(() =>
+  loadClosingSignOffFooter().then((m) => ({ default: m.ClosingSignOffFooter })),
+);
+const OwnerAnalyticsDashboard = lazy(() =>
+  loadOwnerAnalyticsDashboard().then((m) => ({ default: m.OwnerAnalyticsDashboard })),
+);
+const KeepsakePreviewModal = lazy(() =>
+  loadKeepsakePreviewModal().then((m) => ({ default: m.KeepsakePreviewModal })),
+);
+const SecretBluffGateSection = lazy(() =>
+  loadSecretBluffGateSection().then((m) => ({ default: m.SecretBluffGateSection })),
+);
+
+function SectionPlaceholder({ id, minHeight }: { id?: string; minHeight: number }) {
+  return (
+    <div
+      id={id}
+      aria-hidden="true"
+      className="w-full bg-[#FFF8FB]"
+      style={{ minHeight: `${minHeight}px` }}
+    />
+  );
+}
 
 function shouldSkipIntroFromQuery(): boolean {
   if (typeof window === 'undefined') return false;
@@ -45,12 +126,16 @@ function shouldSkipIntroFromQuery(): boolean {
 function BirthdayWebsiteShell() {
   const confettiRef = useRef<ConfettiCanvasHandle | null>(null);
   const theatreOverlayRef = useRef<TheatreIntroOverlayHandle | null>(null);
+  const cancelWarmupRef = useRef<(() => void) | null>(null);
 
   const [showIntro, setShowIntro] = useState<boolean>(() => !shouldSkipIntroFromQuery());
   const [introRunId, setIntroRunId] = useState(0);
   const [siteRevealed, setSiteRevealed] = useState<boolean>(() => shouldSkipIntroFromQuery());
   const [visualExitDone, setVisualExitDone] = useState<boolean>(() => shouldSkipIntroFromQuery());
   const [showMusicHint, setShowMusicHint] = useState(false);
+  const [isPhotoLightboxOpen, setIsPhotoLightboxOpen] = useState(false);
+  const [isCaseFileLightboxOpen, setIsCaseFileLightboxOpen] = useState(false);
+  const [isKeepsakeModalOpen, setIsKeepsakeModalOpen] = useState(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [sfxEnabled, setSfxEnabled] = useState(() => soundEngine.isEnabled());
@@ -60,6 +145,17 @@ function BirthdayWebsiteShell() {
   // Session-only one-time footer summary card state (strictly false on every page load)
   const [showOneTimeSummary, setShowOneTimeSummary] = useState(false);
   const [summaryGiftData, setSummaryGiftData] = useState<OneTimeSummaryGiftData | null>(null);
+
+  const triggerBackgroundWarmup = useCallback(() => {
+    if (cancelWarmupRef.current) return;
+    cancelWarmupRef.current = startBackgroundWarmup({
+      imageUrls: getDefaultPreloadImageUrls(import.meta.env.BASE_URL),
+      chunkLoaders: BACKGROUND_SECTION_LOADERS,
+      onUpgradeAudioPreload: () => {
+        bgMusicPlayer.upgradePreloadToAuto();
+      },
+    });
+  }, []);
 
   useEffect(() => {
     bgMusicPlayer.warmUp();
@@ -71,14 +167,38 @@ function BirthdayWebsiteShell() {
     return () => {
       unsubMusic();
       unsubscribeSfx();
+      cancelWarmupRef.current?.();
+      cancelWarmupRef.current = null;
     };
   }, []);
 
+  // If the intro is bypassed (?autostart=1) or skipped before smooth playback fired,
+  // kick off the staggered background warmup after a 300ms breathing gap.
+  useEffect(() => {
+    if (!siteRevealed) return;
+    const timer = window.setTimeout(() => {
+      triggerBackgroundWarmup();
+    }, 300);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [siteRevealed, triggerBackgroundWarmup]);
+
+  const handleVideoSmoothPlayback = useCallback(() => {
+    triggerBackgroundWarmup();
+  }, [triggerBackgroundWarmup]);
+
+  const handleVideoPastOneSecond = useCallback(() => {
+    bgMusicPlayer.upgradePreloadToAuto();
+  }, []);
+
   const handleToggleSfx = useCallback(() => {
+    haptics.tap();
     soundEngine.toggle();
   }, []);
 
   const handleToggleMusic = useCallback(() => {
+    haptics.tap();
     soundEngine.playBubbleClick(isPlaying ? 0.92 : 1.08);
     trackEvent('music_toggled', isPlaying ? 'Pause Music Button' : 'Play Music Button', {
       action: isPlaying ? 'pause' : 'play',
@@ -116,6 +236,18 @@ function BirthdayWebsiteShell() {
     setSummaryGiftData(null);
   }, []);
 
+  const handleHeaderEasterEgg = useCallback((originX: number, originY: number) => {
+    confettiRef.current?.pop(originX, originY, 34);
+  }, []);
+
+  const handleOpenKeepsakeModal = useCallback(() => {
+    setIsKeepsakeModalOpen(true);
+  }, []);
+
+  const handleCloseKeepsakeModal = useCallback(() => {
+    setIsKeepsakeModalOpen(false);
+  }, []);
+
   // Stage 3 Reveal at 15.35s: reveal main site underneath (scale 0.97 -> 1.0, opacity 0.9 -> 1.0 over 550ms)
   // Keep local MP3 strictly paused until intro video audio finishes fading to 0 and stops!
   const handleBeginMainReveal = useCallback(
@@ -151,6 +283,7 @@ function BirthdayWebsiteShell() {
   }, []);
 
   const handleReplayIntro = useCallback(() => {
+    haptics.tap();
     soundEngine.playBubbleClick(1.06);
     trackEvent('intro_replayed', 'Replay Intro Button');
     // Smoothly fade local MP3 down to 0 (0.4s), pause, reset currentTime = 0 & button state
@@ -162,11 +295,11 @@ function BirthdayWebsiteShell() {
     setShowIntro(true);
   }, []);
 
-  const handleSetBirthdayTruce = useCallback((next: boolean) => {
-    setIsBirthdayTruce((prev) => {
-      if (prev === next) return prev;
-      soundEngine.playModeChime(next);
+  const handleSetBirthdayTruce = useCallback(
+    (next: boolean) => {
+      if (isBirthdayTruce === next) return;
       haptics.modeSwitch();
+      soundEngine.playModeChime(next);
       trackEvent(
         'note_mode_switched',
         next ? 'Birthday Truce Mode' : 'No Filter Mode',
@@ -174,42 +307,39 @@ function BirthdayWebsiteShell() {
       );
       // No Filter = 0.40, Birthday Truce = 0.50 (1.0s smooth GainNode transition)
       bgMusicPlayer.setVibeMode(next);
-      return next;
-    });
-  }, []);
+      setIsBirthdayTruce(next);
+    },
+    [isBirthdayTruce],
+  );
 
   const handleToggleBirthdayTruce = useCallback(() => {
-    setIsBirthdayTruce((prev) => {
-      const next = !prev;
-      soundEngine.playModeChime(next);
-      haptics.modeSwitch();
-      trackEvent(
-        'note_mode_switched',
-        next ? 'Birthday Truce Mode' : 'No Filter Mode',
-        { mode: next ? 'Birthday Truce' : 'No Filter' },
-      );
-      bgMusicPlayer.setVibeMode(next);
-      return next;
-    });
-  }, []);
+    const next = !isBirthdayTruce;
+    haptics.modeSwitch();
+    soundEngine.playModeChime(next);
+    trackEvent(
+      'note_mode_switched',
+      next ? 'Birthday Truce Mode' : 'No Filter Mode',
+      { mode: next ? 'Birthday Truce' : 'No Filter' },
+    );
+    bgMusicPlayer.setVibeMode(next);
+    setIsBirthdayTruce(next);
+  }, [isBirthdayTruce]);
 
   const handleToggleSparkleRain = useCallback(() => {
-    setIsSparkleRainOn((prev) => {
-      const next = !prev;
-      haptics.sparkleToggle();
-      if (next) {
-        soundEngine.playSparkleTwinkle();
-      } else {
-        soundEngine.playBubbleClick(0.92);
-      }
-      trackEvent(
-        'sparkle_rain_toggled',
-        next ? 'Sparkle Rain On' : 'Sparkle Rain Off',
-        { enabled: next },
-      );
-      return next;
-    });
-  }, []);
+    const next = !isSparkleRainOn;
+    haptics.sparkleToggle();
+    if (next) {
+      soundEngine.playSparkleTwinkle();
+    } else {
+      soundEngine.playBubbleClick(0.92);
+    }
+    trackEvent(
+      'sparkle_rain_toggled',
+      next ? 'Sparkle Rain On' : 'Sparkle Rain Off',
+      { enabled: next },
+    );
+    setIsSparkleRainOn(next);
+  }, [isSparkleRainOn]);
 
   const handleToggleFriendOverride = useCallback(() => {
     const next = !friendOverride;
@@ -223,9 +353,14 @@ function BirthdayWebsiteShell() {
 
   // Pause background floating sparkles & 1s ticking timers while intro visual stage owns the screen
   const pauseBackgroundWork = showIntro && !siteRevealed;
+  const suppressSparkleRain =
+    pauseBackgroundWork ||
+    isPhotoLightboxOpen ||
+    isCaseFileLightboxOpen ||
+    isKeepsakeModalOpen;
 
   return (
-    <div className="relative z-0 min-h-screen overflow-x-hidden bg-[#FFF8FB] text-[#3A1233]">
+    <div className="relative z-0 min-h-screen overflow-x-clip bg-[#FFF8FB] text-[#3A1233]">
       {showIntro && (
         <TheatreIntroOverlay
           ref={theatreOverlayRef}
@@ -235,10 +370,12 @@ function BirthdayWebsiteShell() {
           onVisualExitDone={handleVisualExitDone}
           onIntroAudioFinished={handleIntroAudioFinished}
           onFinishUnmount={handleFinishIntroUnmount}
+          onVideoSmoothPlayback={handleVideoSmoothPlayback}
+          onVideoPastOneSecond={handleVideoPastOneSecond}
         />
       )}
 
-      <SparkleRainCanvas enabled={isSparkleRainOn} suppressed={pauseBackgroundWork} />
+      <SparkleRainCanvas enabled={isSparkleRainOn} suppressed={suppressSparkleRain} />
       <ConfettiCanvas ref={confettiRef} />
 
       <TopBar
@@ -247,6 +384,7 @@ function BirthdayWebsiteShell() {
         sfxEnabled={sfxEnabled}
         onToggleSfx={handleToggleSfx}
         showMusicHint={showMusicHint}
+        onHeaderEasterEgg={handleHeaderEasterEgg}
       />
 
       {/* Pre-rendered main birthday website quietly underneath (scale 0.97 -> 1.0, opacity 0.9 -> 1.0 over 550ms) */}
@@ -262,78 +400,105 @@ function BirthdayWebsiteShell() {
               : 'scale-[0.97] opacity-90 will-change-[transform,opacity]'
         }`}
       >
-        <main className="overflow-x-hidden pt-14">
-          {/* 1. Hero Section (Humorous Intro + The Only Photo Slot) */}
+        {/* CRITICAL: Keep <main> free of content-visibility / contain / overflow:hidden so Backstory sticky stacking never breaks */}
+        <main className="overflow-x-clip pt-14">
+          {/* 1. Hero Section (Eager-loaded behind curtain for zero-flash reveal) */}
           <HeroSection
             isBirthdayTruce={isBirthdayTruce}
             onPopConfetti={handleHeroPopConfetti}
+            isSiteRevealed={siteRevealed}
+            onPhotoLightboxChange={setIsPhotoLightboxOpen}
           />
 
           {/* 2. Interactive Toggles & Control Bar */}
-          <InteractiveTogglesSection
-            isBirthdayTruce={isBirthdayTruce}
-            onToggleBirthdayTruce={handleToggleBirthdayTruce}
-            onSetBirthdayTruce={handleSetBirthdayTruce}
-            friendOverride={friendOverride}
-            onToggleFriendOverride={handleToggleFriendOverride}
-            sparkleRain={isSparkleRainOn}
-            onToggleSparkleRain={handleToggleSparkleRain}
-          />
+          <Suspense fallback={<SectionPlaceholder id="toggles" minHeight={720} />}>
+            <InteractiveTogglesSection
+              isBirthdayTruce={isBirthdayTruce}
+              onToggleBirthdayTruce={handleToggleBirthdayTruce}
+              onSetBirthdayTruce={handleSetBirthdayTruce}
+              friendOverride={friendOverride}
+              onToggleFriendOverride={handleToggleFriendOverride}
+              sparkleRain={isSparkleRainOn}
+              onToggleSparkleRain={handleToggleSparkleRain}
+            />
+          </Suspense>
 
           {/* 3. December 2026 Calendar & Live Friendship Counter */}
-          <CalendarAndCounterSection
-            onBirthdayDateTap={handleBurstConfetti}
-            paused={pauseBackgroundWork}
-          />
+          <Suspense fallback={<SectionPlaceholder id="calendar" minHeight={640} />}>
+            <CalendarAndCounterSection
+              onBirthdayDateTap={handleBurstConfetti}
+              paused={pauseBackgroundWork}
+            />
+          </Suspense>
 
           {/* 4. Live "Time on Earth" Fun Stats Dashboard (Since 03 Dec 2009) */}
-          <LifeStatsSection paused={pauseBackgroundWork} />
+          <Suspense fallback={<SectionPlaceholder id="life-stats" minHeight={520} />}>
+            <LifeStatsSection paused={pauseBackgroundWork} />
+          </Suspense>
 
           {/* 5. Our Backstory Timeline ("From Classmates to #1 HG") */}
-          <BackstorySection />
+          <Suspense fallback={<SectionPlaceholder id="backstory" minHeight={980} />}>
+            <BackstorySection isSiteRevealed={siteRevealed} />
+          </Suspense>
 
           {/* 6. Tappable Inside-Joke Cards ("The Morgan Starter Pack" — Icons/SVGs Only) */}
-          <StarterPackGrid />
+          <Suspense fallback={<SectionPlaceholder id="starter-pack" minHeight={560} />}>
+            <StarterPackGrid />
+          </Suspense>
 
           {/* 7. The Runaway "No" Button Card ("Official Best-Friend Agreement") */}
-          <RunawayAgreementSection onAcceptConfetti={handleCelebrationBurst} />
+          <Suspense fallback={<SectionPlaceholder id="agreement" minHeight={480} />}>
+            <RunawayAgreementSection onAcceptConfetti={handleCelebrationBurst} />
+          </Suspense>
 
           {/* 8. Fake "Bauni-Meter" Height Scanner */}
-          <BauniMeterSection />
+          <Suspense fallback={<SectionPlaceholder id="bauni-meter" minHeight={520} />}>
+            <BauniMeterSection />
+          </Suspense>
 
           {/* 9. Official "Daughter Morgan" Adoption Certificate */}
-          <AdoptionCertificateSection onStampConfetti={handleBurstConfetti} />
+          <Suspense fallback={<SectionPlaceholder id="adoption-certificate" minHeight={540} />}>
+            <AdoptionCertificateSection onStampConfetti={handleBurstConfetti} />
+          </Suspense>
 
           {/* 10. Case File #0721 — Animated Pastel Evidence Folder (First-Text Receipt) */}
-          <CaseFileSection />
+          <Suspense fallback={<SectionPlaceholder id="case-file" minHeight={560} />}>
+            <CaseFileSection onLightboxChange={setIsCaseFileLightboxOpen} />
+          </Suspense>
 
           {/* 11. Finger Scratch-Off Coupons Section ("Morgan's Birthday Scratch Cards") */}
-          <ScratchCouponsSection onCardRevealConfetti={handleBurstConfetti} />
+          <Suspense fallback={<SectionPlaceholder id="scratch-coupons" minHeight={600} />}>
+            <ScratchCouponsSection onCardRevealConfetti={handleBurstConfetti} />
+          </Suspense>
 
           {/* 12. The Infinity Gift Vault (6 Avengers Infinity Stones + ₹250 Reveal) */}
-          <InfinityVaultSection
-            onRevealConfetti={handleBurstConfetti}
-            onFirstClaimUnlock={handleFirstVaultClaimUnlock}
-            onVaultReset={handleVaultReset}
-            showFooterSummaryJump={showOneTimeSummary}
-          />
+          <Suspense fallback={<SectionPlaceholder id="infinity-vault" minHeight={680} />}>
+            <InfinityVaultSection
+              onRevealConfetti={handleBurstConfetti}
+              onFirstClaimUnlock={handleFirstVaultClaimUnlock}
+              onVaultReset={handleVaultReset}
+              showFooterSummaryJump={showOneTimeSummary}
+              onOpenKeepsakeModal={handleOpenKeepsakeModal}
+            />
+          </Suspense>
 
           {/* 13. Rigged "Spin the Wheel for Your Birthday Gift" Section */}
-          <SpinWheelSection />
+          <Suspense fallback={<SectionPlaceholder id="spin-wheel" minHeight={640} />}>
+            <SpinWheelSection />
+          </Suspense>
 
-          {/* 12. "Tap to Reveal" Surprise Gift Section ("GAWAAR") */}
-          <SurpriseGiftSection onRevealConfetti={handleCelebrationBurst} />
+          {/* 14. "Tap to Reveal" Surprise Gift Section ("GAWAAR") */}
+          <Suspense fallback={<SectionPlaceholder id="gift" minHeight={540} />}>
+            <SurpriseGiftSection onRevealConfetti={handleCelebrationBurst} />
+          </Suspense>
 
-          {/* 13. Interactive "Make a Wish" Cake Footer */}
-          <MakeAWishCake onBlowOutConfetti={handleCelebrationBurst} />
+          {/* 15. Interactive "Make a Wish" Cake Footer */}
+          <Suspense fallback={<SectionPlaceholder id="make-a-wish" minHeight={560} />}>
+            <MakeAWishCake onBlowOutConfetti={handleCelebrationBurst} />
+          </Suspense>
         </main>
 
-        <footer className="relative z-[2] border-t border-[#F2C6D8] bg-transparent py-8 pb-28 sm:pb-12">
-          {/* One-Time Screenshot-Ready Birthday Summary Card (renders strictly once on first Vault unlock) */}
-          {showOneTimeSummary && summaryGiftData && (
-            <BirthdaySummaryCard data={summaryGiftData} />
-          )}
-
+        <div className="relative z-[2] border-t border-[#F2C6D8] bg-transparent pt-8 pb-2">
           <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 text-center sm:flex-row sm:px-6 sm:text-left lg:px-8">
             <div className="flex items-center justify-center gap-2 text-sm text-[#6B3B64] sm:justify-start">
               <SparkleStarSvg className="h-4 w-4 shrink-0 text-[#D94B7D]" />
@@ -364,10 +529,40 @@ function BirthdayWebsiteShell() {
               </a>
             </div>
           </div>
-        </footer>
+
+          {/* One-Time Screenshot-Ready Birthday Summary Card (renders strictly once on first Vault unlock, directly above The Little Coop & Closing Sign-Off Footer) */}
+          {showOneTimeSummary && summaryGiftData && (
+            <Suspense fallback={<SectionPlaceholder id="birthday-summary-card" minHeight={360} />}>
+              <BirthdaySummaryCard
+                data={summaryGiftData}
+                onOpenKeepsakeModal={handleOpenKeepsakeModal}
+              />
+            </Suspense>
+          )}
+        </div>
+
+        {/* Compact Pastel Stationery Secret Passcode 1507 Bluff Gate */}
+        <Suspense fallback={<SectionPlaceholder id="secret-bluff-gate" minHeight={210} />}>
+          <SecretBluffGateSection />
+        </Suspense>
+
+        {/* Bonus Canon Lore Mini Pastel Chicken Farm Comic Card (directly above Closing Sign-Off Footer) */}
+        <Suspense fallback={<SectionPlaceholder id="little-coop" minHeight={360} />}>
+          <ChickenFarmSection isSiteRevealed={siteRevealed} />
+        </Suspense>
+
+        <Suspense fallback={<SectionPlaceholder id="closing-signoff" minHeight={260} />}>
+          <ClosingSignOffFooter isSiteRevealed={siteRevealed} />
+        </Suspense>
       </div>
 
       <FloatingConfettiButton onPop={handleBurstConfetti} />
+
+      {isKeepsakeModalOpen && (
+        <Suspense fallback={null}>
+          <KeepsakePreviewModal onClose={handleCloseKeepsakeModal} />
+        </Suspense>
+      )}
     </div>
   );
 }
@@ -408,7 +603,11 @@ export default function App() {
   }, []);
 
   if (showOwnerDashboard) {
-    return <OwnerAnalyticsDashboard onClose={handleCloseOwnerDashboard} />;
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-[#120A16]" />}>
+        <OwnerAnalyticsDashboard onClose={handleCloseOwnerDashboard} />
+      </Suspense>
+    );
   }
 
   if (isMidnightLocked) {

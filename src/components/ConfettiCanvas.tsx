@@ -200,7 +200,6 @@ export const ConfettiCanvas = forwardRef<ConfettiCanvasHandle>(function Confetti
     popWithCannons(originX?: number, originY?: number) {
       setBurstCount((c) => c + 1);
       soundEngine.playConfettiPop('cannon');
-      haptics.heroPopConfetti();
 
       const x = originX ?? window.innerWidth * 0.5;
       const y = originY ?? window.innerHeight * 0.52;

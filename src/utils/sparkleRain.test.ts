@@ -22,16 +22,19 @@ function makeSeededRand(seed = 42): () => number {
   };
 }
 
-test('getSparkleParticleCount returns 14 on mobile and 20 on desktop, and getCappedDpr caps at 2', () => {
+test('getSparkleParticleCount returns 14 on mobile and 20 on desktop, and getCappedDpr caps at 1.5 on mobile / 2 on desktop', () => {
   assert.equal(getSparkleParticleCount(390), 14);
   assert.equal(getSparkleParticleCount(767), 14);
   assert.equal(getSparkleParticleCount(768), 20);
   assert.equal(getSparkleParticleCount(1440), 20);
 
-  assert.equal(getCappedDpr(1), 1);
-  assert.equal(getCappedDpr(2), 2);
-  assert.equal(getCappedDpr(3), 2);
-  assert.equal(getCappedDpr(undefined), 1);
+  assert.equal(getCappedDpr(1, 1280), 1);
+  assert.equal(getCappedDpr(2, 1280), 2);
+  assert.equal(getCappedDpr(3, 1280), 2);
+  assert.equal(getCappedDpr(3, 390), 1.5);
+  assert.equal(getCappedDpr(2, 767), 1.5);
+  assert.equal(getCappedDpr(2, 768), 2);
+  assert.equal(getCappedDpr(undefined, 390), 1);
 });
 
 test('createSparklePool distributes whisper-soft micro-particles within 12-24 px/s and 0.16-0.38 opacity', () => {

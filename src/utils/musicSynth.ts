@@ -110,6 +110,7 @@ export class BirthdayMusicPlayer {
 
   private unlockListenerAttached = false;
   private visibilityListenerAttached = false;
+  private audioPreloadUpgraded = false;
   private listeners = new Set<MusicListener>();
 
   public subscribe(listener: MusicListener): () => void {
@@ -161,7 +162,7 @@ export class BirthdayMusicPlayer {
       el.hidden = true;
       el.src = BG_MUSIC_SRC;
       el.loop = true;
-      el.preload = 'auto';
+      el.preload = 'metadata';
       el.playsInline = true;
       el.playbackRate = 1.0;
       el.defaultPlaybackRate = 1.0;
@@ -180,11 +181,6 @@ export class BirthdayMusicPlayer {
 
       // Keep a single persistent <audio> element in DOM for reliable iOS/Android & test inspection
       document.body.appendChild(el);
-      try {
-        el.load();
-      } catch {
-        // Ignore load() errors in minimal environments
-      }
       this.audioEl = el;
       this.syncAudioElementDataset();
     }
@@ -475,16 +471,40 @@ export class BirthdayMusicPlayer {
   }
 
   /**
-   * Pre-creates the persistent <audio> element early so `preload="auto"` can buffer cleanly.
+   * Pre-creates the persistent <audio> element with `preload="metadata"` so initial page load
+   * and intro video buffering never compete with a multi-MB MP3 download.
    */
   public warmUp(): void {
     this.ensureVisibilityListener();
     this.ensureAudioEl();
   }
 
+  /**
+   * Gently upgrades the background MP3 to `preload="auto"` once the intro video is smoothly
+   * playing (`currentTime > 1.0`) or during idle warmup — without starting playback.
+   */
+  public upgradePreloadToAuto(): void {
+    if (this.audioPreloadUpgraded || this.isPlaying) return;
+    const el = this.ensureAudioEl();
+    if (!el) return;
+    this.audioPreloadUpgraded = true;
+    el.preload = 'auto';
+    if (el.readyState < 3 && el.paused) {
+      try {
+        el.load();
+      } catch {
+        // Ignore load() errors in minimal environments
+      }
+    }
+  }
+
   private async playInternal(fadeMs: number, isAutoplayAttempt: boolean): Promise<boolean> {
     const el = this.ensureAudioEl();
     if (!el) return false;
+    if (el.preload !== 'auto') {
+      el.preload = 'auto';
+      this.audioPreloadUpgraded = true;
+    }
 
     this.clearPendingPauseTimer();
     this.wasPlayingBeforeHidden = false;

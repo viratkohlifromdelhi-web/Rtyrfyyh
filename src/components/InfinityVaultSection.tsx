@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Delete, KeyRound, Lock, X } from 'lucide-react';
+import { Delete, Download, KeyRound, Lock, X } from 'lucide-react';
 import {
   CLAIMED_DATE_LABEL,
   INFINITY_STONES,
@@ -31,6 +31,7 @@ import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
+import { useInViewAnimation } from '../utils/useInViewAnimation';
 import { InfinityStoneSvg } from './InfinityStoneSvg';
 
 type VaultPhase =
@@ -48,6 +49,7 @@ interface InfinityVaultSectionProps {
   onFirstClaimUnlock?: (summary: OneTimeSummaryGiftData) => void;
   onVaultReset?: () => void;
   showFooterSummaryJump?: boolean;
+  onOpenKeepsakeModal?: () => void;
 }
 
 const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'CLEAR', '0', 'BACK'] as const;
@@ -57,9 +59,11 @@ export function InfinityVaultSection({
   onFirstClaimUnlock,
   onVaultReset,
   showFooterSummaryJump = false,
+  onOpenKeepsakeModal,
 }: InfinityVaultSectionProps) {
   const grainFilterId = useId().replace(/:/g, '');
   const sectionRef = useRef<HTMLElement | null>(null);
+  const animationsActive = useInViewAnimation(sectionRef);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dustCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const stoneWrapRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -296,27 +300,36 @@ export function InfinityVaultSection({
     dustRafRef.current = window.requestAnimationFrame(step);
   }, []);
 
-  // Pause orbital rAF automatically when off-screen via IntersectionObserver
+  // Pause orbital rAF automatically when off-screen or tab is hidden
   useEffect(() => {
     const el = sectionRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
 
+    let intersecting = true;
+
+    const syncVisibility = () => {
+      const visible = intersecting && !document.hidden;
+      isVisibleRef.current = visible;
+      if (visible) {
+        ensureOrbitLoop();
+      } else {
+        stopOrbitLoop();
+      }
+    };
+
     const io = new IntersectionObserver(
       (entries) => {
-        const visible = entries.some((entry) => entry.isIntersecting);
-        isVisibleRef.current = visible;
-        if (visible) {
-          ensureOrbitLoop();
-        } else {
-          stopOrbitLoop();
-        }
+        intersecting = entries.some((entry) => entry.isIntersecting);
+        syncVisibility();
       },
       { threshold: 0.05 },
     );
 
     io.observe(el);
+    document.addEventListener('visibilitychange', syncVisibility);
     return () => {
       io.disconnect();
+      document.removeEventListener('visibilitychange', syncVisibility);
     };
   }, [ensureOrbitLoop, stopOrbitLoop]);
 
@@ -814,7 +827,10 @@ export function InfinityVaultSection({
       id="infinity-vault"
       data-testid="infinity-vault-section"
       data-vault-phase={phase}
-      className="relative z-[2] bg-transparent py-14 sm:py-20"
+      data-animations-active={String(animationsActive)}
+      className={`cv-auto-section relative z-[2] bg-transparent py-14 sm:py-20 ${
+        animationsActive ? '' : 'anim-paused'
+      }`}
     >
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         {/* Clean Editorial Section Header on Soft Rose-Cream (#FFF6F9) */}
@@ -1436,23 +1452,49 @@ export function InfinityVaultSection({
                   to activate your {RIGGED_GIFT_DISPLAY} gift card.
                 </p>
 
-                {/* Subtle champagne-gold jump button strictly on first-time unlock */}
-                {phase === 'claimed' && showFooterSummaryJump && (
-                  <button
-                    type="button"
-                    data-testid="vault-jump-summary-btn"
-                    onClick={() => {
-                      soundEngine.playBubbleClick(1.04);
-                      haptics.summaryCopyTap();
-                      document
-                        .getElementById('birthday-summary-card')
-                        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }}
-                    className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#E6C690]/40 bg-[#E6C690]/[0.08] px-4 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase text-[#E6C690] transition-all duration-150 hover:border-[#E6C690]/70 hover:bg-[#E6C690]/16 hover:text-[#FAF3EA] active:scale-95 cursor-pointer"
-                  >
-                    <span>View Screenshot Card in Footer &darr;</span>
-                  </button>
-                )}
+                {/* Unlocked Vault Actions: Save Keepsake Card + optional Footer Summary jump */}
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
+                  {onOpenKeepsakeModal && (
+                    <button
+                      type="button"
+                      data-testid="vault-keepsake-btn"
+                      onClick={() => {
+                        try {
+                          haptics.tap();
+                        } catch {
+                          // silent
+                        }
+                        try {
+                          soundEngine.playBubbleClick(1.06);
+                        } catch {
+                          // silent
+                        }
+                        onOpenKeepsakeModal();
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[#E6C690]/55 bg-[#E6C690]/[0.14] px-4 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase text-[#FAF3EA] transition-all duration-150 hover:border-[#E6C690] hover:bg-[#E6C690]/24 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E6C690]"
+                    >
+                      <Download className="h-3.5 w-3.5 text-[#E6C690]" aria-hidden="true" />
+                      <span>Save Keepsake Card</span>
+                    </button>
+                  )}
+
+                  {phase === 'claimed' && showFooterSummaryJump && (
+                    <button
+                      type="button"
+                      data-testid="vault-jump-summary-btn"
+                      onClick={() => {
+                        soundEngine.playBubbleClick(1.04);
+                        haptics.summaryCopyTap();
+                        document
+                          .getElementById('birthday-summary-card')
+                          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[#E6C690]/40 bg-[#E6C690]/[0.08] px-4 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase text-[#E6C690] transition-all duration-150 hover:border-[#E6C690]/70 hover:bg-[#E6C690]/16 hover:text-[#FAF3EA] active:scale-95 cursor-pointer"
+                    >
+                      <span>View Screenshot Card in Footer &darr;</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>

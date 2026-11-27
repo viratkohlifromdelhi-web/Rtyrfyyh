@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Download } from 'lucide-react';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import {
@@ -11,9 +12,10 @@ import { InfinityStoneSvg } from './InfinityStoneSvg';
 
 interface BirthdaySummaryCardProps {
   data: OneTimeSummaryGiftData;
+  onOpenKeepsakeModal?: () => void;
 }
 
-export function BirthdaySummaryCard({ data }: BirthdaySummaryCardProps) {
+export function BirthdaySummaryCard({ data, onOpenKeepsakeModal }: BirthdaySummaryCardProps) {
   const grainId = useId().replace(/:/g, '');
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef<number | null>(null);
@@ -229,6 +231,30 @@ export function BirthdaySummaryCard({ data }: BirthdaySummaryCardProps) {
             <span className="font-semibold tracking-[0.02em] text-[#E6C690]">adinomide</span> to
             activate your {data.value} gift card.
           </p>
+
+          {onOpenKeepsakeModal && (
+            <button
+              type="button"
+              data-testid="summary-keepsake-btn"
+              onClick={() => {
+                try {
+                  haptics.tap();
+                } catch {
+                  // silent
+                }
+                try {
+                  soundEngine.playBubbleClick(1.06);
+                } catch {
+                  // silent
+                }
+                onOpenKeepsakeModal();
+              }}
+              className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-full border border-[#E6C690]/55 bg-[#E6C690]/[0.12] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#FAF3EA] transition-all duration-150 hover:border-[#E6C690] hover:bg-[#E6C690]/22 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E6C690]"
+            >
+              <Download className="h-3.5 w-3.5 text-[#E6C690]" aria-hidden="true" />
+              <span>Save Keepsake Card</span>
+            </button>
+          )}
 
           {/* 5. Quiet Unboxed Keepsake Metadata Footer */}
           <p className="mt-4 border-t border-[#E6C690]/15 pt-3.5 text-[10px] font-medium tracking-[0.06em] text-[#D7B57E]/72">

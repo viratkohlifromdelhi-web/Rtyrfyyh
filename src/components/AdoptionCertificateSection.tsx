@@ -4,6 +4,7 @@ import {
   SparkleStarSvg,
   WaxSealStampSvg,
 } from './DoodleSvgs';
+import { haptics } from '../utils/haptics';
 import { soundEngine } from '../utils/soundEngine';
 
 interface AdoptionCertificateSectionProps {
@@ -35,6 +36,7 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
   const isStamped = stampCount > 0;
 
   const handleStamp = (e: MouseEvent<HTMLButtonElement>) => {
+    haptics.celebrate();
     const nextCount = stampCount + 1;
     setStampCount(nextCount);
     soundEngine.playWaxStamp();
@@ -55,7 +57,7 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
   return (
     <section
       id="certificate"
-      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
+      className="cv-auto-section relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         {/* Framed Mini-Certificate in Warm Cream with Pastel Pink Doodle Borders */}
