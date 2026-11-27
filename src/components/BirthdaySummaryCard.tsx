@@ -9,6 +9,7 @@ import {
   getStoneById,
   type OneTimeSummaryGiftData,
 } from '../utils/infinityVault';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { soundEngine } from '../utils/soundEngine';
 import { InfinityStoneSvg } from './InfinityStoneSvg';
 
@@ -36,6 +37,7 @@ export function BirthdaySummaryCard({ data, onOpenKeepsakeModal }: BirthdaySumma
     trackEvent('summary_card_code_copied', 'Footer Summary Copy Code Button');
     haptics.summaryCopyTap();
     soundEngine.playBubbleClick(1.1);
+    emitModinoEvent('cute', { force: true, source: 'summary-copy-code' });
 
     const markCopied = () => {
       setCopied(true);

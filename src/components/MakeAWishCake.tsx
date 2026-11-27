@@ -412,6 +412,7 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
     } catch {
       // silent
     }
+    emitModinoEvent('interaction_hype', { source: 'cake-blow-start' });
 
     blowStateRef.current = createInitialCakeBlowState();
     lastReportedPctRef.current = 0;
@@ -517,6 +518,7 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
     } catch {
       // silent
     }
+    emitModinoEvent('interaction_hype', { source: 'cake-hold-blow' });
   }, [cake.candlesLit, enterHoldFallbackMode, startBlowPhysicsLoop]);
 
   const handleHoldEnd = useCallback(() => {
@@ -550,7 +552,7 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
     cleanupBlowResources();
     haptics.tap();
     soundEngine.playBubbleClick(1.12);
-    emitModinoEvent('interaction_hype');
+    emitModinoEvent('friends_and_banter', { force: true, source: 'cake-relight' });
     setCake((prev) => relightCandles(prev));
     setSeqId((s) => s + 1);
     setAnimPhase('relighting');

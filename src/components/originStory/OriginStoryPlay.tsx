@@ -19,7 +19,7 @@ import {
   type ArchanaMood,
   type ShivjeeMood,
 } from './OriginCharacters';
-import { OriginStageBackdrop } from './OriginStageBackdrop';
+import { OriginStageBackdrop, type OriginKissBeat } from './OriginStageBackdrop';
 import {
   FIVE_TWO_INCHES,
   ORIGIN_AUDIO_CONFIG,
@@ -28,13 +28,17 @@ import {
   ORIGIN_SCENES,
   ORIGIN_TOTAL_SCENES,
   PREGNANCY_MONTH_DURATION_MS,
+  SCENE5_KISS_TIMING,
   SCENE_10_FREEZE_STEPS,
   SCENE_8_GROWTH_STEPS,
   SCENE_9_GROWTH_STEPS,
   getOriginFinaleCopy,
   getOriginRomanticGlowIntensity,
+  getScene5KissPose,
   inchesToStageBottomPct,
   type GrowthStep,
+  type KissPhase,
+  type KissWalkStage,
   type OriginBackdropMood,
 } from './originScript';
 import { OriginStoryAudioController } from './originAudio';
@@ -43,6 +47,8 @@ import { haptics } from '../../utils/haptics';
 export interface OriginStoryPlayProps {
   onComplete: () => void;
   onSkip: (skippedAtMs: number) => void;
+  /** Interrupts any lingering Stage 2 trailing intro video audio with a fast 150ms fade */
+  onInterruptIntroAudio?: () => void;
 }
 
 interface HeartSpec {
@@ -72,49 +78,99 @@ interface ConfettiSpec {
 }
 
 /**
- * 12 staggered pastel rose & champagne-gold hearts timed across the 3.55s kiss hold
- * (1.1s -> 4.65s) in three musical waves so every heart finishes fading right at 5.0s.
+ * 9 delicate small pastel rose & champagne-gold hearts rising directly from the
+ * center lip-contact point during the 3.5s Phase 4 kiss hold (2.4s -> 5.9s).
  */
 const KISS_HEARTS: readonly HeartSpec[] = [
-  // Wave 1: immediate lip-touch burst right on the 1.1s song swell
-  { id: 1, leftPct: 47, delaySec: 0.0, durSec: 1.9, dxMid: -11, dxEnd: -18, color: '#F9A8C9', sizePx: 14 },
-  { id: 2, leftPct: 52, delaySec: 0.16, durSec: 1.95, dxMid: 12, dxEnd: 19, color: '#F7D994', sizePx: 12 },
-  { id: 3, leftPct: 49, delaySec: 0.34, durSec: 2.05, dxMid: -6, dxEnd: 9, color: '#F48EB8', sizePx: 16 },
-  { id: 4, leftPct: 51, delaySec: 0.54, durSec: 1.95, dxMid: 10, dxEnd: -12, color: '#FFE7A8', sizePx: 13 },
-  // Wave 2: warm mid-kiss floating drift (1.9s -> 2.7s of scene)
-  { id: 5, leftPct: 46, delaySec: 0.82, durSec: 2.0, dxMid: -14, dxEnd: -8, color: '#F9B5D2', sizePx: 15 },
-  { id: 6, leftPct: 54, delaySec: 1.06, durSec: 2.05, dxMid: 9, dxEnd: 16, color: '#E6B85C', sizePx: 12 },
-  { id: 7, leftPct: 50, delaySec: 1.32, durSec: 2.1, dxMid: -8, dxEnd: 11, color: '#F27BA9', sizePx: 15 },
-  { id: 8, leftPct: 48, delaySec: 1.56, durSec: 2.0, dxMid: -12, dxEnd: -15, color: '#FCE0A2', sizePx: 13 },
-  // Wave 3: golden-rose peak burst right on the 3.0s musical swell, fading by 5.0s
-  { id: 9, leftPct: 52, delaySec: 1.78, durSec: 1.95, dxMid: 11, dxEnd: 14, color: '#F49AC0', sizePx: 15 },
-  { id: 10, leftPct: 49, delaySec: 1.96, durSec: 1.85, dxMid: -9, dxEnd: -14, color: '#F7D994', sizePx: 14 },
-  { id: 11, leftPct: 51, delaySec: 2.14, durSec: 1.75, dxMid: 8, dxEnd: 12, color: '#F9A8C9', sizePx: 13 },
-  { id: 12, leftPct: 50, delaySec: 2.32, durSec: 1.55, dxMid: -5, dxEnd: 6, color: '#FFE7A8', sizePx: 12 },
+  { id: 1, leftPct: 49, delaySec: 0.0, durSec: 1.95, dxMid: -9, dxEnd: -15, color: '#F9A8C9', sizePx: 13 },
+  { id: 2, leftPct: 51, delaySec: 0.24, durSec: 2.0, dxMid: 10, dxEnd: 16, color: '#F7D994', sizePx: 11 },
+  { id: 3, leftPct: 50, delaySec: 0.52, durSec: 2.05, dxMid: -5, dxEnd: 8, color: '#F48EB8', sizePx: 14 },
+  { id: 4, leftPct: 48.5, delaySec: 0.85, durSec: 1.95, dxMid: -11, dxEnd: -13, color: '#FFE7A8', sizePx: 12 },
+  { id: 5, leftPct: 51.5, delaySec: 1.18, durSec: 2.0, dxMid: 9, dxEnd: 14, color: '#F9B5D2', sizePx: 13 },
+  { id: 6, leftPct: 50, delaySec: 1.52, durSec: 2.05, dxMid: -7, dxEnd: 10, color: '#E6B85C', sizePx: 11 },
+  { id: 7, leftPct: 49, delaySec: 1.88, durSec: 1.9, dxMid: -10, dxEnd: -12, color: '#F27BA9', sizePx: 14 },
+  { id: 8, leftPct: 51, delaySec: 2.22, durSec: 1.8, dxMid: 8, dxEnd: 11, color: '#FCE0A2', sizePx: 12 },
+  { id: 9, leftPct: 50, delaySec: 2.55, durSec: 1.65, dxMid: -4, dxEnd: 6, color: '#F49AC0', sizePx: 12 },
 ];
 
+interface BokehOrbSpec {
+  id: number;
+  leftPct: number;
+  bottomPct: number;
+  sizePx: number;
+  color: string;
+  delaySec: number;
+  durSec: number;
+  dx: number;
+}
+
+interface CornerBurstSpec {
+  id: number;
+  side: 'left' | 'right';
+  dx: number;
+  dy: number;
+  rot: number;
+  delaySec: number;
+  color: string;
+  widthPx: number;
+  heightPx: number;
+}
+
 /**
- * 30 lightweight pastel rose, champagne-gold, lilac, and ivory petals in two staggered waves.
+ * 26 lightweight pastel rose, blush, champagne-gold, lilac, and ivory ribbons/petals
+ * rising and fluttering strictly in Layer 1 behind typography and character.
  */
-const FINALE_CONFETTI: readonly ConfettiSpec[] = Array.from({ length: 30 }, (_, idx) => {
-  const palette = ['#F27BA9', '#E6B85C', '#F7D994', '#E3B8F2', '#FFF9EE', '#D94B7D', '#F8BDD6'];
-  const wave: 1 | 2 = idx < 15 ? 1 : 2;
-  const spread = ((idx % 15) - 7) * 26;
+const FINALE_CONFETTI: readonly ConfettiSpec[] = Array.from({ length: 26 }, (_, idx) => {
+  const palette = ['#F27BA9', '#E6B85C', '#F7D994', '#E3B8F2', '#FFF9EE', '#F8BDD6', '#E25B8B'];
+  const wave: 1 | 2 = idx < 13 ? 1 : 2;
+  const spread = ((idx % 13) - 6) * 22;
   return {
     id: idx + 1,
-    leftPct: 6 + ((idx * 17) % 88),
-    topPct: 4 + ((idx * 11) % 24),
-    dx: Math.round(spread * 0.46),
-    dy: 175 + (idx % 5) * 32,
-    rot: (idx % 2 === 0 ? 1 : -1) * (160 + (idx % 6) * 45),
-    delaySec: Number(((wave === 2 ? 0.38 : 0) + (idx % 8) * 0.13).toFixed(2)),
-    durSec: Number((2.2 + (idx % 4) * 0.42).toFixed(2)),
+    leftPct: 5 + ((idx * 19) % 90),
+    topPct: 6 + ((idx * 13) % 26),
+    dx: Math.round(spread * 0.44),
+    dy: 165 + (idx % 5) * 28,
+    rot: (idx % 2 === 0 ? 1 : -1) * (150 + (idx % 6) * 42),
+    delaySec: Number(((wave === 2 ? 0.42 : 0.08) + (idx % 7) * 0.14).toFixed(2)),
+    durSec: Number((2.4 + (idx % 4) * 0.45).toFixed(2)),
     color: palette[idx % palette.length],
-    widthPx: idx % 3 === 0 ? 10 : 7,
-    heightPx: idx % 3 === 0 ? 5.5 : 11,
+    widthPx: idx % 3 === 0 ? 9 : 6.5,
+    heightPx: idx % 3 === 0 ? 5 : 10,
     wave,
   };
 });
+
+/**
+ * Twin bottom-left and bottom-right corner confetti bursts curving gently upward along the outer edges.
+ */
+const FINALE_CORNER_BURSTS: readonly CornerBurstSpec[] = [
+  { id: 1, side: 'left', dx: 26, dy: -115, rot: -140, delaySec: 0.02, color: '#F27BA9', widthPx: 9, heightPx: 5 },
+  { id: 2, side: 'left', dx: 44, dy: -150, rot: 120, delaySec: 0.06, color: '#F6D38A', widthPx: 7, heightPx: 10 },
+  { id: 3, side: 'left', dx: 18, dy: -172, rot: -95, delaySec: 0.1, color: '#E3B8F2', widthPx: 8, heightPx: 5 },
+  { id: 4, side: 'left', dx: 58, dy: -124, rot: 165, delaySec: 0.14, color: '#FFF7E8', widthPx: 6.5, heightPx: 9 },
+  { id: 5, side: 'left', dx: 34, dy: -195, rot: -155, delaySec: 0.18, color: '#E25B8B', widthPx: 8.5, heightPx: 5 },
+  { id: 6, side: 'left', dx: 14, dy: -135, rot: 110, delaySec: 0.22, color: '#F8BDD6', widthPx: 7, heightPx: 7 },
+  { id: 7, side: 'right', dx: -26, dy: -115, rot: 140, delaySec: 0.02, color: '#F27BA9', widthPx: 9, heightPx: 5 },
+  { id: 8, side: 'right', dx: -44, dy: -150, rot: -120, delaySec: 0.06, color: '#F6D38A', widthPx: 7, heightPx: 10 },
+  { id: 9, side: 'right', dx: -18, dy: -172, rot: 95, delaySec: 0.1, color: '#E3B8F2', widthPx: 8, heightPx: 5 },
+  { id: 10, side: 'right', dx: -58, dy: -124, rot: -165, delaySec: 0.14, color: '#FFF7E8', widthPx: 6.5, heightPx: 9 },
+  { id: 11, side: 'right', dx: -34, dy: -195, rot: 155, delaySec: 0.18, color: '#E25B8B', widthPx: 8.5, heightPx: 5 },
+  { id: 12, side: 'right', dx: -14, dy: -135, rot: -110, delaySec: 0.22, color: '#F8BDD6', widthPx: 7, heightPx: 7 },
+];
+
+/**
+ * Soft drifting champagne-gold and blush bokeh orbs continuously rising behind Scene 11.
+ */
+const FINALE_BOKEH_ORBS: readonly BokehOrbSpec[] = [
+  { id: 1, leftPct: 12, bottomPct: 8, sizePx: 16, color: 'rgba(246, 211, 138, 0.32)', delaySec: 0.1, durSec: 4.6, dx: 10 },
+  { id: 2, leftPct: 24, bottomPct: 16, sizePx: 12, color: 'rgba(249, 184, 212, 0.34)', delaySec: 0.9, durSec: 5.1, dx: -12 },
+  { id: 3, leftPct: 82, bottomPct: 12, sizePx: 18, color: 'rgba(246, 211, 138, 0.28)', delaySec: 0.4, durSec: 4.9, dx: -10 },
+  { id: 4, leftPct: 72, bottomPct: 22, sizePx: 11, color: 'rgba(227, 184, 242, 0.32)', delaySec: 1.4, durSec: 4.4, dx: 9 },
+  { id: 5, leftPct: 18, bottomPct: 34, sizePx: 10, color: 'rgba(255, 245, 224, 0.45)', delaySec: 1.9, durSec: 5.4, dx: 8 },
+  { id: 6, leftPct: 88, bottomPct: 30, sizePx: 13, color: 'rgba(249, 184, 212, 0.3)', delaySec: 1.1, durSec: 4.8, dx: -8 },
+  { id: 7, leftPct: 36, bottomPct: 10, sizePx: 9, color: 'rgba(246, 211, 138, 0.3)', delaySec: 2.3, durSec: 4.7, dx: 6 },
+  { id: 8, leftPct: 64, bottomPct: 8, sizePx: 14, color: 'rgba(249, 184, 212, 0.28)', delaySec: 2.0, durSec: 5.2, dx: -7 },
+];
 
 /**
  * Highlights storytelling keywords in Warm Rose Berry (#D94B7D) inside the editorial subtitle card.
@@ -139,17 +195,21 @@ function renderHighlightedCaption(caption: string): ReactNode {
   });
 }
 
-export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayProps) {
+export default function OriginStoryPlay({
+  onComplete,
+  onSkip,
+  onInterruptIntroAudio,
+}: OriginStoryPlayProps) {
   const [sceneIndex, setSceneIndex] = useState(0);
   const [sceneRunKey, setSceneRunKey] = useState(0);
   const [sceneSettled, setSceneSettled] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
-  // Scene 5 (4-Beat Choreographed Starry Kiss) state
-  const [kissBeat, setKissBeat] = useState<'twilight' | 'shyGlance' | 'kissing' | 'afterglow'>(
-    'twilight',
-  );
+  // Scene 5 (5-Phase Realistic Step-Closer Starry Kiss) state
+  const [kissWalkStage, setKissWalkStage] = useState<KissWalkStage>('moonlight');
+  const [kissPhase, setKissPhase] = useState<KissPhase>('approach');
+  const [kissBeat, setKissBeat] = useState<OriginKissBeat>('twilight');
 
   // Scene 6 (Nine Months) state
   const [pregnancyMonth, setPregnancyMonth] = useState(1);
@@ -158,8 +218,7 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
   const [activeGrowthStep, setActiveGrowthStep] = useState<GrowthStep>(SCENE_8_GROWTH_STEPS[0]);
   const [scene9SecondaryActive, setScene9SecondaryActive] = useState(false);
 
-  // Scene 10 (4-Beat Showstopper Finale) state
-  const [scene10Beat, setScene10Beat] = useState<'freeze' | 'curtainLift' | 'finale'>('freeze');
+  // Scene 10 (Padlock Freeze) state
   const [teenExpression, setTeenExpression] = useState<AnamikaTeenExpression>('happy');
   const [isBonkHopping, setIsBonkHopping] = useState(false);
   const [barrierJiggleKey, setBarrierJiggleKey] = useState(0);
@@ -171,14 +230,11 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
   const finaleCopy = useMemo(() => getOriginFinaleCopy(), []);
   const currentScene = ORIGIN_SCENES[sceneIndex] ?? ORIGIN_SCENES[0];
   const isStarryScene = currentScene.id === 'starry_kiss';
-  const isFinaleReveal =
-    currentScene.id === 'freeze_and_finale' &&
-    (scene10Beat === 'curtainLift' || scene10Beat === 'finale');
+  const isPadlockScene = currentScene.id === 'padlock_freeze';
+  const isFinaleScene = currentScene.id === 'grand_finale';
   const fiveTwoBottomPct = useMemo(() => inchesToStageBottomPct(FIVE_TWO_INCHES), []);
 
-  const activeBackdropMood: OriginBackdropMood = isFinaleReveal
-    ? 'gala_finale'
-    : currentScene.backdropMood;
+  const activeBackdropMood: OriginBackdropMood = currentScene.backdropMood;
 
   const clearScheduledTimers = useCallback(() => {
     timersRef.current.forEach((id) => window.clearTimeout(id));
@@ -252,32 +308,61 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
     }
 
     if (scene.id === 'starry_kiss') {
-      // Beat 1 (0.0s -> 0.55s): Full song starts immediately and plays continuously until skipped/left or natural end
+      // Immediately silence any lingering Stage 2 trailing intro audio before Scene 5 soundtrack swells
+      onInterruptIntroAudio?.();
+
+      // Phase 1 (0ms -> 750ms): Moonlight Eye Contact (standing apart, glancing shyly toward each other)
+      setKissWalkStage('moonlight');
+      setKissPhase('approach');
       setKissBeat('twilight');
-      audioRef.current?.startKissCue({
-        restart: true,
-        onEnded: () => {
-          setKissBeat('afterglow');
-          setSceneSettled(true);
-        },
-      });
 
-      // Beat 2 (0.55s -> 1.1s): Shy glance & tiny steps closer into the moonlight beam
+      // Phase 2 (750ms -> 1850ms): 2.5 gentle walking steps closer together
       schedule(() => {
+        setKissWalkStage('stepping');
+        setKissPhase('approach');
         setKissBeat('shyGlance');
-      }, ORIGIN_AUDIO_CONFIG.shyGlanceDelayMs);
+      }, SCENE5_KISS_TIMING.phase2StepStartMs);
 
-      // Beat 3 (1.1s+): Sweet kiss + pulsating soft-pink romantic glow + continuously rising pastel hearts
-      // Held smoothly for the entire duration of the song until the user leaves/skips or the track ends.
+      // Phase 3 (1850ms -> 2400ms): Tender Lean-In, neck-pivoted head tilts & inner arm embrace
       schedule(() => {
-        setKissBeat('kissing');
-        haptics.tap();
-      }, ORIGIN_AUDIO_CONFIG.kissStartDelayMs);
+        setKissWalkStage('leanIn');
+        setKissPhase('leanIn');
+        setKissBeat('leanIn');
+      }, SCENE5_KISS_TIMING.phase3LeanInStartMs);
 
-      // Highlight the Next button once the opening 5s kiss moment has unfolded (without cutting off the song)
+      // Audio Swell (2150ms): 300ms smooth fade-in up to 0.82 right before lip contact
+      schedule(() => {
+        audioRef.current?.startKissCue({ restart: true });
+      }, SCENE5_KISS_TIMING.audioSwellStartMs);
+
+      // Phase 4 (2400ms -> 5900ms, 3.5s hold): Realistic Kiss Hold + soft haptic + hearts + 2 shooting stars
+      schedule(() => {
+        setKissWalkStage('kissing');
+        setKissPhase('kissing');
+        setKissBeat('kissing');
+        try {
+          haptics.vibrateSafe(10);
+        } catch {
+          // silent haptic fallback
+        }
+      }, SCENE5_KISS_TIMING.phase4KissStartMs);
+
+      // Audio Fade-Out (5550ms): Smooth 450ms ramp down from 0.82 -> 0 & clean pause
+      schedule(() => {
+        audioRef.current?.fadeOutAllAndStop(ORIGIN_AUDIO_CONFIG.fadeOutMs);
+      }, SCENE5_KISS_TIMING.audioFadeOutStartMs);
+
+      // Phase 5 (5900ms -> 6600ms+): Shy Pull-Back & Glowing Afterglow
+      schedule(() => {
+        setKissWalkStage('afterglow');
+        setKissPhase('afterglow');
+        setKissBeat('afterglow');
+      }, SCENE5_KISS_TIMING.phase5AfterglowStartMs);
+
+      // Mark Scene 5 settled once shy pull-back completes (Next button stays tappable at any time)
       schedule(() => {
         setSceneSettled(true);
-      }, ORIGIN_AUDIO_CONFIG.kissDurationMs);
+      }, SCENE5_KISS_TIMING.settleMs);
 
       return clearScheduledTimers;
     }
@@ -356,19 +441,20 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
       return clearScheduledTimers;
     }
 
-    if (scene.id === 'freeze_and_finale') {
-      setScene10Beat('freeze');
+    if (scene.id === 'padlock_freeze') {
+      // Scene 10 of 11: Plays ONLY the 14 -> 17 height-lock sequence (1000ms exact per year), then STOPS peacefully!
       setTeenExpression('happy');
       setIsBonkHopping(false);
+      setBarrierJiggleKey(0);
       setActiveGrowthStep(SCENE_10_FREEZE_STEPS[0]);
 
-      // Beat 1 (0.0s -> 3.0s): Comedic 14 -> 17 Padlock Freeze (1.0s exact per year)
+      // Age 14 · 2023 · 5'2" (0.0s -> 1.0s): Padlock barrier snaps cleanly above her crown
       schedule(() => {
         audioRef.current?.playPadlockSlam();
         haptics.vibrateSafe(22);
       }, 120);
 
-      // Age 15 · 2024 (1.0s): Year flips cleanly + question-mark sparkle pops above Anamika's head
+      // Age 15 · 2024 · Still 5'2" (1.0s -> 2.0s): Year flips + cute question sparkle pops
       schedule(() => {
         setActiveGrowthStep(SCENE_10_FREEZE_STEPS[1]);
         setTeenExpression('happy');
@@ -376,7 +462,7 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
         haptics.vibrateSafe(10);
       }, 1000);
 
-      // Age 16 · 2025 (2.0s): The Tiptoe Bonk Gag!
+      // Age 16 · 2025 · Still 5'2" (2.0s -> 3.0s): Tiptoe jump & bonk against the level 5'2" barrier
       schedule(() => {
         setActiveGrowthStep(SCENE_10_FREEZE_STEPS[2]);
         setTeenExpression('determined');
@@ -384,19 +470,19 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
         audioRef.current?.playYearTick(16);
       }, 2000);
 
-      // Peak of Age 16 tiptoe hop: BONKS directly into the 5'2" padlock bar + 4 comic impact stars
+      // Peak of Age 16 -10px tiptoe hop: crown taps underside of level barrier + comic boing SFX + 18ms haptic
       schedule(() => {
         setTeenExpression('bonkBlush');
         setBarrierJiggleKey((k) => k + 1);
         audioRef.current?.playComicBonk();
         haptics.vibrateSafe(18);
-      }, 2250);
+      }, 2240);
 
       schedule(() => {
         setIsBonkHopping(false);
-      }, 2880);
+      }, 2820);
 
-      // Age 17 · 2026 (3.0s): Year counter flashes golden and locks on 2026 · AGE 17 · 5'2"
+      // Age 17 · 2026 · Still 5'2" (3.0s+): Cheeky blush smile, golden shimmer telemetry lock, then STOP on Scene 10
       schedule(() => {
         setActiveGrowthStep(SCENE_10_FREEZE_STEPS[3]);
         setTeenExpression('happy');
@@ -404,21 +490,24 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
         haptics.vibrateSafe(12);
       }, 3000);
 
-      // Beat 2 (3.5s -> 4.0s): Dramatic Curtain-Lift Transformation
+      // Pulse Next › softly once Scene 10 settles (NEVER auto-advances to Scene 11!)
       schedule(() => {
-        setScene10Beat('curtainLift');
-        setTeenExpression('birthdayQueen');
-      }, 3500);
+        setSceneSettled(true);
+      }, scene.settleDurationMs);
 
-      // Beat 3 (4.0s -> 5.0s): Multi-Wave Confetti, Starbursts & Headline Reveal
+      return clearScheduledTimers;
+    }
+
+    if (scene.id === 'grand_finale') {
+      // Scene 11 of 11: Choreographed 3-Beat Grand Finale Entrance
+      // Beat 1 (0 -> 400ms): Curtain shimmer + golden radial bloom + twin corner confetti bursts
+      // Beat 2 (200 -> 650ms): Headline glide up + warm major-7th harp/bell sparkle chime + celebratory haptic
       schedule(() => {
-        setScene10Beat('finale');
-        setTeenExpression('birthdayQueen');
         audioRef.current?.playFinaleSparkle();
         haptics.celebrate();
-      }, 4000);
+      }, 200);
 
-      // Beat 4: Holding state ready for Enter the Birthday World ›
+      // Beat 3 (400 -> 900ms): AnamikaTeen celebratory bouncy hop + steady bokeh orbs
       schedule(() => {
         setSceneSettled(true);
       }, scene.settleDurationMs);
@@ -427,7 +516,7 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
     }
 
     return clearScheduledTimers;
-  }, [sceneIndex, sceneRunKey, clearScheduledTimers, schedule]);
+  }, [sceneIndex, sceneRunKey, clearScheduledTimers, schedule, onInterruptIntroAudio]);
 
   const handleNext = useCallback(() => {
     if (exitingRef.current) return;
@@ -436,21 +525,8 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
 
     if (sceneIndex < ORIGIN_TOTAL_SCENES - 1) {
       setSceneIndex((prev) => prev + 1);
-      return;
     }
-
-    // On Scene 10 Beat 1, tapping Next jumps directly into the Grand Finale
-    if (scene10Beat === 'freeze') {
-      clearScheduledTimers();
-      setActiveGrowthStep(SCENE_10_FREEZE_STEPS[3]);
-      setIsBonkHopping(false);
-      setScene10Beat('finale');
-      setTeenExpression('birthdayQueen');
-      setSceneSettled(true);
-      audioRef.current?.playFinaleSparkle();
-      haptics.celebrate();
-    }
-  }, [sceneIndex, scene10Beat, clearScheduledTimers]);
+  }, [sceneIndex]);
 
   const handleBack = useCallback(() => {
     if (exitingRef.current || sceneIndex <= 0) return;
@@ -462,39 +538,52 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
   const handleReplayScene = useCallback(() => {
     if (exitingRef.current) return;
     haptics.tap();
-    if (ORIGIN_SCENES[sceneIndex]?.id !== 'starry_kiss') {
-      audioRef.current?.fadeOutAllAndStop(150);
-    }
+    audioRef.current?.fadeOutAllAndStop(150);
     setSceneRunKey((k) => k + 1);
-  }, [sceneIndex]);
+  }, []);
 
   const handleEnterBirthdayWorld = useCallback(() => {
     if (exitingRef.current) return;
     exitingRef.current = true;
-    haptics.celebrate();
+    try {
+      haptics.celebrate();
+    } catch {
+      // silent haptic fallback
+    }
+    onInterruptIntroAudio?.();
     audioRef.current?.fadeOutAllAndStop(150);
     audioRef.current?.playFinaleSparkle();
     clearScheduledTimers();
     setIsExiting(true);
-
-    schedule(() => {
-      onComplete();
-    }, 450);
-  }, [clearScheduledTimers, onComplete, schedule]);
+    onComplete();
+  }, [clearScheduledTimers, onComplete, onInterruptIntroAudio]);
 
   const handleSkipStory = useCallback(() => {
     if (exitingRef.current) return;
     exitingRef.current = true;
-    haptics.tap();
+    try {
+      haptics.celebrate();
+    } catch {
+      // silent haptic fallback
+    }
+    onInterruptIntroAudio?.();
     audioRef.current?.fadeOutAllAndStop(150);
+    audioRef.current?.playFinaleSparkle();
     clearScheduledTimers();
+    setIsExiting(true);
     onSkip(sceneIndex * 1000);
-  }, [clearScheduledTimers, onSkip, sceneIndex]);
+  }, [clearScheduledTimers, onInterruptIntroAudio, onSkip, sceneIndex]);
 
   const handleToggleMute = useCallback(() => {
     haptics.tap();
-    setIsMuted((prev) => !prev);
-  }, []);
+    setIsMuted((prev) => {
+      const nextMuted = !prev;
+      if (nextMuted) {
+        onInterruptIntroAudio?.();
+      }
+      return nextMuted;
+    });
+  }, [onInterruptIntroAudio]);
 
   // Derive moods for Shivjee & Archana
   const shivjeeMood: ShivjeeMood =
@@ -528,7 +617,7 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
             : 'calm';
 
   const activeCaption = useMemo(() => {
-    if (isFinaleReveal) {
+    if (isFinaleScene) {
       return finaleCopy.subcaption;
     }
     if (
@@ -539,21 +628,15 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
       return currentScene.secondaryCaption;
     }
     return currentScene.caption;
-  }, [currentScene, isFinaleReveal, finaleCopy.subcaption, scene9SecondaryActive]);
+  }, [currentScene, isFinaleScene, finaleCopy.subcaption, scene9SecondaryActive]);
 
   const isGrowthRulerScene =
     currentScene.id === 'baby_to_toddler' ||
     currentScene.id === 'growing_to_14' ||
-    (currentScene.id === 'freeze_and_finale' && scene10Beat !== 'finale');
-
-  const isRulerDissolving =
-    currentScene.id === 'freeze_and_finale' && scene10Beat === 'curtainLift';
+    isPadlockScene;
 
   const pointerBottomPct = inchesToStageBottomPct(activeGrowthStep.inches);
-  const isAge17GoldLock =
-    currentScene.id === 'freeze_and_finale' &&
-    scene10Beat === 'freeze' &&
-    activeGrowthStep.age === 17;
+  const isAge17GoldLock = isPadlockScene && activeGrowthStep.age === 17;
 
   const isPregnancyMilestonePulse =
     currentScene.id === 'nine_months' &&
@@ -590,15 +673,15 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
       data-scene-number={currentScene.sceneNumber}
       data-kiss-beat={isStarryScene ? kissBeat : undefined}
       data-scene-settled={sceneSettled ? 'true' : 'false'}
-      className={`fixed inset-0 z-[9500] flex h-[100dvh] flex-col justify-between overflow-hidden transition-all duration-[450ms] ease-out ${
-        isExiting ? 'scale-[1.03] opacity-0 pointer-events-none' : 'scale-100 opacity-100'
+      className={`fixed inset-0 z-[9500] flex h-[100dvh] flex-col justify-between gap-[clamp(10px,2vh,16px)] overflow-hidden transition-all duration-[380ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        isExiting ? 'scale-[1.035] opacity-0 pointer-events-none' : 'scale-100 opacity-100'
       }`}
       style={{
         background: isStarryScene
           ? 'linear-gradient(180deg, #271334 0%, #562A55 54%, #A85781 100%)'
           : 'radial-gradient(circle at 50% 18%, #FFFDF9 0%, #FFF5FA 48%, #FCE9F2 100%)',
         transition:
-          'background 900ms cubic-bezier(0.22, 1, 0.36, 1), opacity 450ms ease-out, transform 450ms ease-out',
+          'background 900ms cubic-bezier(0.22, 1, 0.36, 1), opacity 380ms cubic-bezier(0.22, 1, 0.36, 1), transform 380ms cubic-bezier(0.22, 1, 0.36, 1)',
       }}
     >
       {/* Dynamic Pulsating Soft-Pink Romantic Lighting Overlay (intensifies during Scene 5 kiss) */}
@@ -623,63 +706,51 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
         />
       </div>
 
-      {/* Magical Warm Ivory-Rose Light Bloom Overlay on Exit */}
-      {isExiting && (
-        <div
-          aria-hidden="true"
-          className="origin-story-exit-bloom pointer-events-none fixed inset-0 z-[110]"
-          style={{
-            background:
-              'radial-gradient(circle at 50% 50%, #FFFDF7 0%, #FFF2F7 55%, rgba(255,248,251,0.96) 100%)',
-          }}
-        />
-      )}
-
-      {/* Top Chrome: Mute toggle, Stepped Chapter Progress, Skip Story */}
-      <header className="relative z-30 mx-auto flex w-full max-w-[520px] shrink-0 items-center justify-between gap-2 px-4 pt-[max(12px,env(safe-area-inset-top))] sm:px-6 sm:pt-5">
+      {/* Top Chrome: Single-line Sound On/Muted pill, 11-Scene Progress Counter, Single-line Skip Story pill */}
+      <header className="relative z-30 mx-auto flex w-full max-w-[440px] shrink-0 items-center justify-between gap-2 px-4 pt-[max(12px,env(safe-area-inset-top))] sm:pt-4">
         <button
           type="button"
           onClick={handleToggleMute}
           data-testid="origin-mute-btn"
           aria-label={isMuted ? 'Unmute story audio' : 'Mute story audio'}
-          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide transition-colors ${
+          className={`inline-flex min-h-[32px] shrink-0 items-center gap-[5px] rounded-full border px-[11px] py-[6px] text-[11px] font-semibold tracking-wide whitespace-nowrap transition-colors cursor-pointer ${
             isStarryScene
               ? 'border-white/25 bg-white/15 text-[#FFF8FB] hover:bg-white/25'
-              : 'border-[#D94B7D]/20 bg-white/85 text-[#3A1233] shadow-xs hover:bg-white'
+              : 'border-[#D94B7D]/20 bg-[#FFFDFB]/92 text-[#3A1233] shadow-2xs hover:bg-white'
           }`}
         >
-          {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+          {isMuted ? <VolumeX className="h-3.5 w-3.5 shrink-0" /> : <Volume2 className="h-3.5 w-3.5 shrink-0" />}
           <span>{isMuted ? 'Muted' : 'Sound On'}</span>
         </button>
 
         <div
-          className="flex flex-col items-center gap-1"
+          className="flex min-w-0 flex-1 flex-col items-center gap-1"
           data-testid="origin-scene-counter"
           aria-live="polite"
         >
           <span
-            className={`text-[11px] font-bold tracking-[0.14em] uppercase ${
+            className={`text-[10.5px] font-bold tracking-[0.12em] whitespace-nowrap uppercase ${
               isStarryScene ? 'text-[#FFE7B8]' : 'text-[#A03D67]'
             }`}
           >
             Scene {currentScene.sceneNumber} of {ORIGIN_TOTAL_SCENES}
           </span>
-          <div className="flex items-center gap-1" aria-hidden="true">
+          <div className="flex items-center gap-[3px]" aria-hidden="true">
             {ORIGIN_SCENES.map((s) => {
               const isCompleted = s.index < sceneIndex;
               const isCurrent = s.index === sceneIndex;
               return (
                 <span
                   key={s.id}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                  className={`h-[5px] rounded-full transition-all duration-300 ${
                     isCurrent
                       ? isStarryScene
-                        ? 'w-5 bg-[#F7D994]'
-                        : 'w-5 bg-[#D94B7D]'
+                        ? 'w-3.5 bg-[#F7D994]'
+                        : 'w-3.5 bg-[#D94B7D]'
                       : isCompleted
                         ? isStarryScene
-                          ? 'w-2 bg-[#F7D994]/70'
-                          : 'w-2 bg-[#E6B85C]'
+                          ? 'w-1.5 bg-[#F7D994]/70'
+                          : 'w-1.5 bg-[#E6B85C]'
                         : isStarryScene
                           ? 'w-1.5 bg-white/30'
                           : 'w-1.5 bg-[#D94B7D]/20'
@@ -694,27 +765,27 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
           type="button"
           onClick={handleSkipStory}
           data-testid="origin-skip-btn"
-          className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide transition-colors ${
+          className={`inline-flex min-h-[32px] shrink-0 items-center gap-[5px] rounded-full border px-[11px] py-[6px] text-[11px] font-semibold tracking-wide whitespace-nowrap transition-colors cursor-pointer ${
             isStarryScene
               ? 'border-white/25 bg-white/15 text-[#FFF8FB] hover:bg-white/25'
-              : 'border-[#D94B7D]/20 bg-white/85 text-[#3A1233] shadow-xs hover:bg-white'
+              : 'border-[#D94B7D]/20 bg-[#FFFDFB]/92 text-[#3A1233] shadow-2xs hover:bg-white'
           }`}
         >
           <span>Skip Story</span>
-          <ChevronRight className="h-3.5 w-3.5" />
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
         </button>
       </header>
 
       {/* Main Illustrated Storybook Cinema Stage */}
-      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-[480px] flex-1 items-center justify-center px-4 py-1.5 sm:py-2">
+      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-[440px] flex-1 items-center justify-center px-4">
         <div
-          className={`relative flex h-full max-h-[min(415px,54dvh)] w-full flex-col items-center justify-end overflow-hidden rounded-[28px] border transition-all duration-700 sm:max-h-[min(465px,58dvh)] ${
+          className={`relative flex h-full max-h-[min(425px,56dvh)] w-full flex-col items-center justify-end overflow-hidden rounded-[28px] border transition-all duration-700 sm:max-h-[min(460px,59dvh)] ${
             isRomanticPeak
               ? 'border-[#F9B5D2]/55 shadow-[0_22px_58px_rgba(244,114,182,0.38)]'
               : isStarryScene
                 ? 'border-[#F7D994]/35 shadow-[0_22px_50px_rgba(32,12,40,0.42)]'
-                : isFinaleReveal
-                  ? 'border-[#E6B85C]/50 shadow-[0_20px_50px_rgba(217,75,125,0.18)]'
+                : isFinaleScene
+                  ? 'border-[#E6B85C]/55 shadow-[0_20px_50px_rgba(217,75,125,0.18)]'
                   : 'border-[#D94B7D]/20 shadow-[0_18px_45px_rgba(181,74,119,0.12)]'
           }`}
         >
@@ -887,116 +958,157 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
               </div>
             )}
 
-            {/* ================= SCENE 5: 4-BEAT STARRY NIGHT KISS ================= */}
-            {currentScene.id === 'starry_kiss' && (
-              <div className="relative z-10 flex h-full w-full flex-col items-center justify-between px-4 pt-4 pb-4">
-                {/* Compact Replay Kiss pill tucked in top-left of stage */}
-                <div className="relative z-20 flex w-full justify-start">
-                  <button
-                    type="button"
-                    onClick={handleReplayScene}
-                    data-testid="origin-replay-kiss-btn"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[#F7D994]/40 bg-white/15 px-3 py-1.5 text-[11px] font-semibold text-[#FFF7FA] backdrop-blur-xs transition-colors hover:bg-white/25"
-                  >
-                    <RotateCcw className="h-3 w-3 text-[#F7D994]" />
-                    <span>Replay Kiss</span>
-                  </button>
-                </div>
+            {/* ================= SCENE 5: 5-PHASE REALISTIC STEP-CLOSER STARRY KISS ================= */}
+            {currentScene.id === 'starry_kiss' && (() => {
+              const kissPose = getScene5KissPose(kissWalkStage);
+              const isSteppingPhase = kissWalkStage === 'stepping';
+              const isLeanOrKissPhase = kissWalkStage === 'leanIn' || kissWalkStage === 'kissing';
+              const isKissHoldPhase = kissWalkStage === 'kissing';
+              const isAfterglowPhase = kissWalkStage === 'afterglow';
+              const poseTransition = isSteppingPhase
+                ? `transform ${SCENE5_KISS_TIMING.phase2StepDurationMs}ms cubic-bezier(0.37, 0, 0.63, 1)`
+                : isAfterglowPhase
+                  ? `transform ${SCENE5_KISS_TIMING.phase5PullBackDurationMs}ms cubic-bezier(0.22, 1, 0.36, 1)`
+                  : `transform ${SCENE5_KISS_TIMING.phase3LeanInDurationMs}ms cubic-bezier(0.37, 0, 0.63, 1)`;
 
-                {/* Pulsing Warm Rose-Gold Heart Halo behind Shivjee & Archana during Beat 3 Kiss */}
+              return (
                 <div
-                  aria-hidden="true"
-                  className={`pointer-events-none absolute bottom-[22%] left-1/2 z-10 h-56 w-56 -translate-x-1/2 rounded-full transition-opacity duration-500 ${
-                    kissBeat === 'kissing'
-                      ? 'origin-story-heart-halo opacity-100'
-                      : kissBeat === 'afterglow'
-                        ? 'opacity-35'
-                        : 'opacity-0'
-                  }`}
-                  style={{
-                    background:
-                      'radial-gradient(circle, rgba(249,168,201,0.42) 0%, rgba(247,217,148,0.24) 48%, rgba(45,24,59,0) 74%)',
-                  }}
-                />
+                  data-testid="origin-kiss-stage"
+                  data-kiss-phase={kissPhase}
+                  data-kiss-walk-stage={kissWalkStage}
+                  className="relative z-10 flex h-full w-full flex-col items-center justify-between px-4 pt-4 pb-4"
+                >
+                  {/* Compact Replay Kiss pill tucked in top-left of stage */}
+                  <div className="relative z-20 flex w-full justify-start">
+                    <button
+                      type="button"
+                      onClick={handleReplayScene}
+                      data-testid="origin-replay-kiss-btn"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[#F7D994]/40 bg-white/15 px-3 py-1.5 text-[11px] font-semibold text-[#FFF7FA] backdrop-blur-xs transition-colors hover:bg-white/25 cursor-pointer"
+                    >
+                      <RotateCcw className="h-3 w-3 text-[#F7D994]" />
+                      <span>Replay Kiss</span>
+                    </button>
+                  </div>
 
-                {/* 12 Continuously Rising Pastel Rose & Gold Hearts while the song plays */}
-                {(kissBeat === 'kissing' || kissBeat === 'afterglow') && (
+                  {/* Soft Luminous Rose-Gold Moonlight Aura Halo behind silhouettes during Phase 4 Kiss */}
                   <div
-                    className={`pointer-events-none absolute inset-x-0 bottom-[38%] z-20 h-48 transition-opacity duration-700 ${
-                      kissBeat === 'afterglow' ? 'opacity-0' : 'opacity-100'
+                    aria-hidden="true"
+                    className={`pointer-events-none absolute bottom-[22%] left-1/2 z-10 h-56 w-56 -translate-x-1/2 rounded-full transition-opacity duration-500 ${
+                      isKissHoldPhase
+                        ? 'origin-story-heart-halo opacity-100'
+                        : isAfterglowPhase
+                          ? 'opacity-40'
+                          : isLeanOrKissPhase
+                            ? 'opacity-45'
+                            : 'opacity-0'
                     }`}
-                  >
-                    {KISS_HEARTS.map((heart) => (
-                      <svg
-                        key={heart.id}
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                        className="origin-story-heart absolute bottom-0"
+                    style={{
+                      background:
+                        'radial-gradient(circle, rgba(249,168,201,0.46) 0%, rgba(247,217,148,0.28) 46%, rgba(45,24,59,0) 74%)',
+                    }}
+                  />
+
+                  {/* 9 Delicate Small Pastel Rose & Champagne-Gold Hearts rising from center contact point */}
+                  {(isKissHoldPhase || isAfterglowPhase) && (
+                    <div
+                      className={`pointer-events-none absolute inset-x-0 bottom-[42%] z-20 h-44 transition-opacity duration-700 ${
+                        isAfterglowPhase ? 'opacity-0' : 'opacity-100'
+                      }`}
+                    >
+                      {KISS_HEARTS.map((heart) => (
+                        <svg
+                          key={heart.id}
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                          className="origin-story-heart absolute bottom-0"
+                          style={{
+                            left: `${heart.leftPct}%`,
+                            width: `${heart.sizePx}px`,
+                            height: `${heart.sizePx}px`,
+                            ['--heart-delay' as string]: `${heart.delaySec}s`,
+                            ['--heart-dur' as string]: `${heart.durSec}s`,
+                            ['--heart-dx-mid' as string]: `${heart.dxMid}px`,
+                            ['--heart-dx-end' as string]: `${heart.dxEnd}px`,
+                          }}
+                        >
+                          <path
+                            d="M12 21s-6.8-4.5-9.2-8.4C.9 9.5 2.4 5.5 6 4.8c2.1-.4 4.2.6 6 2.5 1.8-1.9 3.9-2.9 6-2.5 3.6.7 5.1 4.7 3.2 7.8C18.8 16.5 12 21 12 21z"
+                            fill={heart.color}
+                          />
+                        </svg>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Centered Unified 320x230 Kiss Stage: 100% Resolution-Independent Contact Math */}
+                  <div className="relative z-10 flex h-[76%] w-full items-end justify-center">
+                    <div
+                      className="relative h-full max-w-full"
+                      style={{ aspectRatio: '320 / 230' }}
+                    >
+                      {/* Shivjee Kumar (Left -> steps inward & leans forward +3.5deg, head +7deg) */}
+                      <div
+                        data-testid="origin-kiss-shivjee"
+                        className="absolute bottom-0 left-[25%] z-10 h-full w-[50%] will-change-transform"
                         style={{
-                          left: `${heart.leftPct}%`,
-                          width: `${heart.sizePx}px`,
-                          height: `${heart.sizePx}px`,
-                          ['--heart-delay' as string]: `${heart.delaySec}s`,
-                          ['--heart-dur' as string]: `${heart.durSec}s`,
-                          ['--heart-dx-mid' as string]: `${heart.dxMid}px`,
-                          ['--heart-dx-end' as string]: `${heart.dxEnd}px`,
+                          transformOrigin: '50% 95.65%',
+                          transform: `translate3d(${kissPose.shivjee.translateXPct}%, ${kissPose.shivjee.translateYPct}%, 0) rotate(${kissPose.shivjee.torsoRotateDeg}deg)`,
+                          transition: poseTransition,
                         }}
                       >
-                        <path
-                          d="M12 21s-6.8-4.5-9.2-8.4C.9 9.5 2.4 5.5 6 4.8c2.1-.4 4.2.6 6 2.5 1.8-1.9 3.9-2.9 6-2.5 3.6.7 5.1 4.7 3.2 7.8C18.8 16.5 12 21 12 21z"
-                          fill={heart.color}
-                        />
-                      </svg>
-                    ))}
-                  </div>
-                )}
+                        <div
+                          className={`h-full w-full ${
+                            isSteppingPhase
+                              ? 'origin-story-kiss-footsteps'
+                              : isKissHoldPhase
+                                ? 'origin-story-kiss-breathe'
+                                : 'origin-story-torso-breathe'
+                          }`}
+                        >
+                          <ShivjeeCharacter
+                            mood={shivjeeMood}
+                            kissPhase={kissPhase}
+                            headTiltDeg={kissPose.shivjee.headTiltDeg}
+                            className="h-full w-full"
+                          />
+                        </div>
+                      </div>
 
-                {/* 4-Beat Romance-Comedy Character Positioning synced to the 5-second audio */}
-                <div className="relative z-10 flex h-[74%] w-full items-end justify-center">
-                  <div
-                    className="h-full transition-transform duration-[540ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-                    style={{
-                      transform:
-                        kissBeat === 'kissing'
-                          ? 'translate3d(21px, 0, 0) rotate(2.4deg)'
-                          : kissBeat === 'shyGlance'
-                            ? 'translate3d(8px, -2px, 0) rotate(0.8deg)'
-                            : kissBeat === 'afterglow'
-                              ? 'translate3d(12px, 0, 0)'
-                              : 'translate3d(-14px, 0, 0)',
-                    }}
-                  >
-                    <div className="origin-story-torso-breathe h-full">
-                      <ShivjeeCharacter mood={shivjeeMood} className="h-full w-auto" />
-                    </div>
-                  </div>
-                  <div
-                    className="h-[97%] transition-transform duration-[540ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-                    style={{
-                      transform:
-                        kissBeat === 'kissing'
-                          ? 'translate3d(-21px, 0, 0) rotate(-2.4deg)'
-                          : kissBeat === 'shyGlance'
-                            ? 'translate3d(-8px, -2px, 0) rotate(-0.8deg)'
-                            : kissBeat === 'afterglow'
-                              ? 'translate3d(-12px, 0, 0)'
-                              : 'translate3d(14px, 0, 0)',
-                    }}
-                  >
-                    <div
-                      className="origin-story-torso-breathe h-full"
-                      style={{ animationDelay: '0.5s' }}
-                    >
-                      <ArchanaCharacter
-                        mood={archanaMood}
-                        pregnancyMonth={0}
-                        className="h-full w-auto"
-                      />
+                      {/* Archana (Right -> steps inward, graceful tiptoe lift & leans forward -3.5deg, head -7deg) */}
+                      <div
+                        data-testid="origin-kiss-archana"
+                        className="absolute bottom-0 left-[25%] z-20 h-full w-[50%] will-change-transform"
+                        style={{
+                          transformOrigin: '50% 95.65%',
+                          transform: `translate3d(${kissPose.archana.translateXPct}%, ${kissPose.archana.translateYPct}%, 0) rotate(${kissPose.archana.torsoRotateDeg}deg)`,
+                          transition: poseTransition,
+                        }}
+                      >
+                        <div
+                          className={`h-full w-full ${
+                            isSteppingPhase
+                              ? 'origin-story-kiss-footsteps'
+                              : isKissHoldPhase
+                                ? 'origin-story-kiss-breathe'
+                                : 'origin-story-torso-breathe'
+                          }`}
+                          style={{ animationDelay: isSteppingPhase ? '0.09s' : '0.45s' }}
+                        >
+                          <ArchanaCharacter
+                            mood={archanaMood}
+                            pregnancyMonth={0}
+                            kissPhase={kissPhase}
+                            headTiltDeg={kissPose.archana.headTiltDeg}
+                            className="h-full w-full"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* ================= SCENE 6: NINE MONTHS ================= */}
             {currentScene.id === 'nine_months' && (
@@ -1111,97 +1223,89 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
               </div>
             )}
 
-            {/* ================= SCENES 8, 9, 10 BEAT 1: PROPORTIONAL HEIGHT RULER STAGE ================= */}
+            {/* ================= SCENES 8, 9, 10: PROPORTIONAL HEIGHT RULER STAGE ================= */}
             {isGrowthRulerScene && (
               <div className="relative z-10 flex h-full w-full flex-col justify-end px-3 pt-3 pb-3">
                 {/* Top-left Age · Year · Height telemetry pill with crisp digit-roll animation */}
                 <div
                   data-testid="origin-growth-telemetry"
-                  className={`absolute top-3.5 left-3.5 z-30 inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-extrabold tracking-wide shadow-xs transition-all duration-300 ${
-                    isRulerDissolving
-                      ? 'translate-x-4 opacity-0'
-                      : isAge17GoldLock
-                        ? 'border-[#E6B85C] bg-gradient-to-r from-[#FFF4C8] via-[#FFF9E6] to-[#FFE8F1] text-[#3A1233] shadow-[0_0_22px_rgba(230,184,92,0.55)]'
-                        : 'border-[#D94B7D]/25 bg-white/95 text-[#3A1233]'
+                  className={`absolute top-3.5 left-3.5 z-30 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11.5px] font-extrabold tracking-wide whitespace-nowrap shadow-xs transition-all duration-300 ${
+                    isAge17GoldLock
+                      ? 'border-[#E6B85C] bg-gradient-to-r from-[#FFF4C8] via-[#FFF9E6] to-[#FFE8F1] text-[#3A1233] shadow-[0_0_22px_rgba(230,184,92,0.52)]'
+                      : 'border-[#D94B7D]/25 bg-white/95 text-[#3A1233]'
                   }`}
                 >
+                  {isAge17GoldLock && (
+                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#D94B7D]" aria-hidden="true" />
+                  )}
                   <span
                     key={`age_${activeGrowthStep.age}`}
                     className="origin-story-digit-roll inline-block text-[#D94B7D]"
                   >
-                    {isAge17GoldLock
-                      ? `${activeGrowthStep.year} · AGE ${activeGrowthStep.age} · ${activeGrowthStep.heightLabel}`
-                      : `AGE ${activeGrowthStep.age}`}
+                    AGE {activeGrowthStep.age}
                   </span>
-                  {!isAge17GoldLock && (
-                    <>
-                      <span className="text-[#C899AF]">·</span>
-                      <span
-                        key={`yr_${activeGrowthStep.year}`}
-                        className="origin-story-digit-roll inline-block"
-                      >
-                        {activeGrowthStep.year}
-                      </span>
-                      <span className="text-[#C899AF]">·</span>
-                      <span
-                        key={`ht_${activeGrowthStep.heightLabel}`}
-                        className="origin-story-digit-roll inline-block text-[#A83862]"
-                      >
-                        {activeGrowthStep.heightLabel}
-                      </span>
-                    </>
-                  )}
+                  <span className="text-[#C899AF]">·</span>
+                  <span
+                    key={`yr_${activeGrowthStep.year}`}
+                    className="origin-story-digit-roll inline-block"
+                  >
+                    {activeGrowthStep.year}
+                  </span>
+                  <span className="text-[#C899AF]">·</span>
+                  <span
+                    key={`ht_${activeGrowthStep.heightLabel}`}
+                    className="origin-story-digit-roll inline-block text-[#A83862]"
+                  >
+                    {activeGrowthStep.heightLabel}
+                  </span>
                 </div>
 
                 {/* Unified 230-unit proportional growth & height-ruler coordinate frame */}
                 <div className="relative mx-auto flex h-[86%] w-full max-w-[360px] items-end justify-center">
-                  {/* Right-edge pastel height ruler (slides in from right, dissolves out in Beat 2) */}
+                  {/* Right-edge pastel height ruler (renders ALL foot ticks 1'0" through 6'0" + pixel-aligned 5'2") */}
                   <div
                     aria-hidden="true"
-                    className={`pointer-events-none absolute top-0 right-1 bottom-0 z-10 w-16 border-l border-[#D94B7D]/22 transition-all duration-500 ${
-                      isRulerDissolving
-                        ? 'origin-story-ruler-dissolve'
-                        : 'origin-story-ruler-slide-in'
-                    }`}
+                    data-testid="origin-height-ruler"
+                    className="origin-story-ruler-slide-in pointer-events-none absolute top-0 right-1 bottom-0 z-10 w-16 border-l border-[#D94B7D]/22"
                   >
                     {ORIGIN_RULER_TICKS.map((tick) => {
                       const bottomPct = inchesToStageBottomPct(tick.inches);
+                      const tickBottomStyle = tick.isFiveTwo
+                        ? `calc(${bottomPct}% + 6px)`
+                        : `${bottomPct}%`;
                       return (
                         <div
                           key={tick.label}
-                          className="absolute left-0 flex w-full translate-y-1/2 items-center gap-1.5"
-                          style={{ bottom: `${bottomPct}%` }}
+                          data-testid={tick.isFiveTwo ? 'origin-ruler-5-2' : undefined}
+                          className="absolute left-0 flex w-full translate-y-1/2 items-center gap-1"
+                          style={{ bottom: tickBottomStyle }}
                         >
                           <span
-                            className={`block h-[1.5px] ${
+                            className={`block h-[1.5px] shrink-0 ${
                               tick.isFiveTwo
-                                ? 'w-5 bg-[#D94B7D]'
-                                : tick.major
-                                  ? 'w-3.5 bg-[#C58CA5]'
-                                  : 'w-2 bg-[#DEC0CE]'
+                                ? 'w-4 bg-[#D94B7D]'
+                                : 'w-3 bg-[#C58CA5]'
                             }`}
                           />
-                          {tick.major && (
-                            <span
-                              className={`text-[10px] leading-none font-bold ${
-                                tick.isFiveTwo
-                                  ? 'rounded-full bg-[#D94B7D] px-1.5 py-0.5 text-[9.5px] text-white shadow-xs'
-                                  : 'text-[#8C5A72]'
-                              }`}
-                            >
-                              {tick.label}
-                            </span>
-                          )}
+                          <span
+                            className={`leading-none font-bold whitespace-nowrap ${
+                              tick.isFiveTwo
+                                ? 'rounded-full bg-[#D94B7D] px-1.5 py-[2px] text-[9.5px] font-extrabold text-white shadow-xs'
+                                : 'text-[9.5px] text-[#8C5A72]'
+                            }`}
+                          >
+                            {tick.label}
+                          </span>
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* Glowing animated rose-gold height tracker beam connecting crown to ruler */}
-                  {currentScene.id !== 'freeze_and_finale' && (
+                  {/* Glowing animated rose-gold height tracker beam connecting crown to ruler (Scenes 8 & 9) */}
+                  {!isPadlockScene && (
                     <div
                       aria-hidden="true"
-                      className="pointer-events-none absolute right-14 left-6 z-10 flex items-center transition-all duration-300 ease-out"
+                      className="pointer-events-none absolute right-[68px] left-5 z-10 flex items-center transition-all duration-300 ease-out"
                       style={{ bottom: `${pointerBottomPct}%` }}
                     >
                       <div
@@ -1227,29 +1331,31 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
                     </div>
                   )}
 
-                  {/* Scene 10 Beat 1: 5'2" Dashed Laser/Tape Padlock Barrier right at Anamika's crown */}
-                  {currentScene.id === 'freeze_and_finale' && (
+                  {/* Scene 10 of 11: Strictly Level 5'2" Dashed Barrier 6px ABOVE crown + 10px pill gap */}
+                  {isPadlockScene && (
                     <div
                       key={`barrier_${barrierJiggleKey}`}
                       data-testid="origin-padlock-barrier"
-                      className={`pointer-events-none absolute right-12 left-4 z-30 transition-all duration-500 ${
-                        isRulerDissolving
-                          ? 'origin-story-ruler-dissolve'
-                          : barrierJiggleKey > 0
-                            ? 'origin-story-barrier-jiggle'
-                            : 'origin-story-padlock-slam'
+                      className={`pointer-events-none absolute right-[68px] left-3 z-30 ${
+                        barrierJiggleKey > 0
+                          ? 'origin-story-barrier-jiggle'
+                          : 'origin-story-padlock-slam'
                       }`}
-                      style={{ bottom: `${fiveTwoBottomPct}%` }}
+                      style={{ bottom: `calc(${fiveTwoBottomPct}% + 6px)` }}
                     >
                       <div className="relative flex w-full items-center">
                         <div
-                          className="h-[2.5px] w-full border-t-2 border-dashed border-[#D94B7D]"
+                          className="h-[2px] w-full border-t-2 border-dashed border-[#D94B7D]"
                           style={{
-                            filter: 'drop-shadow(0 0 6px rgba(217, 75, 125, 0.35))',
+                            filter: 'drop-shadow(0 0 5px rgba(217, 75, 125, 0.32))',
                           }}
                         />
-                        <div className="absolute -top-7 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[#E6B85C] bg-gradient-to-r from-[#FFF7DF] via-[#FFF8FB] to-[#FFE7F0] px-3 py-1 whitespace-nowrap shadow-sm">
-                          <Lock className="h-3 w-3 text-[#D94B7D]" />
+                        <div
+                          data-testid="origin-padlock-pill"
+                          className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[#E6B85C] bg-gradient-to-r from-[#FFF7DF] via-[#FFF8FB] to-[#FFE7F0] px-3 py-1 whitespace-nowrap shadow-sm"
+                          style={{ bottom: '10px' }}
+                        >
+                          <Lock className="h-3 w-3 shrink-0 text-[#D94B7D]" />
                           <span className="text-[10px] font-extrabold tracking-[0.12em] text-[#3A1233] uppercase">
                             HEIGHT LOCKED · 5&apos;2&quot;
                           </span>
@@ -1258,100 +1364,172 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
                     </div>
                   )}
 
-                  {/* Anamika Proportional Character Stage (ZERO CSS scale() height stretching!) */}
+                  {/* Anamika Proportional Character Stage (shifted -18px left so she never crowds the right ruler) */}
                   <div
-                    className={`relative z-20 flex h-full items-end justify-center transition-all duration-500 ${
-                      isRulerDissolving
-                        ? 'ml-0 scale-[1.05]'
-                        : '-ml-10'
-                    } ${
-                      activeGrowthStep.stage === 'toddler'
-                        ? 'origin-story-toddler-squash-hop'
-                        : isBonkHopping
-                          ? 'origin-story-tiptoe-bonk'
-                          : ''
-                    }`}
+                    className="relative z-20 flex h-full items-end justify-center"
+                    style={{ transform: 'translate3d(-18px, 0, 0)' }}
                   >
-                    <div className="origin-story-torso-breathe h-full">
-                      {activeGrowthStep.stage === 'newborn' && (
-                        <AnamikaNewborn className="h-full w-auto" />
-                      )}
-                      {activeGrowthStep.stage === 'toddler' && (
-                        <AnamikaToddler age={activeGrowthStep.age} className="h-full w-auto" />
-                      )}
-                      {activeGrowthStep.stage === 'girl' && (
-                        <AnamikaGrowingGirl age={activeGrowthStep.age} className="h-full w-auto" />
-                      )}
-                      {activeGrowthStep.stage === 'teen' && (
-                        <AnamikaTeen
-                          expression={
-                            currentScene.id === 'freeze_and_finale' ? teenExpression : 'happy'
-                          }
-                          showQuestionSparkle={
-                            currentScene.id === 'freeze_and_finale' &&
-                            scene10Beat === 'freeze' &&
-                            activeGrowthStep.age === 15
-                          }
-                          className="h-full w-auto"
-                        />
-                      )}
+                    <div
+                      className={`flex h-full items-end justify-center ${
+                        activeGrowthStep.stage === 'toddler'
+                          ? 'origin-story-toddler-squash-hop'
+                          : isBonkHopping
+                            ? 'origin-story-tiptoe-bonk'
+                            : ''
+                      }`}
+                    >
+                      <div className="origin-story-torso-breathe h-full">
+                        {activeGrowthStep.stage === 'newborn' && (
+                          <AnamikaNewborn className="h-full w-auto" />
+                        )}
+                        {activeGrowthStep.stage === 'toddler' && (
+                          <AnamikaToddler age={activeGrowthStep.age} className="h-full w-auto" />
+                        )}
+                        {activeGrowthStep.stage === 'girl' && (
+                          <AnamikaGrowingGirl age={activeGrowthStep.age} className="h-full w-auto" />
+                        )}
+                        {activeGrowthStep.stage === 'teen' && (
+                          <AnamikaTeen
+                            expression={isPadlockScene ? teenExpression : 'happy'}
+                            showQuestionSparkle={isPadlockScene && activeGrowthStep.age === 15}
+                            className="h-full w-auto"
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ================= SCENE 10 BEATS 3 & 4: SHOWSTOPPER BIRTHDAY QUEEN FINALE ================= */}
-            {currentScene.id === 'freeze_and_finale' && scene10Beat === 'finale' && (
+            {/* ================= SCENE 11 OF 11: DEDICATED 3-BAND GRAND FINALE ================= */}
+            {isFinaleScene && (
               <div
                 data-testid="origin-finale-stage"
-                className="relative z-10 flex h-full w-full flex-col items-center justify-between px-4 pt-4 pb-3"
+                className="relative z-10 flex h-full w-full flex-col items-center justify-between overflow-hidden px-4 pt-[18px] pb-[14px]"
               >
-                {/* 30 Fluttering Pastel Rose, Champagne-Gold, Lilac & Ivory Confetti Petals (2 Staggered Waves) */}
+                {/* LAYER 1 (z-index: 1): Curtain Shimmer, Radial Bloom, 26 Top-Masked Confetti, Twin Corner Bursts & Rising Bokeh */}
                 <div
-                  className="pointer-events-none absolute inset-0 overflow-hidden"
+                  className="pointer-events-none absolute inset-0 z-[1] overflow-hidden"
                   aria-hidden="true"
                 >
-                  {FINALE_CONFETTI.map((piece) => (
+                  {/* Soft celebratory curtain-shimmer crossfade veil on Scene 11 open */}
+                  <div
+                    className="origin-story-finale-curtain-shimmer absolute inset-0"
+                    style={{
+                      background:
+                        'linear-gradient(118deg, rgba(255,253,247,0) 15%, rgba(246,211,138,0.34) 48%, rgba(255,244,249,0.22) 62%, rgba(255,253,247,0) 85%)',
+                    }}
+                  />
+
+                  {/* Beat 1 (0 -> 400ms): Golden radial bloom behind stage center */}
+                  <div
+                    className="origin-story-finale-bloom absolute top-[34%] left-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                    style={{
+                      background:
+                        'radial-gradient(circle, rgba(246, 211, 138, 0.44) 0%, rgba(249, 184, 212, 0.24) 48%, rgba(255, 248, 251, 0) 74%)',
+                    }}
+                  />
+
+                  {/* 26 Pastel Rose, Blush, Gold & Lilac Confetti Ribbons with top-band soft opacity mask */}
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      maskImage:
+                        'linear-gradient(180deg, rgba(0,0,0,0.16) 0%, rgba(0,0,0,0.42) 24%, rgba(0,0,0,0.94) 40%, rgba(0,0,0,1) 100%)',
+                      WebkitMaskImage:
+                        'linear-gradient(180deg, rgba(0,0,0,0.16) 0%, rgba(0,0,0,0.42) 24%, rgba(0,0,0,0.94) 40%, rgba(0,0,0,1) 100%)',
+                    }}
+                  >
+                    {FINALE_CONFETTI.map((piece) => (
+                      <span
+                        key={piece.id}
+                        className="origin-story-confetti-flutter absolute rounded-[3px]"
+                        style={{
+                          left: `${piece.leftPct}%`,
+                          top: `${piece.topPct}%`,
+                          width: `${piece.widthPx}px`,
+                          height: `${piece.heightPx}px`,
+                          backgroundColor: piece.color,
+                          ['--cf-x' as string]: `${piece.dx}px`,
+                          ['--cf-y' as string]: `${piece.dy}px`,
+                          ['--cf-rot' as string]: `${piece.rot}deg`,
+                          ['--cf-delay' as string]: `${piece.delaySec}s`,
+                          ['--cf-dur' as string]: `${piece.durSec}s`,
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Twin Corner Bursts (Bottom-Left & Bottom-Right curving gently up outer edges) */}
+                  {FINALE_CORNER_BURSTS.map((burst) => (
                     <span
-                      key={piece.id}
-                      className="origin-story-confetti-flutter absolute rounded-[3px]"
+                      key={burst.id}
+                      className={`absolute bottom-2 rounded-[3px] ${
+                        burst.side === 'left'
+                          ? 'origin-story-corner-burst-left left-2'
+                          : 'origin-story-corner-burst-right right-2'
+                      }`}
                       style={{
-                        left: `${piece.leftPct}%`,
-                        top: `${piece.topPct}%`,
-                        width: `${piece.widthPx}px`,
-                        height: `${piece.heightPx}px`,
-                        backgroundColor: piece.color,
-                        ['--cf-x' as string]: `${piece.dx}px`,
-                        ['--cf-y' as string]: `${piece.dy}px`,
-                        ['--cf-rot' as string]: `${piece.rot}deg`,
-                        ['--cf-delay' as string]: `${piece.delaySec}s`,
-                        ['--cf-dur' as string]: `${piece.durSec}s`,
+                        width: `${burst.widthPx}px`,
+                        height: `${burst.heightPx}px`,
+                        backgroundColor: burst.color,
+                        ['--cb-x' as string]: `${burst.dx}px`,
+                        ['--cb-y' as string]: `${burst.dy}px`,
+                        ['--cb-rot' as string]: `${burst.rot}deg`,
+                        ['--cb-delay' as string]: `${burst.delaySec}s`,
+                      }}
+                    />
+                  ))}
+
+                  {/* Continuous Soft Rising Pastel Gold & Rose Bokeh Orbs */}
+                  {FINALE_BOKEH_ORBS.map((orb) => (
+                    <span
+                      key={orb.id}
+                      className="origin-story-bokeh-drift absolute rounded-full"
+                      style={{
+                        left: `${orb.leftPct}%`,
+                        bottom: `${orb.bottomPct}%`,
+                        width: `${orb.sizePx}px`,
+                        height: `${orb.sizePx}px`,
+                        backgroundColor: orb.color,
+                        filter: 'blur(1px)',
+                        ['--bk-dx' as string]: `${orb.dx}px`,
+                        ['--bk-delay' as string]: `${orb.delaySec}s`,
+                        ['--bk-dur' as string]: `${orb.durSec}s`,
                       }}
                     />
                   ))}
                 </div>
 
-                {/* Staggered Glowing Editorial Finale Typography: CHAPTER 17 · UNLOCKED + Shimmer Headline */}
-                <div className="origin-story-prologue-in relative z-20 flex flex-col items-center text-center">
+                {/* LAYER 2 (z-index: 3): Top Headline Safe Zone (Beat 2: 200 -> 650ms upward glide) */}
+                <div className="origin-story-finale-headline-in relative z-[3] flex w-full flex-col items-center text-center">
                   <span
                     data-testid="origin-finale-badge"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[#E6B85C]/65 bg-gradient-to-r from-[#FFF9E4] via-[#FFFDF7] to-[#FFF2F7] px-3.5 py-1 text-[10px] font-extrabold tracking-[0.18em] text-[#8A5A12] uppercase shadow-xs"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[#E6B85C]/65 bg-gradient-to-r from-[#FFF9E4] via-[#FFFDF7] to-[#FFF2F7] px-3.5 py-1 text-[10px] font-extrabold tracking-[0.18em] whitespace-nowrap text-[#8A5A12] uppercase shadow-xs"
                   >
-                    <Sparkles className="h-3 w-3 text-[#D94B7D]" />
+                    <Sparkles className="h-3 w-3 shrink-0 text-[#D94B7D]" />
                     <span>{finaleCopy.badgeLabel}</span>
                   </span>
                   <h2
                     data-testid="origin-finale-headline"
-                    className="origin-story-headline-shimmer font-display mt-2 text-xl leading-snug font-bold sm:text-2xl"
-                    style={{ fontFamily: "'Fraunces', Georgia, serif" }}
+                    className="font-display font-bold tracking-[-0.01em] text-[#3A1233]"
+                    style={{
+                      fontFamily: "'Fraunces', Georgia, serif",
+                      fontSize: 'clamp(20px, 5.4vw, 24px)',
+                      lineHeight: 1.24,
+                      textWrap: 'balance',
+                      maxWidth: '290px',
+                      margin: '8px auto 0',
+                      textShadow: '0 2px 14px rgba(255, 248, 251, 0.95)',
+                    }}
                   >
                     {finaleCopy.headline}
                   </h2>
                 </div>
 
-                {/* Beaming Anamika Birthday Queen with Theatrical Zoom-In (scale 1.07) & Glowing 17 Crown */}
-                <div className="origin-story-finale-queen-in relative z-20 flex h-[71%] items-end justify-center">
+                {/* LAYER 3 (z-index: 2): Character Band (Beat 3: 400 -> 900ms joyful bouncy celebration hop) */}
+                <div className="origin-story-finale-queen-hop relative z-[2] flex h-[67%] items-end justify-center">
                   <div className="origin-story-torso-breathe h-full">
                     <AnamikaTeen expression="birthdayQueen" className="h-full w-auto" />
                   </div>
@@ -1362,14 +1540,14 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
         </div>
       </main>
 
-      {/* Bottom Editorial Storybook Subtitle Card + Interactive Navigation Controls */}
-      <footer className="relative z-30 mx-auto w-full max-w-[480px] shrink-0 px-4 pt-1 pb-[max(14px,env(safe-area-inset-bottom))] sm:pb-6">
+      {/* Bottom Editorial Storybook Subtitle Card + Redesigned Rose-Berry Satin Controls */}
+      <footer className="relative z-30 mx-auto w-full max-w-[440px] shrink-0 px-4 pb-[max(14px,env(safe-area-inset-bottom))] sm:pb-5">
         <div
-          key={`caption_${currentScene.id}_${isFinaleReveal ? 'finale' : scene9SecondaryActive ? 's2' : 's1'}`}
+          key={`caption_${currentScene.id}_${scene9SecondaryActive ? 's2' : 's1'}`}
           data-testid="origin-caption-box"
-          className="origin-story-caption-in px-4 py-2.5 text-center sm:py-3.5"
+          className="origin-story-caption-in px-4 py-2.5 text-center sm:py-3"
           style={{
-            background: 'rgba(255, 253, 250, 0.88)',
+            background: 'rgba(255, 253, 250, 0.9)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid rgba(217, 75, 125, 0.18)',
@@ -1377,27 +1555,27 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
             boxShadow: '0 12px 30px -14px rgba(130, 42, 82, 0.18)',
           }}
         >
-          <p className="text-[13.5px] leading-[1.5] font-medium text-[#3A1233] sm:text-[14.5px]">
+          <p className="text-[13.5px] leading-[1.48] font-medium text-[#3A1233] sm:text-[14.5px]">
             {renderHighlightedCaption(activeCaption)}
           </p>
         </div>
 
-        {/* Navigation Bar: Muted Back, Replay Scene, Radiant Next / Enter the Birthday World › */}
-        <div className="mt-3 flex items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2">
+        {/* Navigation Bar: Crisp Back + Circular Replay on Left, Warm Rose Berry Satin CTA on Right */}
+        <div className="mt-2.5 flex w-full items-center justify-between gap-[10px]">
+          <div className="flex shrink-0 items-center gap-2">
             {sceneIndex > 0 ? (
               <button
                 type="button"
                 onClick={handleBack}
                 data-testid="origin-back-btn"
                 aria-label="Previous scene"
-                className={`inline-flex items-center gap-1 rounded-full border px-3.5 py-2.5 text-xs font-semibold transition-all ${
+                className={`inline-flex min-h-[42px] items-center gap-1 rounded-full border px-3.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer active:scale-[0.97] ${
                   isStarryScene
-                    ? 'border-white/25 bg-white/15 text-[#FFF8FB] opacity-80 hover:opacity-100'
-                    : 'border-[#D94B7D]/20 bg-white/85 text-[#5D2949] opacity-70 hover:opacity-100'
+                    ? 'border-white/25 bg-white/15 text-[#FFF8FB] backdrop-blur-xs hover:bg-white/25'
+                    : 'border-[#D94B7D]/22 bg-[#FFFDFB] text-[#3A1233] shadow-2xs hover:bg-white'
                 }`}
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4 shrink-0" />
                 <span>Back</span>
               </button>
             ) : (
@@ -1411,10 +1589,10 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
                 data-testid="origin-replay-scene-btn"
                 aria-label="Replay current scene"
                 title="Replay scene"
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition-all ${
+                className={`inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full border transition-all cursor-pointer active:scale-[0.96] ${
                   isStarryScene
-                    ? 'border-white/25 bg-white/15 text-[#FFF8FB] opacity-75 hover:opacity-100'
-                    : 'border-[#D94B7D]/20 bg-white/85 text-[#7A3A5C] opacity-70 hover:opacity-100'
+                    ? 'border-white/25 bg-white/15 text-[#FFF8FB] backdrop-blur-xs hover:bg-white/25'
+                    : 'border-[#D94B7D]/22 bg-[#FFFDFB] text-[#3A1233] shadow-2xs hover:bg-white'
                 }`}
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -1422,15 +1600,25 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
             )}
           </div>
 
-          {currentScene.id === 'freeze_and_finale' && scene10Beat === 'finale' ? (
+          {isFinaleScene ? (
             <button
               type="button"
               onClick={handleEnterBirthdayWorld}
               data-testid="origin-enter-world-btn"
-              className="origin-story-cta-shimmer origin-story-next-glow relative inline-flex items-center justify-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-[#D94B7D] via-[#E56995] to-[#E6B85C] px-4 py-2.5 text-[13px] font-bold tracking-wide whitespace-nowrap text-white shadow-[0_10px_28px_rgba(217,75,125,0.38)] transition-transform active:scale-[0.98] sm:px-6 sm:text-sm"
+              className="relative inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full px-[18px] py-[10px] text-[13.5px] font-bold tracking-[0.01em] whitespace-nowrap text-[#FFFDFB] transition-transform cursor-pointer active:scale-[0.97]"
+              style={{
+                background: 'linear-gradient(135deg, #DE4F82 0%, #B82E60 100%)',
+                border: '1.5px solid rgba(246, 211, 138, 0.72)',
+                boxShadow:
+                  '0 12px 26px -10px rgba(184, 46, 96, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.28)',
+              }}
             >
-              <span>{finaleCopy.ctaLabel}</span>
-              <ChevronRight className="origin-story-arrow-nudge h-4 w-4 shrink-0" />
+              <span
+                aria-hidden="true"
+                className="origin-story-cta-sheen pointer-events-none absolute inset-y-0 left-0 w-1/2"
+              />
+              <span className="relative z-10">{finaleCopy.ctaLabel}</span>
+              <ChevronRight className="origin-story-arrow-nudge relative z-10 h-4 w-4 shrink-0" />
             </button>
           ) : (
             <button
@@ -1438,15 +1626,19 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
               onClick={handleNext}
               data-testid="origin-next-btn"
               data-settled={sceneSettled ? 'true' : 'false'}
-              className={`inline-flex items-center justify-center gap-1.5 rounded-full px-6 py-2.5 text-sm font-bold tracking-wide text-white transition-all active:scale-[0.97] ${
-                sceneSettled
-                  ? 'origin-story-next-glow bg-gradient-to-r from-[#D94B7D] to-[#E878A0] shadow-[0_8px_24px_rgba(217,75,125,0.35)]'
-                  : 'bg-[#D94B7D]/82 shadow-sm hover:bg-[#D94B7D]'
+              className={`inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-full px-[18px] py-[10px] text-[13.5px] font-bold tracking-[0.01em] whitespace-nowrap text-[#FFFDFB] transition-transform cursor-pointer active:scale-[0.97] ${
+                sceneSettled ? 'origin-story-next-glow' : ''
               }`}
+              style={{
+                background: 'linear-gradient(135deg, #E25B8B 0%, #C93B6B 100%)',
+                border: '1px solid rgba(255, 255, 255, 0.28)',
+                boxShadow:
+                  '0 8px 20px -8px rgba(201, 59, 107, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.32)',
+              }}
             >
               <span>Next</span>
               <ChevronRight
-                className={`h-4 w-4 ${sceneSettled ? 'origin-story-arrow-nudge' : ''}`}
+                className={`h-4 w-4 shrink-0 ${sceneSettled ? 'origin-story-arrow-nudge' : ''}`}
               />
             </button>
           )}

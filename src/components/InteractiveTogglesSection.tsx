@@ -1,6 +1,9 @@
 import { Flame, HeartHandshake, Sparkles, Trophy } from 'lucide-react';
 import { FRIEND_LEADERBOARD_BASE } from '../data/celebrationData';
 import { getOrderedFriendList } from '../utils/birthdayMath';
+import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
+import { soundEngine } from '../utils/soundEngine';
 import { BirthdayNoteDeck } from './BirthdayNoteDeck';
 
 function MiniInstagramIcon({ className = 'h-3 w-3' }: { className?: string }) {
@@ -320,11 +323,17 @@ export function InteractiveTogglesSection({
                 const initial = entry.name.charAt(0).toUpperCase();
 
                 return (
-                  <div
+                  <button
                     key={entry.id}
+                    type="button"
                     data-rank={rankNum}
                     data-friend-name={entry.name}
                     data-testid={`friend-row-${entry.id}`}
+                    onClick={() => {
+                      haptics.tap();
+                      soundEngine.playBubbleClick(entry.isAnamika ? 1.1 : 1.02);
+                      emitModinoEvent('friends_and_banter', { source: `friend-row-${entry.id}` });
+                    }}
                     style={{
                       height: `${ROW_HEIGHT}px`,
                       transform: `translate3d(0, ${topPx}px, 0)`,
@@ -337,7 +346,7 @@ export function InteractiveTogglesSection({
                           }
                         : undefined),
                     }}
-                    className={`absolute inset-x-0 top-0 flex items-center justify-between gap-3 rounded-2xl border pr-3.5 sm:pr-4 ${
+                    className={`absolute inset-x-0 top-0 flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border pr-3.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] sm:pr-4 ${
                       isMorganHighlighted
                         ? 'z-20 pl-4 shadow-[0_10px_24px_-16px_rgba(217,75,125,0.34)] sm:pl-5'
                         : isRankOne
@@ -417,7 +426,7 @@ export function InteractiveTogglesSection({
                         </span>
                       </div>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>

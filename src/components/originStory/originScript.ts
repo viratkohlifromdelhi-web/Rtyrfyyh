@@ -1,5 +1,5 @@
 /**
- * Locked 10-Scene Interactive Storybook Script, Proportional Height Chart Math,
+ * Locked 11-Scene Interactive Storybook Script, Proportional Height Chart Math,
  * Exact 1-Second-Per-Year Growth Timing, Keyword Highlighting, and Live IST Finale Copy
  * for The Origin Story Play.
  *
@@ -16,7 +16,8 @@ export type OriginSceneId =
   | 'anamika_born'
   | 'baby_to_toddler'
   | 'growing_to_14'
-  | 'freeze_and_finale';
+  | 'padlock_freeze'
+  | 'grand_finale';
 
 export type OriginBackdropMood =
   | 'sunrise'
@@ -58,7 +59,7 @@ export interface RulerTick {
   readonly isFiveTwo?: boolean;
 }
 
-export const ORIGIN_TOTAL_SCENES = 10;
+export const ORIGIN_TOTAL_SCENES = 11;
 
 export const ORIGIN_CAST = {
   father: {
@@ -101,16 +102,127 @@ export function buildOriginKissTrackSrc(baseUrl: string = getViteBaseUrl()): str
   return `${normalizedBase}${ORIGIN_KISS_AUDIO_ROUTE}`;
 }
 
+export type KissPhase = 'idle' | 'approach' | 'leanIn' | 'kissing' | 'afterglow';
+
+export type KissWalkStage = 'moonlight' | 'stepping' | 'leanIn' | 'kissing' | 'afterglow';
+
+/**
+ * Exact 5-Phase Realistic Kiss Choreography Timing (Scene 5):
+ * - Phase 1 (0ms -> 750ms): Moonlight eye contact (standing apart)
+ * - Phase 2 (750ms -> 1850ms): 2.5 gentle walking steps closer together
+ * - Phase 3 (1850ms -> 2400ms): Tender lean-in + neck-pivoted head tilts (audio swells at 2150ms)
+ * - Phase 4 (2400ms -> 5900ms): 3.5s realistic kiss hold + rising hearts + 2 shooting stars
+ * - Phase 5 (5900ms -> 6600ms+): Shy pull-back & glowing afterglow (audio ramps down at 5550ms)
+ */
+export const SCENE5_KISS_TIMING = {
+  phase1MoonlightMs: 0,
+  phase2StepStartMs: 750,
+  phase2StepDurationMs: 1100,
+  phase3LeanInStartMs: 1850,
+  phase3LeanInDurationMs: 550,
+  audioSwellStartMs: 2150,
+  phase4KissStartMs: 2400,
+  phase4KissHoldMs: 3500,
+  audioFadeOutStartMs: 5550,
+  phase5AfterglowStartMs: 5900,
+  phase5PullBackDurationMs: 700,
+  settleMs: 6600,
+} as const;
+
+export interface Scene5CharacterPose {
+  /** Horizontal offset from stage center in SVG viewBox units (160u character width) */
+  readonly dxUnits: number;
+  /** Vertical offset in SVG viewBox units (negative = upward tiptoe lift) */
+  readonly dyUnits: number;
+  /** Horizontal offset as percentage of the character's 160u box width */
+  readonly translateXPct: number;
+  /** Vertical offset as percentage of the character's 230u box height */
+  readonly translateYPct: number;
+  /** Torso lean rotation around feet baseline in degrees */
+  readonly torsoRotateDeg: number;
+  /** Head tilt rotation around neck pivot in degrees */
+  readonly headTiltDeg: number;
+}
+
+export interface Scene5KissPosePair {
+  readonly shivjee: Scene5CharacterPose;
+  readonly archana: Scene5CharacterPose;
+}
+
+const CHAR_VIEWBOX_W = 160;
+const CHAR_VIEWBOX_H = 230;
+
+function makeCharacterPose(
+  dxUnits: number,
+  dyUnits: number,
+  torsoRotateDeg: number,
+  headTiltDeg: number,
+): Scene5CharacterPose {
+  return {
+    dxUnits,
+    dyUnits,
+    translateXPct: Number(((dxUnits / CHAR_VIEWBOX_W) * 100).toFixed(3)),
+    translateYPct: Number(((dyUnits / CHAR_VIEWBOX_H) * 100).toFixed(3)),
+    torsoRotateDeg,
+    headTiltDeg,
+  };
+}
+
+/**
+ * Pure resolution-independent pose calculator for Shivjee (left) and Archana (right)
+ * inside the unified 320x230 Scene 5 Kiss Stage.
+ *
+ * Geometry verification (viewBox="0 0 160 230"):
+ * - Shivjee right cheek/lip edge sits at x=104 (+24u from center); torso +3.5deg around feet y=220
+ *   adds +9.1u forward, head +7deg around neck (80,92) adds +2.9u -> total inner reach +36.0u.
+ * - Archana left cheek/lip edge sits at x=58 (-22u from center); torso -3.5deg around feet y=220
+ *   adds -8.7u forward, head -7deg around neck (80,102) adds -3.6u -> total inner reach -34.3u.
+ * - At dx = +/-36u (72u center-to-center), inner faces and lips meet cleanly at stage x = 0 with
+ *   zero awkward gap and zero hair/eye occlusion, while Archana's -3.2u graceful tiptoe lift aligns
+ *   both mouths vertically within ~1.4u.
+ */
+export function getScene5KissPose(stage: KissWalkStage): Scene5KissPosePair {
+  switch (stage) {
+    case 'moonlight':
+      return {
+        shivjee: makeCharacterPose(-74, 0, 0, 0),
+        archana: makeCharacterPose(74, 0, 0, 0),
+      };
+    case 'stepping':
+      return {
+        shivjee: makeCharacterPose(-41, 0, 0.8, 1.5),
+        archana: makeCharacterPose(41, 0, -0.8, -1.5),
+      };
+    case 'leanIn':
+      return {
+        shivjee: makeCharacterPose(-37.5, 0, 3.2, 6.2),
+        archana: makeCharacterPose(37.5, -2.5, -3.2, -6.2),
+      };
+    case 'kissing':
+      return {
+        shivjee: makeCharacterPose(-36, 0, 3.5, 7),
+        archana: makeCharacterPose(36, -3.2, -3.5, -7),
+      };
+    case 'afterglow':
+      return {
+        shivjee: makeCharacterPose(-47, 0, 0, 0),
+        archana: makeCharacterPose(47, 0, 0, 0),
+      };
+  }
+}
+
 export const ORIGIN_AUDIO_CONFIG = {
   kissTrackFilename: ORIGIN_KISS_AUDIO_FILENAME,
   kissTrackSrc: buildOriginKissTrackSrc(),
-  kissDurationMs: 5000,
-  shyGlanceDelayMs: 550,
-  kissStartDelayMs: 1100,
-  kissHoldMs: 3550,
-  fadeInMs: 200,
-  fadeOutMs: 350,
-  maxVolume: 0.85,
+  kissDurationMs: SCENE5_KISS_TIMING.settleMs,
+  shyGlanceDelayMs: SCENE5_KISS_TIMING.phase2StepStartMs,
+  kissStartDelayMs: SCENE5_KISS_TIMING.phase4KissStartMs,
+  kissHoldMs: SCENE5_KISS_TIMING.phase4KissHoldMs,
+  audioSwellStartMs: SCENE5_KISS_TIMING.audioSwellStartMs,
+  audioFadeOutStartMs: SCENE5_KISS_TIMING.audioFadeOutStartMs,
+  fadeInMs: 300,
+  fadeOutMs: 450,
+  maxVolume: 0.82,
 } as const;
 
 /**
@@ -179,7 +291,7 @@ export const ORIGIN_SCENES: readonly OriginSceneSpec[] = [
     id: 'starry_kiss',
     label: 'Starry Night',
     backdropMood: 'starry_twilight',
-    settleDurationMs: 5000,
+    settleDurationMs: SCENE5_KISS_TIMING.settleMs,
     caption:
       'Until one magical starry night... the moon glowed, they forgot the whole world, and shared one unforgettable kiss.',
   },
@@ -229,12 +341,22 @@ export const ORIGIN_SCENES: readonly OriginSceneSpec[] = [
   {
     index: 9,
     sceneNumber: 10,
-    id: 'freeze_and_finale',
-    label: 'The Finale',
+    id: 'padlock_freeze',
+    label: 'Height Locked',
     backdropMood: 'celebration_dawn',
-    settleDurationMs: 5000,
+    settleDurationMs: 3200,
     caption:
       "Then at age 14, destiny pressed pause. The years kept flying to 17, but her height stayed locked forever at 5'2 feet!",
+  },
+  {
+    index: 10,
+    sceneNumber: 11,
+    id: 'grand_finale',
+    label: 'Happy 17th',
+    backdropMood: 'gala_finale',
+    settleDurationMs: 900,
+    caption:
+      "Still 5'2 feet. Still pure sunshine and chaos. Welcome to Anamika's 17th Birthday!",
   },
 ] as const;
 
@@ -270,14 +392,14 @@ export const SCENE_9_GROWTH_STEPS: readonly GrowthStep[] = [
 ] as const;
 
 /**
- * Scene 10 Beat 1: Age 14 to 17 frozen dead-flat at 5'2" (62 inches),
- * STRICTLY 1000ms (1 full second) per year.
+ * Scene 10 of 11: Age 14 to 17 frozen dead-flat at 5'2" (62 inches),
+ * STRICTLY 1000ms (1 full second) per year, stopping peacefully on Age 17.
  */
 export const SCENE_10_FREEZE_STEPS: readonly GrowthStep[] = [
   { age: 14, year: 2023, inches: 62, heightLabel: "5'2\"", durationMs: 1000, stage: 'teen', locked: true },
   { age: 15, year: 2024, inches: 62, heightLabel: "Still 5'2\"", durationMs: 1000, stage: 'teen', locked: true },
   { age: 16, year: 2025, inches: 62, heightLabel: "Still 5'2\"", durationMs: 1000, stage: 'teen', locked: true },
-  { age: 17, year: 2026, inches: 62, heightLabel: "5'2\"", durationMs: 1000, stage: 'teen', locked: true },
+  { age: 17, year: 2026, inches: 62, heightLabel: "Still 5'2\"", durationMs: 1000, stage: 'teen', locked: true },
 ] as const;
 
 export const RULER_MIN_INCHES = 12; // 1'0"
@@ -287,7 +409,7 @@ export const FIVE_TWO_INCHES = 62; // 5'2"
 export const ORIGIN_RULER_TICKS: readonly RulerTick[] = [
   { inches: 72, label: "6'0\"", major: true },
   { inches: 62, label: "5'2\"", major: true, isFiveTwo: true },
-  { inches: 60, label: "5'0\"", major: false },
+  { inches: 60, label: "5'0\"", major: true },
   { inches: 48, label: "4'0\"", major: true },
   { inches: 36, label: "3'0\"", major: true },
   { inches: 24, label: "2'0\"", major: true },
@@ -378,7 +500,7 @@ export function getOriginFinaleCopy(now: Date = new Date()): OriginFinaleCopy {
       subcaption:
         "Still 5'2 feet. Still pure sunshine and chaos. Happy 17th Birthday, Anamika!",
       badgeLabel: 'CHAPTER 17 · UNLOCKED',
-      ctaLabel: 'Enter the Birthday World',
+      ctaLabel: 'Enter Birthday World',
     };
   }
 
@@ -388,7 +510,7 @@ export function getOriginFinaleCopy(now: Date = new Date()): OriginFinaleCopy {
     subcaption:
       "Still 5'2 feet. Still pure sunshine and chaos. Welcome to Anamika's 17th Birthday!",
     badgeLabel: 'CHAPTER 17 · UNLOCKED',
-    ctaLabel: 'Enter the Birthday World',
+    ctaLabel: 'Enter Birthday World',
   };
 }
 
@@ -405,13 +527,13 @@ export type OriginRomanticGlowLevel =
  */
 export function getOriginRomanticGlowIntensity(
   sceneId: OriginSceneId,
-  kissBeat: 'twilight' | 'shyGlance' | 'kissing' | 'afterglow',
+  kissBeat: 'twilight' | 'shyGlance' | 'leanIn' | 'kissing' | 'afterglow',
 ): OriginRomanticGlowLevel {
   if (sceneId !== 'starry_kiss') {
     return 'ambient';
   }
   if (kissBeat === 'kissing') return 'peak';
-  if (kissBeat === 'shyGlance') return 'building';
+  if (kissBeat === 'shyGlance' || kissBeat === 'leanIn') return 'building';
   if (kissBeat === 'afterglow') return 'afterglow';
   return 'twilight';
 }

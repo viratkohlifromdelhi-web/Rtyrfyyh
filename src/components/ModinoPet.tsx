@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Volume2, VolumeX, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import {
@@ -16,12 +16,7 @@ import {
   type ModinoMood,
   type ModinoReaction,
 } from '../utils/modinoReactions';
-import {
-  isUiSfxMuted,
-  playUiSfx,
-  subscribeUiSfxMute,
-  toggleUiSfxMute,
-} from '../utils/uiSoundEngine';
+import { playUiSfx } from '../utils/uiSoundEngine';
 import { ModinoAvatarSvg } from './ModinoAvatarSvg';
 
 function prefersReducedMotion(): boolean {
@@ -34,6 +29,12 @@ function prefersReducedMotion(): boolean {
 }
 
 export const MODINO_INACTIVITY_SLEEP_MS = 3500;
+/**
+ * Default entrance delay after Stage 4 mounts (360ms veil swap + 1640ms = 2000ms total
+ * from Stage 3 -> Stage 4 transition start, giving Milky audio & confetti a full +1000ms
+ * extra breathing moment before Modino glides in and greets).
+ */
+export const MODINO_DEFAULT_ENTRANCE_DELAY_MS = 1640;
 const BUBBLE_DURATION_MS = 3400;
 const SLEEP_BUBBLE_DURATION_MS = 1800;
 const SLEEP_MUTTER_CYCLE_MS = 4600;
@@ -44,6 +45,8 @@ const ANALYTICS_THROTTLE_MS = 4000;
 interface ModinoPetProps {
   isSiteRevealed: boolean;
   isBlockedByOverlay: boolean;
+  /** Delay before Modino glides into view and delivers its welcome greeting */
+  entranceDelayMs?: number;
 }
 
 const SECTION_OBSERVER_MAP: ReadonlyArray<{
@@ -59,17 +62,21 @@ const SECTION_OBSERVER_MAP: ReadonlyArray<{
   { id: 'closing-signoff', category: 'ending' },
 ];
 
-export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps) {
+export function ModinoPet({
+  isSiteRevealed,
+  isBlockedByOverlay,
+  entranceDelayMs = MODINO_DEFAULT_ENTRANCE_DELAY_MS,
+}: ModinoPetProps) {
   const [mood, setMood] = useState<ModinoMood>('idle');
   const [bubbleText, setBubbleText] = useState<string | null>(null);
   const [bubbleKey, setBubbleKey] = useState(0);
   const [tapRippleKey, setTapRippleKey] = useState(0);
   const [isBubbleSleepy, setIsBubbleSleepy] = useState(false);
   const [isTucked, setIsTucked] = useState(false);
+  const [hasEntered, setHasEntered] = useState(false);
   const [isTabHidden, setIsTabHidden] = useState(
     () => typeof document !== 'undefined' && document.hidden,
   );
-  const [sfxMuted, setSfxMuted] = useState(() => isUiSfxMuted());
   const [microHearts, setMicroHearts] = useState<ModinoMicroHeart[]>([]);
 
   const dockRef = useRef<HTMLDivElement | null>(null);
@@ -86,6 +93,9 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
 
   const isTuckedRef = useRef(isTucked);
   isTuckedRef.current = isTucked;
+
+  const hasEnteredRef = useRef(hasEntered);
+  hasEnteredRef.current = hasEntered;
 
   const bubbleVisibleRef = useRef(false);
   bubbleVisibleRef.current = Boolean(bubbleText && !isBubbleSleepy);
@@ -245,7 +255,7 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
   const scheduleSleepCountdown = useCallback(() => {
     clearTimer(sleepTimerRef);
     clearTimer(sleepMutterTimerRef);
-    if (!isActiveRef.current || isTuckedRef.current) return;
+    if (!isActiveRef.current || isTuckedRef.current || !hasEnteredRef.current) return;
     if (moodRef.current === 'sleepy_zzz') return;
 
     sleepTimerRef.current = window.setTimeout(() => {
@@ -401,9 +411,6 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
     [showReaction, wakeUpStartled],
   );
 
-  // Sync mute state
-  useEffect(() => subscribeUiSfxMute(setSfxMuted), []);
-
   // Track document visibility so timers pause cleanly when tab is hidden
   useEffect(() => {
     const onVisibilityChange = () => {
@@ -415,7 +422,8 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
     };
   }, []);
 
-  // Initial signature greeting 900ms after site reveals from Opening Curtain
+  // Staggered entrance + signature welcome greeting after the +1000ms post-curtain grace delay.
+  // Keeps Modino strictly invisible with zero sleep countdown during the grace window.
   useEffect(() => {
     if (!isActive) {
       clearAllTimers();
@@ -425,33 +433,54 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
       return;
     }
 
-    scheduleSleepCountdown();
-
     if (!hasGreetedRef.current && !isTucked) {
-      hasGreetedRef.current = true;
+      const safeDelay = Math.max(0, entranceDelayMs);
       greetingTimerRef.current = window.setTimeout(() => {
         greetingTimerRef.current = null;
         if (!isActiveRef.current || isTuckedRef.current) return;
+        hasGreetedRef.current = true;
+        hasEnteredRef.current = true;
+        setHasEntered(true);
+
         const greeting = modinoReactionEngine.next('greeting');
         showReaction(greeting, {
           heartTrigger: 'category',
           heartMood: greeting.mood,
           category: 'greeting',
         });
-      }, 900);
+      }, safeDelay);
+    } else if (hasEnteredRef.current) {
+      scheduleSleepCountdown();
     }
 
     return () => {
       clearAllTimers();
     };
-  }, [isActive, isTucked, applyMood, clearAllTimers, scheduleSleepCountdown, showReaction]);
+  }, [
+    isActive,
+    isTucked,
+    entranceDelayMs,
+    applyMood,
+    clearAllTimers,
+    scheduleSleepCountdown,
+    showReaction,
+  ]);
 
-  // Listen to global Modino CustomEvent bus
+  // Listen to global Modino CustomEvent bus.
+  // If user interacts on the Hero during the 1s grace window, appear smoothly and handle it cleanly without double-greeting!
   useEffect(() => {
     const handleBusEvent = (event: Event) => {
       const detail = (event as CustomEvent<ModinoEventDetail>).detail;
       if (!detail?.category) return;
       if (!isActiveRef.current || isTuckedRef.current) return;
+
+      if (!hasEnteredRef.current) {
+        clearTimer(greetingTimerRef);
+        hasGreetedRef.current = true;
+        hasEnteredRef.current = true;
+        setHasEntered(true);
+      }
+
       triggerCategoryReaction(detail.category, {
         logAnalytics: detail.category === 'direct_tap',
       });
@@ -465,7 +494,7 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
 
   // Global passive activity tracker for 3.5s inactivity sleep & instant wake-up
   useEffect(() => {
-    if (!isActive || isTucked) return;
+    if (!isActive || isTucked || !hasEntered) return;
 
     const handleActivity = (source: 'scroll' | 'input', event?: Event) => {
       if (source === 'scroll') {
@@ -510,11 +539,11 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('scroll', onScroll);
     };
-  }, [isActive, isTucked, scheduleSleepCountdown, wakeUpStartled]);
+  }, [isActive, isTucked, hasEntered, scheduleSleepCountdown, wakeUpStartled]);
 
   // Single lightweight IntersectionObserver fallback for non-clicked sections (once per section)
   useEffect(() => {
-    if (!isActive || isTucked || typeof IntersectionObserver === 'undefined') return;
+    if (!isActive || isTucked || !hasEntered || typeof IntersectionObserver === 'undefined') return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -554,7 +583,7 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
       window.clearTimeout(rescanTimer);
       observer.disconnect();
     };
-  }, [isActive, isTucked, triggerCategoryReaction]);
+  }, [isActive, isTucked, hasEntered, triggerCategoryReaction]);
 
   const handlePetTap = useCallback(() => {
     try {
@@ -607,18 +636,6 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
     runDirectTap();
   }, [applyMood, showReaction, wakeUpStartled]);
 
-  const handleToggleMute = useCallback(() => {
-    try {
-      haptics.tap();
-    } catch {
-      // silent
-    }
-    const nextMuted = toggleUiSfxMute();
-    if (!nextMuted) {
-      playUiSfx('toggle_click');
-    }
-  }, []);
-
   const handleTuck = useCallback(() => {
     try {
       haptics.tap();
@@ -670,23 +687,23 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
     return null;
   }
 
-  // Collapsed ear-peek tab on right edge for clean card screenshots
+  // Collapsed ear-peek tab on left viewport edge for clean card screenshots
   if (isTucked) {
     return (
-      <div className="pointer-events-none fixed right-0 bottom-[calc(74px+env(safe-area-inset-bottom,0px))] z-[36]">
+      <div className="pointer-events-none fixed left-0 bottom-[calc(24px+env(safe-area-inset-bottom,0px))] z-[36]">
         <button
           type="button"
           data-testid="modino-peek-tab"
           onClick={handleUntuck}
           aria-label="Bring Modino back"
           title="Bring Modino back"
-          className="pointer-events-auto flex min-h-[44px] items-center gap-1 rounded-l-full border border-r-0 border-[rgba(217,75,125,0.28)] bg-[#FFFDFB]/95 py-1.5 pr-2 pl-2.5 text-[10px] font-bold text-[#3A1233] shadow-[0_8px_20px_-8px_rgba(176,62,106,0.28)] backdrop-blur-sm transition-transform duration-150 hover:-translate-x-0.5 active:scale-95 cursor-pointer"
+          className="pointer-events-auto flex min-h-[44px] items-center gap-1 rounded-r-[14px] rounded-l-none border border-l-0 border-[rgba(217,75,125,0.28)] bg-[#FFFDFB]/95 py-1.5 pr-2.5 pl-2 text-[9px] font-bold tracking-[0.03em] text-[#3A1233] shadow-[0_8px_20px_-8px_rgba(176,62,106,0.28)] backdrop-blur-sm transition-transform duration-150 hover:translate-x-0.5 active:scale-95 cursor-pointer"
         >
+          <span>Modino</span>
           <span
             aria-hidden="true"
-            className="inline-block h-4 w-2.5 -rotate-12 rounded-full bg-gradient-to-b from-[#E6DCFA] to-[#D1C1F2]"
+            className="inline-block h-4 w-2.5 rotate-12 rounded-full bg-gradient-to-b from-[#E6DCFA] to-[#D1C1F2]"
           />
-          <span>Modino</span>
         </button>
       </div>
     );
@@ -697,10 +714,16 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
       ref={dockRef}
       data-testid="modino-pet-dock"
       data-mood={mood}
+      data-modino-entered={hasEntered ? 'true' : 'false'}
       data-sleep-state={mood === 'sleepy_zzz' ? 'sleeping' : 'awake'}
-      className="pointer-events-none fixed right-[12px] bottom-[calc(66px+env(safe-area-inset-bottom,0px))] z-[36] flex flex-col items-end"
+      aria-hidden={!hasEntered || undefined}
+      className={`pointer-events-none fixed left-[12px] bottom-[calc(16px+env(safe-area-inset-bottom,0px))] z-[36] flex flex-col items-start ${
+        hasEntered
+          ? 'animate-modino-entrance opacity-100'
+          : 'translate-y-[22px] opacity-0'
+      }`}
     >
-      {/* Crisp Pastel Speech Bubble anchored above-left of Modino */}
+      {/* Crisp Pastel Speech Bubble anchored above and to the right of Modino */}
       {bubbleText && (
         <button
           key={bubbleKey}
@@ -709,21 +732,25 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
           data-sleepy={isBubbleSleepy ? 'true' : 'false'}
           onClick={handleDismissBubble}
           aria-label="Dismiss Modino speech bubble"
-          className={`animate-modino-bubble pointer-events-auto absolute right-[4px] bottom-[92px] w-max max-w-[min(82vw,272px)] rounded-[18px] border-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB] px-3.5 py-2 text-left text-[12.5px] leading-[1.35] font-semibold text-[#3A1233] shadow-[0_10px_26px_-10px_rgba(176,62,106,0.24)] cursor-pointer transition-opacity duration-200 ${
+          className={`animate-modino-bubble pointer-events-auto absolute left-[4px] right-auto bottom-[92px] z-10 w-max max-w-[min(76vw,252px)] origin-bottom-left rounded-[18px] border-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB] px-3.5 py-2 text-left text-[12.5px] leading-[1.35] font-semibold text-[#3A1233] shadow-[0_10px_26px_-10px_rgba(176,62,106,0.24)] cursor-pointer transition-opacity duration-200 ${
             isBubbleSleepy ? 'opacity-85' : 'opacity-100'
           }`}
         >
           <span className="block break-words">{bubbleText}</span>
-          {/* Tiny rotated cream pointer tail aiming toward Modino's head */}
+          {/* Tiny rotated cream pointer tail aiming straight down toward Modino's head */}
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute right-[24px] -bottom-[6px] h-3 w-3 rotate-45 rounded-[2px] border-r-[1.2px] border-b-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB]"
+            className="pointer-events-none absolute left-[22px] right-auto -bottom-[6px] h-3 w-3 rotate-45 rounded-[2px] border-r-[1.2px] border-b-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB]"
           />
         </button>
       )}
 
       {/* Main Tappable Modino Character + Floating Micro-Hearts Emitter */}
-      <div className="pointer-events-auto relative flex flex-col items-center">
+      <div
+        className={`relative flex flex-col items-center ${
+          hasEntered ? 'pointer-events-auto' : 'pointer-events-none'
+        }`}
+      >
         {/* 60fps Progressive-Fade Pastel Micro-Hearts Layer above Modino's ears/head */}
         <div
           data-testid="modino-micro-hearts"
@@ -779,29 +806,11 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
           <ModinoAvatarSvg mood={mood} tapRippleKey={tapRippleKey} paused={!isActive} />
         </button>
 
-        {/* Layer 9: Tiny Modino Name Pill + Accessible 36px-Hit-Area Mute & Collapse Controls */}
-        <div className="-mt-2 flex items-center">
-          <button
-            type="button"
-            data-testid="modino-sfx-mute-btn"
-            onClick={handleToggleMute}
-            aria-pressed={sfxMuted}
-            aria-label={sfxMuted ? 'Unmute Modino sound effects' : 'Mute Modino sound effects'}
-            title={sfxMuted ? 'Unmute UI SFX' : 'Mute UI SFX'}
-            className="group flex h-9 w-9 items-center justify-center rounded-full cursor-pointer focus-visible:outline-2 focus-visible:outline-[#D94B7D]"
-          >
-            <span className="flex h-[24px] w-[24px] items-center justify-center rounded-full border border-[rgba(217,75,125,0.24)] bg-[rgba(255,253,250,0.95)] text-[#7A4A63] shadow-xs transition-colors group-hover:border-[#D94B7D] group-hover:text-[#3A1233] group-active:scale-95">
-              {sfxMuted ? (
-                <VolumeX className="h-3 w-3" aria-hidden="true" />
-              ) : (
-                <Volume2 className="h-3 w-3 text-[#C93B6B]" aria-hidden="true" />
-              )}
-            </span>
-          </button>
-
+        {/* Layer 9: Compact Modino Name Label + Clean Edge-Tuck Control (No Mute Icon) */}
+        <div className="-mt-2 flex items-center justify-center">
           <span
             data-testid="modino-name-pill"
-            className="-mx-1 inline-flex items-center rounded-full border border-[rgba(217,75,125,0.22)] bg-[rgba(255,253,250,0.92)] px-2 py-[3px] text-[9.5px] leading-none font-bold tracking-tight text-[#3A1233] shadow-xs select-none"
+            className="inline-flex items-center rounded-full border border-[rgba(217,75,125,0.18)] bg-[rgba(255,253,250,0.92)] px-[6px] py-[1.5px] text-[8px] leading-[1.1] font-bold tracking-[0.04em] text-[#3A1233]/90 shadow-[0_2px_6px_-2px_rgba(176,62,106,0.16)] select-none"
           >
             Modino
           </span>
@@ -810,12 +819,12 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
             type="button"
             data-testid="modino-tuck-btn"
             onClick={handleTuck}
-            aria-label="Hide Modino to side edge"
+            aria-label="Hide Modino to left edge"
             title="Hide Modino"
-            className="group flex h-9 w-9 items-center justify-center rounded-full cursor-pointer focus-visible:outline-2 focus-visible:outline-[#D94B7D]"
+            className="-ml-0.5 group flex h-8 w-8 items-center justify-center rounded-full cursor-pointer focus-visible:outline-2 focus-visible:outline-[#D94B7D]"
           >
-            <span className="flex h-[24px] w-[24px] items-center justify-center rounded-full border border-[rgba(217,75,125,0.24)] bg-[rgba(255,253,250,0.95)] text-[#7A4A63] shadow-xs transition-colors group-hover:border-[#D94B7D] group-hover:text-[#3A1233] group-active:scale-95">
-              <X className="h-3 w-3" aria-hidden="true" />
+            <span className="flex h-[20px] w-[20px] items-center justify-center rounded-full border border-[rgba(217,75,125,0.22)] bg-[rgba(255,253,250,0.95)] text-[#7A4A63] shadow-xs transition-colors group-hover:border-[#D94B7D] group-hover:text-[#3A1233] group-active:scale-95">
+              <X className="h-2.5 w-2.5" aria-hidden="true" />
             </span>
           </button>
         </div>

@@ -256,7 +256,7 @@ export function HeroSection({
   const handlePerimeterEmojiTap = (id: string, idx: number) => {
     soundEngine.playBubbleClick(1.04 + (idx % 4) * 0.05);
     haptics.emojiBounce();
-    emitModinoEvent('cute');
+    emitModinoEvent('friends_and_banter', { source: `hero-emoji-${id}` });
     setEmojiBursts((prev) => ({
       ...prev,
       [id]: (prev[id] ?? 0) + 1,
@@ -423,15 +423,21 @@ export function HeroSection({
           className="mx-auto mb-7 flex max-w-[340px] flex-wrap items-center justify-center gap-2 lg:mx-0 lg:max-w-none lg:justify-start lg:gap-3"
         >
           {HERO_STICKERS.map((sticker, idx) => (
-            <span
+            <button
               key={sticker.id}
+              type="button"
+              onClick={() => {
+                haptics.tap();
+                soundEngine.playBubbleClick(1.06);
+                emitModinoEvent('friends_and_banter', { source: `hero-sticker-${sticker.id}` });
+              }}
               style={{ animationDelay: `${idx * 0.45}s` }}
-              className={`pointer-events-auto inline-flex items-center rounded-2xl border px-[13px] py-[6px] text-[13px] leading-tight font-semibold whitespace-nowrap text-[#3B1535] shadow-xs transition-transform duration-200 hover:scale-105 lg:text-sm ${sticker.bg} ${sticker.border} ${sticker.rotate} ${
+              className={`pointer-events-auto inline-flex cursor-pointer items-center rounded-2xl border px-[13px] py-[6px] text-[13px] leading-tight font-semibold whitespace-nowrap text-[#3B1535] shadow-xs transition-transform duration-200 hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] lg:text-sm ${sticker.bg} ${sticker.border} ${sticker.rotate} ${
                 idx % 2 === 0 ? 'animate-float-gentle' : 'animate-float-reverse'
               }`}
             >
               {sticker.label}
-            </span>
+            </button>
           ))}
         </div>
 

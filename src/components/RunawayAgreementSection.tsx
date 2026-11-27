@@ -141,6 +141,7 @@ export function RunawayAgreementSection({ onAcceptConfetti }: RunawayAgreementSe
   const handleReset = () => {
     haptics.tap();
     soundEngine.playBubbleClick();
+    emitModinoEvent('friends_and_banter', { source: 'agreement-reset' });
     setAccepted(false);
     setDodgeCount(0);
   };

@@ -13,15 +13,17 @@ import {
   PRELOADER_CARD_FADE_MS,
   PRELOADER_GLIDE_TO_100_MS,
   PRELOADER_MAX_TIMEOUT_MS,
-  SKIP_AUDIO_FADE_MS,
   SKIP_FADE_IN_SEC,
+  STAGE3_AUDIO_INTERRUPT_FADE_MS,
   clampDeltaSec,
   computeClosingExitFrame,
   computeCurtainOpenFrame,
   computeSmartPreloaderTarget,
-  getAudioTimelineCues,
+  computeStage3RemainingTailSec,
+  computeStage3TrailingAudioGain,
   getPlaybackCues,
   getPreloaderStatusText,
+  isStage3TrailingAudioAlreadyFinished,
   stepPreloaderDisplayPct,
 } from '../utils/theatrePhysics';
 
@@ -31,6 +33,10 @@ const INTRO_VIDEO_URL =
 export interface TheatreIntroOverlayHandle {
   /** Called if user taps Play Music early while hidden intro audio is still fading out (0.4s ramp down) */
   fadeOutForMusicTakeover: () => void;
+  /** Starts live progressive (1-p)^1.5 trailing audio carryover fade across the full remaining video tail */
+  startStage3TrailingAudioFade: () => void;
+  /** Immediately interrupts any trailing Stage 2 audio with a fast 180ms fade-out and unmount */
+  interruptTrailingAudio: (fadeMs?: number) => void;
 }
 
 interface TheatreIntroOverlayProps {
@@ -216,6 +222,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
     const playbackWatchRafRef = useRef<number | null>(null);
     const finaleRafRef = useRef<number | null>(null);
     const audioFadeRafRef = useRef<number | null>(null);
+    const trailingAudioCleanupRef = useRef<(() => void) | null>(null);
     const fallbackClockRafRef = useRef<number | null>(null);
     const skipTimerRef = useRef<number | null>(null);
 
@@ -277,6 +284,10 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
       if (audioFadeRafRef.current !== null) {
         window.cancelAnimationFrame(audioFadeRafRef.current);
         audioFadeRafRef.current = null;
+      }
+      if (trailingAudioCleanupRef.current) {
+        trailingAudioCleanupRef.current();
+        trailingAudioCleanupRef.current = null;
       }
       if (fallbackClockRafRef.current !== null) {
         window.cancelAnimationFrame(fallbackClockRafRef.current);
@@ -372,6 +383,10 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
           window.cancelAnimationFrame(audioFadeRafRef.current);
           audioFadeRafRef.current = null;
         }
+        if (trailingAudioCleanupRef.current) {
+          trailingAudioCleanupRef.current();
+          trailingAudioCleanupRef.current = null;
+        }
 
         const video = videoRef.current;
         if (video) {
@@ -422,12 +437,23 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
           window.cancelAnimationFrame(audioFadeRafRef.current);
           audioFadeRafRef.current = null;
         }
+        if (trailingAudioCleanupRef.current) {
+          trailingAudioCleanupRef.current();
+          trailingAudioCleanupRef.current = null;
+        }
 
         audioFadeActiveRef.current = true;
         audioFinishedRef.current = false;
-        void tryAttachWebAudioGain();
 
-        const startGain = currentGainRef.current;
+        let startGain = currentGainRef.current;
+        try {
+          if (!Number.isFinite(startGain) || startGain <= 0) {
+            startGain = video.volume;
+          }
+        } catch {
+          startGain = 1;
+        }
+        startGain = Math.max(0, Math.min(1, startGain));
         const fadeStartTs = performance.now();
 
         const stepFade = (now: number) => {
@@ -462,16 +488,35 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
     );
 
     /**
-     * Natural detached background audio fade loop (13.5s -> 21.0s):
-     * - 13.5s - 15.5s: Holds chorus at 0.95 while curtains close, window snaps shut & confetti pops
-     * - 15.5s - 21.0s: Smooth exponential / ease-out curve 0.95 -> 0.0 (local MP3 stays completely paused)
-     * - 21.0s: Stops, unmounts hidden <video>, and immediately triggers sequential local MP3 autoplay
+     * Point 7: Stage 2 -> Stage 3 Trailing Intro Video Audio Carryover (Full Remaining Tail):
+     * Keeps the exact same <video> DOM element mounted and unpaused while Stage 3 (OriginStoryPlay)
+     * begins, progressively decaying native `video.volume` via `startVolume * (1 - p)^1.5` locked
+     * to live playback progress `(currentTime - handoffTime) / (duration - handoffTime)` right
+     * until natural video end (never attaching MediaElementAudioSourceNode, never triggering Milky).
      */
-    const startNaturalAudioFadeLoop = useCallback(() => {
+    const startStage3TrailingAudioFade = useCallback(() => {
+      if (phaseRef.current === 'done') return;
+      suppressBgMusicHandoffRef.current = true;
+
       const video = videoRef.current;
-      if (!video || video.muted || video.paused || videoMissingRef.current) {
+      const alreadyFinished = Boolean(
+        video &&
+          isStage3TrailingAudioAlreadyFinished({
+            ended: video.ended,
+            currentTimeSec: video.currentTime,
+            durationSec: video.duration,
+          }),
+      );
+
+      if (!video || video.muted || video.paused || alreadyFinished || videoMissingRef.current) {
         audioFadeActiveRef.current = false;
         audioFinishedRef.current = true;
+        if (rootOverlayRef.current) {
+          rootOverlayRef.current.dataset.stage3Trailing = 'false';
+        }
+        if (visualExitCompleteRef.current || phaseRef.current === 'audioOnly') {
+          finalizeAndUnmountAll(false);
+        }
         return;
       }
 
@@ -479,58 +524,204 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
         window.cancelAnimationFrame(audioFadeRafRef.current);
         audioFadeRafRef.current = null;
       }
+      if (trailingAudioCleanupRef.current) {
+        trailingAudioCleanupRef.current();
+        trailingAudioCleanupRef.current = null;
+      }
+
+      try {
+        video.loop = false;
+      } catch {
+        // Ignore read-only property errors
+      }
 
       audioFadeActiveRef.current = true;
       audioFinishedRef.current = false;
-      void tryAttachWebAudioGain();
 
-      const stepNatural = () => {
+      let rawStartVol = 1;
+      try {
+        rawStartVol = video.volume || 1;
+      } catch {
+        rawStartVol = 1;
+      }
+      const startVolume = Math.max(0.01, Math.min(1, rawStartVol));
+      const handoffTime = video.currentTime;
+      let remainingSec = computeStage3RemainingTailSec(video.duration, handoffTime);
+
+      if (rootOverlayRef.current) {
+        rootOverlayRef.current.dataset.stage3Trailing = 'true';
+        rootOverlayRef.current.dataset.stage3HandoffSec = handoffTime.toFixed(3);
+        rootOverlayRef.current.dataset.stage3RemainingSec =
+          remainingSec !== null ? remainingSec.toFixed(3) : 'pending';
+      }
+
+      const setNativeVolume = (vol: number) => {
+        const clamped = Math.max(0, Math.min(1, vol));
+        currentGainRef.current = clamped;
+        if (rootOverlayRef.current) {
+          rootOverlayRef.current.dataset.audioGain = clamped.toFixed(3);
+        }
+        try {
+          video.volume = clamped;
+        } catch {
+          // Ignore native volume property restrictions on iOS Safari
+        }
+      };
+
+      const finishTrailingAudio = () => {
+        if (audioFadeRafRef.current !== null) {
+          window.cancelAnimationFrame(audioFadeRafRef.current);
+          audioFadeRafRef.current = null;
+        }
+        if (trailingAudioCleanupRef.current) {
+          trailingAudioCleanupRef.current();
+          trailingAudioCleanupRef.current = null;
+        }
+        setNativeVolume(0);
+        audioFadeActiveRef.current = false;
+        audioFinishedRef.current = true;
+        if (rootOverlayRef.current) {
+          rootOverlayRef.current.dataset.stage3Trailing = 'false';
+        }
+        try {
+          video.pause();
+        } catch {
+          // Ignore pause errors
+        }
+        if (visualExitCompleteRef.current || phaseRef.current === 'audioOnly') {
+          finalizeAndUnmountAll(false);
+        }
+      };
+
+      const handleDurationReady = () => {
+        if (remainingSec !== null) return;
+        const resolved = computeStage3RemainingTailSec(video.duration, handoffTime);
+        if (resolved !== null) {
+          remainingSec = resolved;
+          if (rootOverlayRef.current) {
+            rootOverlayRef.current.dataset.stage3RemainingSec = resolved.toFixed(3);
+          }
+        }
+      };
+
+      const handleVideoEnded = () => {
+        finishTrailingAudio();
+      };
+
+      video.addEventListener('ended', handleVideoEnded);
+      video.addEventListener('loadedmetadata', handleDurationReady);
+      video.addEventListener('durationchange', handleDurationReady);
+      trailingAudioCleanupRef.current = () => {
+        video.removeEventListener('ended', handleVideoEnded);
+        video.removeEventListener('loadedmetadata', handleDurationReady);
+        video.removeEventListener('durationchange', handleDurationReady);
+      };
+
+      const stepTrailingFade = () => {
         if (phaseRef.current === 'done' || !audioFadeActiveRef.current) {
           audioFadeRafRef.current = null;
           return;
         }
 
-        const currentTime = video.currentTime;
-        const audioCue = getAudioTimelineCues(currentTime);
+        if (remainingSec === null) {
+          handleDurationReady();
+        }
 
-        applyVideoAudioGain(audioCue.gain);
+        const frame = computeStage3TrailingAudioGain({
+          currentTimeSec: video.currentTime,
+          handoffTimeSec: handoffTime,
+          remainingSec,
+          startVolume,
+        });
+        setNativeVolume(frame.gain);
 
-        if (audioCue.shouldFinishAudio || video.ended || video.paused) {
-          applyVideoAudioGain(0);
-          audioFadeRafRef.current = null;
-          audioFadeActiveRef.current = false;
-          audioFinishedRef.current = true;
-          try {
-            video.pause();
-          } catch {
-            // Ignore pause errors
-          }
-          if (visualExitCompleteRef.current) {
-            finalizeAndUnmountAll(true);
-          }
+        if (video.ended || video.paused || frame.progress >= 0.995 || frame.isDone) {
+          finishTrailingAudio();
           return;
         }
 
-        audioFadeRafRef.current = window.requestAnimationFrame(stepNatural);
+        audioFadeRafRef.current = window.requestAnimationFrame(stepTrailingFade);
       };
 
-      audioFadeRafRef.current = window.requestAnimationFrame(stepNatural);
-    }, [applyVideoAudioGain, finalizeAndUnmountAll, tryAttachWebAudioGain]);
+      audioFadeRafRef.current = window.requestAnimationFrame(stepTrailingFade);
+    }, [finalizeAndUnmountAll]);
 
-    // Expose imperative takeover hook for App.tsx when user taps "Play Music" early
+    const interruptTrailingAudio = useCallback(
+      (fadeMs: number = STAGE3_AUDIO_INTERRUPT_FADE_MS) => {
+        if (phaseRef.current === 'done') return;
+        suppressBgMusicHandoffRef.current = true;
+        if (rootOverlayRef.current) {
+          rootOverlayRef.current.dataset.stage3Trailing = 'false';
+        }
+        if (trailingAudioCleanupRef.current) {
+          trailingAudioCleanupRef.current();
+          trailingAudioCleanupRef.current = null;
+        }
+
+        const video = videoRef.current;
+        let liveVolume = currentGainRef.current;
+        if (video) {
+          try {
+            if (!Number.isFinite(liveVolume) || liveVolume <= 0) {
+              liveVolume = video.volume;
+            }
+          } catch {
+            // Keep currentGainRef fallback
+          }
+        }
+        const hasAudiblePlayback = Boolean(
+          video &&
+            !video.paused &&
+            !video.muted &&
+            !video.ended &&
+            !videoMissingRef.current &&
+            liveVolume > 0.002,
+        );
+
+        if (hasAudiblePlayback) {
+          startTimedAudioFadeOut(fadeMs, { handoffToBgMusicOnFinish: false });
+        } else {
+          if (audioFadeRafRef.current !== null) {
+            window.cancelAnimationFrame(audioFadeRafRef.current);
+            audioFadeRafRef.current = null;
+          }
+          applyVideoAudioGain(0);
+          audioFadeActiveRef.current = false;
+          audioFinishedRef.current = true;
+          if (video && !video.paused) {
+            try {
+              video.pause();
+            } catch {
+              // Ignore pause errors
+            }
+          }
+          if (visualExitCompleteRef.current || phaseRef.current === 'audioOnly') {
+            finalizeAndUnmountAll(false);
+          }
+        }
+      },
+      [applyVideoAudioGain, finalizeAndUnmountAll, startTimedAudioFadeOut],
+    );
+
+    // Expose imperative hooks for App.tsx (Play Music takeover, Stage 3 full-tail fade, 180ms fast interrupt)
     useImperativeHandle(
       ref,
       () => ({
         fadeOutForMusicTakeover() {
           if (phaseRef.current === 'done') return;
-          // Suppress sequential handoff since user just manually started local MP3
           suppressBgMusicHandoffRef.current = true;
           if (phaseRef.current === 'audioOnly' || audioFadeActiveRef.current) {
             startTimedAudioFadeOut(MUSIC_TAKEOVER_FADE_MS, { handoffToBgMusicOnFinish: false });
           }
         },
+        startStage3TrailingAudioFade() {
+          startStage3TrailingAudioFade();
+        },
+        interruptTrailingAudio(fadeMs?: number) {
+          interruptTrailingAudio(fadeMs);
+        },
       }),
-      [startTimedAudioFadeOut],
+      [interruptTrailingAudio, startStage3TrailingAudioFade, startTimedAudioFadeOut],
     );
 
     // Lock body scrolling while intro window is visible; unlock on unmount
@@ -650,29 +841,32 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
 
         const video = videoRef.current;
         const canContinueVideoAudio = Boolean(
-          video && !video.muted && !video.paused && !videoMissingRef.current,
+          video &&
+            !video.muted &&
+            !video.paused &&
+            !videoMissingRef.current &&
+            !isStage3TrailingAudioAlreadyFinished({
+              ended: video.ended,
+              currentTimeSec: video.currentTime,
+              durationSec: video.duration,
+            }),
         );
 
-        // CRITICAL: Never unmount or pause unmuted <video> at 13.5s!
-        if (triggeredBySkip) {
-          if (canContinueVideoAudio) {
-            // Smooth 1.2s fade-out of skipped video audio -> strictly sequential MP3 autoplay once stopped
-            startTimedAudioFadeOut(SKIP_AUDIO_FADE_MS, { handoffToBgMusicOnFinish: true });
-          } else {
-            if (video && !video.paused) {
-              try {
-                video.pause();
-              } catch {
-                // Ignore pause errors
-              }
+        // CRITICAL: Never unmount or pause unmuted <video> on Stage 2 -> Stage 3 transition!
+        // Keep leftover audio alive smoothly at native video.volume while the curtains snap shut,
+        // then hand off into the live full-remaining-tail progressive fade once Stage 3 mounts.
+        if (canContinueVideoAudio) {
+          if (video) {
+            try {
+              video.loop = false;
+            } catch {
+              // Ignore read-only loop errors
             }
-            audioFinishedRef.current = true;
           }
-        } else if (canContinueVideoAudio) {
-          // Natural 13.5s exit with unmuted audio: hold 0.95 through 15.5s, fade 0.95 -> 0 by 21.0s
-          startNaturalAudioFadeLoop();
+          audioFadeActiveRef.current = true;
+          audioFinishedRef.current = false;
         } else {
-          // Muted autoplay or fallback: pause immediately & skip hidden audio phase
+          // Muted autoplay, already ended, or fallback: pause immediately & skip hidden audio phase
           if (video && !video.paused) {
             try {
               video.pause();
@@ -680,6 +874,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
               // Ignore pause errors
             }
           }
+          audioFadeActiveRef.current = false;
           audioFinishedRef.current = true;
         }
 
@@ -807,8 +1002,8 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
             if (canContinueVideoAudio && !audioFinishedRef.current && audioFadeActiveRef.current) {
               setPhaseSync('audioOnly');
             } else {
-              // Muted intro or audio fade already finished -> unmount & immediately trigger sequential MP3 autoplay
-              finalizeAndUnmountAll(true);
+              // Muted intro or audio fade already finished -> unmount cleanly
+              finalizeAndUnmountAll(!suppressBgMusicHandoffRef.current);
             }
             return;
           }
@@ -818,13 +1013,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
 
         finaleRafRef.current = window.requestAnimationFrame(stepExit);
       },
-      [
-        finalizeAndUnmountAll,
-        setPhaseSync,
-        startNaturalAudioFadeLoop,
-        startTimedAudioFadeOut,
-        unlockBodyScroll,
-      ],
+      [finalizeAndUnmountAll, setPhaseSync, unlockBodyScroll],
     );
 
     // Lightweight milestone guard: checks 1.0s warmup, 12.5s red-mark beat & 13.5s exit trigger strictly once
@@ -1324,6 +1513,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
         data-testid="theatre-intro-overlay"
         data-stage={phase}
         data-audio-only={String(isAudioOnly)}
+        data-stage3-trailing="false"
         data-audio-gain="1.000"
         data-music-crossfade="false"
         role={isAudioOnly ? undefined : 'dialog'}
@@ -1332,7 +1522,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
         aria-label={isAudioOnly ? undefined : 'Birthday intro mini-theatre'}
         className={
           isAudioOnly
-            ? 'pointer-events-none fixed top-0 left-0 h-[1px] w-[1px] overflow-hidden bg-transparent opacity-0'
+            ? 'pointer-events-none fixed top-0 left-0 -z-[1] h-[1px] w-[1px] overflow-hidden bg-transparent opacity-0'
             : `fixed inset-0 z-[9999] flex min-h-[100dvh] flex-col items-center justify-center overflow-y-auto px-4 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] select-none ${
                 pointerEventsDisabled ? 'pointer-events-none' : ''
               }`
@@ -1471,13 +1661,14 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
                   src={INTRO_VIDEO_URL}
                   crossOrigin="anonymous"
                   preload="auto"
+                  loop={false}
                   playsInline
                   onTimeUpdate={(e) => evaluatePlaybackMilestones(e.currentTarget.currentTime)}
                   onEnded={() => {
                     if (!exitTriggeredRef.current) {
                       startExitSequence(false);
-                    } else if (visualExitCompleteRef.current) {
-                      finalizeAndUnmountAll();
+                    } else if (visualExitCompleteRef.current || phaseRef.current === 'audioOnly') {
+                      finalizeAndUnmountAll(!suppressBgMusicHandoffRef.current);
                     }
                   }}
                   className={

@@ -498,20 +498,20 @@ export function ModinoAvatarSvg({ mood, tapRippleKey, paused = false }: ModinoAv
 
       {/* Layer 8: Mood-driven floating SVG prop particles */}
       <g data-layer="propParticles">
-        {/* kiss mode: 2 pastel blush-rose kiss hearts + soft sparkle puff */}
+        {/* kiss mode: 2 pastel blush-rose kiss hearts + soft sparkle puff angled inward (rightward) */}
         {isKiss && !paused && (
           <g>
             <path
-              d="M25 60 C25 57.5 22 56.5 20.5 58.5 C19 56.5 16 57.5 16 60 C16 63 20.5 66 20.5 66 C20.5 66 25 63 25 60 Z"
+              d="M104 60 C104 57.5 101 56.5 99.5 58.5 C98 56.5 95 57.5 95 60 C95 63 99.5 66 99.5 66 C99.5 66 104 63 104 60 Z"
               fill="#EA6594"
               className="animate-modino-kiss-heart-a"
             />
             <path
-              d="M16 49 C16 47.2 13.8 46.5 12.7 48 C11.6 46.5 9.4 47.2 9.4 49 C9.4 51.2 12.7 53.4 12.7 53.4 C12.7 53.4 16 51.2 16 49 Z"
+              d="M111 49 C111 47.2 108.8 46.5 107.7 48 C106.6 46.5 104.4 47.2 104.4 49 C104.4 51.2 107.7 53.4 107.7 53.4 C107.7 53.4 111 51.2 111 49 Z"
               fill="#F7A7C4"
               className="animate-modino-kiss-heart-b"
             />
-            <circle cx="29" cy="53" r="2.2" fill="#FCE5A6" className="animate-modino-sparkle" />
+            <circle cx="91" cy="53" r="2.2" fill="#FCE5A6" className="animate-modino-sparkle" />
           </g>
         )}
 

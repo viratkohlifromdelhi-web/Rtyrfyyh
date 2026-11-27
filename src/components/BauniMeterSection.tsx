@@ -162,6 +162,7 @@ export function BauniMeterSection() {
     stopScannerHaptics();
     soundEngine.playScannerAbort();
     bgMusicPlayer.endScannerAbort();
+    emitModinoEvent('friends_and_banter', { source: 'bauni-scan-abort' });
     setPhase('aborted');
     setAbortCount((c) => c + 1);
     syncProgressDom(progressRef.current, "Don't lift your finger early, hold till 99%!");
@@ -214,6 +215,7 @@ export function BauniMeterSection() {
     soundEngine.startScannerHold();
     bgMusicPlayer.beginScannerHold();
     startScannerHapticPulse();
+    emitModinoEvent('friends_and_banter', { source: 'bauni-scan-start' });
     trackEvent('bauni_scan_started', 'Bauni-Meter Scanner');
 
     runLoop();
@@ -246,6 +248,7 @@ export function BauniMeterSection() {
     soundEngine.playBubbleClick();
     soundEngine.stopScannerHold();
     bgMusicPlayer.endScannerAbort();
+    emitModinoEvent('friends_and_banter', { force: true, source: 'bauni-scan-reset' });
     modeRef.current = 'none';
     stopLoop();
     progressRef.current = 0;

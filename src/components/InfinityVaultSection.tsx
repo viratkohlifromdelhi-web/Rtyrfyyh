@@ -487,6 +487,7 @@ export function InfinityVaultSection({
   // Secret Reset (`9876`): wipes localStorage, resets refs/canvas/timers, plays reverse-time shimmer
   const executeSecretReset = useCallback(() => {
     trackEvent('vault_reset_triggered', 'Infinity Gift Vault Reset');
+    emitModinoEvent('interaction_hype', { force: true, source: 'vault-reset' });
     clearAllTimers();
     stopOrbitLoop();
     stopDustLoop(true);
@@ -853,6 +854,7 @@ export function InfinityVaultSection({
     trackEvent('vault_ring_stopped', 'Infinity Vault Stop Ring Button');
     soundEngine.playVaultRingDecel();
     haptics.vaultStopRing();
+    emitModinoEvent('interaction_hype', { source: 'vault-stop-ring' });
     orbitSpeedRef.current = ORBIT_BASE_SPEED_RAD;
     stopElapsedRef.current = 0;
     setVaultPhase('stopping');
@@ -974,6 +976,7 @@ export function InfinityVaultSection({
         scheduleTimer(() => {
           setVaultPhase('claimed');
           haptics.vaultRewardReveal();
+          emitModinoEvent('cute', { force: true, source: 'vault-stone-claimed' });
 
           // One-time footer screenshot summary card: trigger strictly once on unclaimed -> claimed
           if (consumeOneTimeSummary()) {
@@ -1029,6 +1032,7 @@ export function InfinityVaultSection({
     } catch {
       // silent
     }
+    emitModinoEvent('cute', { force: true, source: 'vault-copy-code' });
 
     const markCopied = () => {
       setCopied(true);

@@ -582,3 +582,83 @@ export function computePreloaderProgress(params: {
     isReady: false,
   };
 }
+
+/**
+ * Point 7: Stage 2 -> Stage 3 Trailing Intro Video Audio Carryover (Full Remaining Tail).
+ * Keeps 100% of the leftover Stage 2 <video> audio playing seamlessly into Stage 3 while
+ * progressively decaying volume from handoffTime to video.duration via `startVolume * (1 - p)^1.5`.
+ */
+export const STAGE3_AUDIO_FADE_EXPONENT = 1.5;
+export const STAGE3_AUDIO_INTERRUPT_FADE_MS = 180;
+export const STAGE3_AUDIO_MIN_REMAINING_SEC = 0.12;
+export const STAGE3_AUDIO_END_PROGRESS_THRESHOLD = 0.995;
+
+export interface Stage3TrailingAudioFrame {
+  readonly gain: number;
+  readonly progress: number;
+  readonly isDone: boolean;
+}
+
+export function isStage3TrailingAudioAlreadyFinished(params: {
+  ended: boolean;
+  currentTimeSec: number;
+  durationSec: number;
+}): boolean {
+  if (params.ended) return true;
+  if (
+    Number.isFinite(params.durationSec) &&
+    params.durationSec > 0 &&
+    params.durationSec - params.currentTimeSec <= STAGE3_AUDIO_MIN_REMAINING_SEC
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function computeStage3RemainingTailSec(
+  durationSec: number,
+  handoffTimeSec: number,
+): number | null {
+  if (Number.isFinite(durationSec) && durationSec > handoffTimeSec) {
+    return Math.max(0.2, durationSec - handoffTimeSec);
+  }
+  return null;
+}
+
+export function computeStage3TrailingAudioGain(params: {
+  currentTimeSec: number;
+  handoffTimeSec: number;
+  remainingSec: number | null;
+  startVolume: number;
+}): Stage3TrailingAudioFrame {
+  const safeStart = Math.max(
+    0,
+    Math.min(1, Number.isFinite(params.startVolume) ? params.startVolume : 0),
+  );
+
+  if (safeStart <= 0.0005) {
+    return { gain: 0, progress: 1, isDone: true };
+  }
+
+  // If duration is temporarily NaN/Infinity, hold current start volume until metadata arrives or ended fires
+  if (params.remainingSec === null) {
+    return { gain: safeStart, progress: 0, isDone: false };
+  }
+
+  const safeRemaining = Math.max(0.2, params.remainingSec);
+  const progress = clamp01((params.currentTimeSec - params.handoffTimeSec) / safeRemaining);
+
+  if (progress >= STAGE3_AUDIO_END_PROGRESS_THRESHOLD) {
+    return { gain: 0, progress: 1, isDone: true };
+  }
+
+  const nextVolume = safeStart * Math.pow(1 - progress, STAGE3_AUDIO_FADE_EXPONENT);
+  const gain = Math.max(0, Math.min(1, nextVolume));
+  return {
+    gain: gain <= 0.0005 ? 0 : gain,
+    progress,
+    isDone: gain <= 0.0005,
+  };
+}
+
+

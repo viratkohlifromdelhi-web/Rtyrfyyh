@@ -5,6 +5,7 @@ import {
   SCENE_8_GROWTH_STEPS,
   SCENE_9_GROWTH_STEPS,
   inchesToSvgCrownY,
+  type KissPhase,
 } from './originScript';
 
 export type ShivjeeMood = 'calm' | 'happyTogether' | 'blushKiss' | 'amazed' | 'proudDad';
@@ -32,7 +33,7 @@ function GlossyEyes({
   y: number;
   radiusX?: number;
   radiusY?: number;
-  mode?: 'open' | 'happyArc' | 'closedSweet' | 'squeezed' | 'wide';
+  mode?: 'open' | 'happyArc' | 'halfClosed' | 'closedSweet' | 'squeezed' | 'wide';
   lookOffsetX?: number;
   showLashes?: boolean;
   blinkDurSec?: number;
@@ -43,6 +44,51 @@ function GlossyEyes({
       <g fill="none" stroke="#3A1233" strokeWidth="2.1" strokeLinecap="round">
         <path d={`M ${leftX - 4.2} ${y + 1.2} Q ${leftX} ${y - 4.2} ${leftX + 4.2} ${y + 1.2}`} />
         <path d={`M ${rightX - 4.2} ${y + 1.2} Q ${rightX} ${y - 4.2} ${rightX + 4.2} ${y + 1.2}`} />
+      </g>
+    );
+  }
+
+  if (mode === 'halfClosed') {
+    return (
+      <g>
+        {[leftX, rightX].map((cx, idx) => (
+          <g key={idx}>
+            <ellipse
+              cx={cx + lookOffsetX * 0.75}
+              cy={y + 0.8}
+              rx={radiusX * 0.92}
+              ry={radiusY * 0.44}
+              fill="#3A1233"
+            />
+            <circle
+              cx={cx + lookOffsetX * 0.75 - radiusX * 0.22}
+              cy={y + 0.35}
+              r={0.85}
+              fill="#FFFFFF"
+              opacity="0.88"
+            />
+            <path
+              d={`M ${cx - 4.3} ${y - 0.6} Q ${cx} ${y + 1.3} ${cx + 4.3} ${y - 0.6}`}
+              fill="none"
+              stroke="#3A1233"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+            />
+            {showLashes && (
+              <path
+                d={
+                  idx === 0
+                    ? `M ${cx - 4.3} ${y - 0.4} L ${cx - 5.5} ${y + 0.8}`
+                    : `M ${cx + 4.3} ${y - 0.4} L ${cx + 5.5} ${y + 0.8}`
+                }
+                fill="none"
+                stroke="#3A1233"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+              />
+            )}
+          </g>
+        ))}
       </g>
     );
   }
@@ -156,9 +202,16 @@ function CharacterShadow({ rx = 30, cy = 221 }: { rx?: number; cy?: number }) {
 
 export interface ShivjeeCharacterProps extends CharacterClassProps {
   mood?: ShivjeeMood;
+  kissPhase?: KissPhase;
+  headTiltDeg?: number;
 }
 
-export function ShivjeeCharacter({ mood = 'calm', className = '' }: ShivjeeCharacterProps) {
+export function ShivjeeCharacter({
+  mood = 'calm',
+  kissPhase = 'idle',
+  headTiltDeg = 0,
+  className = '',
+}: ShivjeeCharacterProps) {
   const uid = useId().replace(/:/g, '');
   const skinId = `${uid}_shivjee_skin`;
   const hairId = `${uid}_shivjee_hair`;
@@ -166,13 +219,39 @@ export function ShivjeeCharacter({ mood = 'calm', className = '' }: ShivjeeChara
   const vestId = `${uid}_shivjee_vest`;
   const pantsId = `${uid}_shivjee_pants`;
   const shoeId = `${uid}_shivjee_shoe`;
-  const isKiss = mood === 'blushKiss';
+  const isKissPhaseActive = kissPhase !== 'idle';
+  const isKissApproach = kissPhase === 'approach';
+  const isKissLeanIn = kissPhase === 'leanIn';
+  const isKissing = kissPhase === 'kissing' || (!isKissPhaseActive && mood === 'blushKiss');
+  const isKissAfterglow = kissPhase === 'afterglow';
+  const isKissEmbrace = isKissLeanIn || isKissing;
   const isHappy = mood === 'happyTogether' || mood === 'proudDad';
   const isAmazed = mood === 'amazed';
 
-  const blushOpacity = isKiss ? 0.72 : isHappy ? 0.44 : 0.32;
-  const eyeMode = isKiss ? 'closedSweet' : isHappy ? 'happyArc' : isAmazed ? 'wide' : 'open';
-  const lookOffsetX = mood === 'happyTogether' ? 1 : 0;
+  const blushOpacity = isKissing
+    ? 0.88
+    : isKissLeanIn
+      ? 0.72
+      : isKissAfterglow
+        ? 0.68
+        : isKissApproach
+          ? 0.46
+          : isHappy
+            ? 0.44
+            : 0.32;
+  const eyeMode: 'open' | 'happyArc' | 'halfClosed' | 'closedSweet' | 'wide' = isKissing
+    ? 'closedSweet'
+    : isKissLeanIn
+      ? 'halfClosed'
+      : isKissApproach || isKissAfterglow
+        ? 'open'
+        : isHappy
+          ? 'happyArc'
+          : isAmazed
+            ? 'wide'
+            : 'open';
+  const lookOffsetX = isKissApproach || isKissLeanIn || isKissAfterglow ? 2.1 : mood === 'happyTogether' ? 1 : 0;
+  const resolvedHeadTilt = headTiltDeg !== 0 ? headTiltDeg : isKissing ? 7 : isKissLeanIn ? 6.2 : 0;
 
   return (
     <svg
@@ -248,23 +327,25 @@ export function ShivjeeCharacter({ mood = 'calm', className = '' }: ShivjeeChara
           fill={`url(#${skinId})`}
         />
 
-        {/* Right arm */}
-        <path
-          d={
-            isKiss
-              ? 'M 105 104 C 114 114 118 128 111 139 C 107 144 101 142 100 136 C 100 128 99 119 98 111 Z'
-              : mood === 'proudDad' || isAmazed
-                ? 'M 105 104 C 118 114 122 128 115 140 C 111 145 105 143 103 137 C 102 129 100 120 98 112 Z'
-                : 'M 105 104 C 114 116 116 134 112 148 C 110 153 104 153 102 148 C 100 136 100 122 98 111 Z'
-          }
-          fill={`url(#${kurtaId})`}
-        />
-        <circle
-          cx={isKiss ? 106 : mood === 'proudDad' || isAmazed ? 111 : 107}
-          cy={isKiss ? 140 : mood === 'proudDad' || isAmazed ? 142 : 151}
-          r="5.6"
-          fill={`url(#${skinId})`}
-        />
+        {/* Right inner arm (dedicated kissArmGroup reaching gently toward Archana's waist/shoulder during leanIn & kissing) */}
+        <g data-layer="kissArmGroup">
+          <path
+            d={
+              isKissEmbrace
+                ? 'M 103 105 C 115 113 125 123 127 132 C 128 137 123 141 118 139 C 111 134 105 125 99 114 Z'
+                : mood === 'proudDad' || isAmazed
+                  ? 'M 105 104 C 118 114 122 128 115 140 C 111 145 105 143 103 137 C 102 129 100 120 98 112 Z'
+                  : 'M 105 104 C 114 116 116 134 112 148 C 110 153 104 153 102 148 C 100 136 100 122 98 111 Z'
+            }
+            fill={`url(#${kurtaId})`}
+          />
+          <circle
+            cx={isKissEmbrace ? 124 : mood === 'proudDad' || isAmazed ? 111 : 107}
+            cy={isKissEmbrace ? 136 : mood === 'proudDad' || isAmazed ? 142 : 151}
+            r="5.6"
+            fill={`url(#${skinId})`}
+          />
+        </g>
       </g>
 
       {/* Ivory Kurta Base + Muted Sage-Teal Nehru Vest */}
@@ -302,108 +383,149 @@ export function ShivjeeCharacter({ mood = 'calm', className = '' }: ShivjeeChara
         <line x1="87.5" y1="114.5" x2="97.5" y2="114.5" stroke="#3E5650" strokeWidth="1" />
       </g>
 
-      {/* Neck & Head */}
+      {/* Neck Anchor & Dedicated Neck-Pivoted Head Group (transform-origin at base of neck 80,92) */}
       <g>
         <rect x="74" y="83" width="12" height="13" rx="5.5" fill={`url(#${skinId})`} />
         {/* Soft neck shadow */}
         <path d="M 74 86 Q 80 91 86 86 L 86 83 L 74 83 Z" fill="rgba(180, 112, 82, 0.22)" />
 
-        {/* Ears */}
-        <ellipse cx="55.5" cy="65" rx="4.2" ry="5.5" fill={`url(#${skinId})`} />
-        <ellipse cx="104.5" cy="65" rx="4.2" ry="5.5" fill={`url(#${skinId})`} />
+        <g
+          data-layer="headGroup"
+          style={{
+            transformOrigin: '80px 92px',
+            transform: `rotate(${resolvedHeadTilt}deg)`,
+            transition: 'transform 550ms cubic-bezier(0.37, 0, 0.63, 1)',
+          }}
+        >
+          {/* Ears */}
+          <ellipse cx="55.5" cy="65" rx="4.2" ry="5.5" fill={`url(#${skinId})`} />
+          <ellipse cx="104.5" cy="65" rx="4.2" ry="5.5" fill={`url(#${skinId})`} />
 
-        {/* Rounded warm anime-chibi face */}
-        <path
-          d="M 56 59 C 56 42 66 34 80 34 C 94 34 104 42 104 59 C 104 76 94 87 80 87 C 66 87 56 76 56 59 Z"
-          fill={`url(#${skinId})`}
-        />
+          {/* Rounded warm anime-chibi face */}
+          <path
+            d="M 56 59 C 56 42 66 34 80 34 C 94 34 104 42 104 59 C 104 76 94 87 80 87 C 66 87 56 76 56 59 Z"
+            fill={`url(#${skinId})`}
+          />
 
-        {/* Softly layered dark espresso-plum hair */}
-        <path
-          d="M 54 57 C 53 38 64 26 80 26 C 96 26 107 38 106 57 C 105 51 102 45 97 43 C 92 48 83 49 74 46 C 67 44 60 48 56 57 Z"
-          fill={`url(#${hairId})`}
-        />
-        {/* Side swoop lock */}
-        <path
-          d="M 62 35 C 72 30 89 30 98 40 C 90 42 79 42 70 39 Z"
-          fill="#4A2B40"
-          opacity="0.55"
-        />
-        {/* Subtle hair shine highlight arc */}
-        <path
-          d="M 67 34 Q 80 29 93 35"
-          fill="none"
-          stroke="#FFFFFF"
-          strokeWidth="2.1"
-          strokeLinecap="round"
-          opacity="0.22"
-        />
+          {/* Softly layered dark espresso-plum hair */}
+          <path
+            d="M 54 57 C 53 38 64 26 80 26 C 96 26 107 38 106 57 C 105 51 102 45 97 43 C 92 48 83 49 74 46 C 67 44 60 48 56 57 Z"
+            fill={`url(#${hairId})`}
+          />
+          {/* Side swoop lock */}
+          <path
+            d="M 62 35 C 72 30 89 30 98 40 C 90 42 79 42 70 39 Z"
+            fill="#4A2B40"
+            opacity="0.55"
+          />
+          {/* Subtle hair shine highlight arc */}
+          <path
+            d="M 67 34 Q 80 29 93 35"
+            fill="none"
+            stroke="#FFFFFF"
+            strokeWidth="2.1"
+            strokeLinecap="round"
+            opacity="0.22"
+          />
 
-        {/* Friendly eyebrows */}
-        <g fill="none" stroke="#361A2E" strokeWidth="1.7" strokeLinecap="round">
+          {/* Friendly eyebrows */}
+          <g fill="none" stroke="#361A2E" strokeWidth="1.7" strokeLinecap="round">
+            <path
+              d={
+                isAmazed
+                  ? 'M 65 54 Q 70 50.5 75 54'
+                  : isKissEmbrace
+                    ? 'M 65 56.6 Q 70 55.2 75 56.8'
+                    : 'M 65 56 Q 70 54 75 55.8'
+              }
+            />
+            <path
+              d={
+                isAmazed
+                  ? 'M 85 54 Q 90 50.5 95 54'
+                  : isKissEmbrace
+                    ? 'M 85 56.8 Q 90 55.2 95 56.6'
+                    : 'M 85 55.8 Q 90 54 95 56'
+              }
+            />
+          </g>
+
+          {/* Glossy plum eyes (staggered 4.3s natural blink) */}
+          <GlossyEyes
+            leftX={70}
+            rightX={90}
+            y={63}
+            radiusX={3.4}
+            radiusY={4.1}
+            mode={eyeMode}
+            lookOffsetX={lookOffsetX}
+            blinkDurSec={4.3}
+            blinkDelaySec={0.35}
+          />
+
+          {/* Rosy blush cheeks */}
+          <ellipse cx="63.5" cy="70" rx="5.5" ry="3.2" fill="#E8779F" opacity={blushOpacity} />
+          <ellipse cx="96.5" cy="70" rx="5.5" ry="3.2" fill="#E8779F" opacity={blushOpacity} />
+
+          {/* Shy afterglow cheek glints */}
+          {isKissAfterglow && (
+            <g className="origin-story-afterglow-twinkle">
+              <path d="M 52 58 L 53.3 61 L 56.3 62.3 L 53.3 63.6 L 52 66.6 L 50.7 63.6 L 47.7 62.3 L 50.7 61 Z" fill="#FFE7A8" />
+              <circle cx="109" cy="68" r="1.8" fill="#F9B5D2" />
+            </g>
+          )}
+
+          {/* Friendly neat mustache (shifts gently right toward inner profile during kiss) */}
           <path
             d={
-              isAmazed
-                ? 'M 65 54 Q 70 50.5 75 54'
-                : 'M 65 56 Q 70 54 75 55.8'
+              isKissing
+                ? 'M 77.5 74 Q 81.2 71.5 85 73.5 Q 88.8 71.5 92.5 74 Q 88.8 75.6 85 74.9 Q 81.2 75.6 77.5 74 Z'
+                : 'M 72.5 73.8 Q 76.2 71.2 80 73.2 Q 83.8 71.2 87.5 73.8 Q 83.8 75.5 80 74.7 Q 76.2 75.5 72.5 73.8 Z'
             }
+            fill="#2D1526"
           />
-          <path
-            d={
-              isAmazed
-                ? 'M 85 54 Q 90 50.5 95 54'
-                : 'M 85 55.8 Q 90 54 95 56'
-            }
-          />
+
+          {/* Expressive smile / inner-facing kiss curve */}
+          {isKissing ? (
+            <path
+              d="M 94.5 78.2 Q 99.6 79.4 97.6 80.7 Q 99.6 82.0 94.8 82.8"
+              fill="none"
+              stroke="#C93B6B"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          ) : isKissLeanIn ? (
+            <path
+              d="M 80.5 78 Q 86.2 81.2 91.5 78.8"
+              fill="none"
+              stroke="#8B385C"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+            />
+          ) : isKissAfterglow ? (
+            <path
+              d="M 75.5 77.5 Q 81.5 82.6 87.2 77.5"
+              fill="none"
+              stroke="#6C2D4E"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          ) : isAmazed ? (
+            <ellipse cx="80" cy="79.5" rx="3.2" ry="3.6" fill="#D96B8C" />
+          ) : (
+            <path
+              d={
+                isHappy
+                  ? 'M 74.5 77.4 Q 80 82.8 85.5 77.4'
+                  : 'M 75.5 78 Q 80 81.4 84.5 78'
+              }
+              fill="none"
+              stroke="#592842"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+            />
+          )}
         </g>
-
-        {/* Glossy plum eyes (staggered 4.3s natural blink) */}
-        <GlossyEyes
-          leftX={70}
-          rightX={90}
-          y={63}
-          radiusX={3.4}
-          radiusY={4.1}
-          mode={eyeMode}
-          lookOffsetX={lookOffsetX}
-          blinkDurSec={4.3}
-          blinkDelaySec={0.35}
-        />
-
-        {/* Rosy blush cheeks */}
-        <ellipse cx="63.5" cy="70" rx="5.2" ry="3" fill="#E8779F" opacity={blushOpacity} />
-        <ellipse cx="96.5" cy="70" rx="5.2" ry="3" fill="#E8779F" opacity={blushOpacity} />
-
-        {/* Friendly neat mustache */}
-        <path
-          d="M 72.5 73.8 Q 76.2 71.2 80 73.2 Q 83.8 71.2 87.5 73.8 Q 83.8 75.5 80 74.7 Q 76.2 75.5 72.5 73.8 Z"
-          fill="#2D1526"
-        />
-
-        {/* Expressive smile */}
-        {isKiss ? (
-          <path
-            d="M 78.2 77.6 Q 81.8 78.8 79.4 80.2 Q 81.8 81.5 78.2 82.4"
-            fill="none"
-            stroke="#C93B6B"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-          />
-        ) : isAmazed ? (
-          <ellipse cx="80" cy="79.5" rx="3.2" ry="3.6" fill="#D96B8C" />
-        ) : (
-          <path
-            d={
-              isHappy
-                ? 'M 74.5 77.4 Q 80 82.8 85.5 77.4'
-                : 'M 75.5 78 Q 80 81.4 84.5 78'
-            }
-            fill="none"
-            stroke="#592842"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-          />
-        )}
       </g>
     </svg>
   );
@@ -416,11 +538,15 @@ export function ShivjeeCharacter({ mood = 'calm', className = '' }: ShivjeeChara
 export interface ArchanaCharacterProps extends CharacterClassProps {
   mood?: ArchanaMood;
   pregnancyMonth?: number;
+  kissPhase?: KissPhase;
+  headTiltDeg?: number;
 }
 
 export function ArchanaCharacter({
   mood = 'calm',
   pregnancyMonth = 0,
+  kissPhase = 'idle',
+  headTiltDeg = 0,
   className = '',
 }: ArchanaCharacterProps) {
   const uid = useId().replace(/:/g, '');
@@ -434,12 +560,37 @@ export function ArchanaCharacter({
   const pregT = clampedMonth / 9;
   const bellyBulge = pregT * 17.5;
 
-  const isKiss = mood === 'blushKiss';
+  const isKissPhaseActive = kissPhase !== 'idle';
+  const isKissApproach = kissPhase === 'approach';
+  const isKissLeanIn = kissPhase === 'leanIn';
+  const isKissing = kissPhase === 'kissing' || (!isKissPhaseActive && mood === 'blushKiss');
+  const isKissAfterglow = kissPhase === 'afterglow';
+  const isKissEmbrace = isKissLeanIn || isKissing;
   const isGlowing = mood === 'glowingPregnant' || clampedMonth > 0;
   const isHappy = mood === 'happyTogether' || mood === 'proudMom' || isGlowing;
 
-  const blushOpacity = isKiss ? 0.78 : isHappy ? 0.5 : 0.38;
-  const eyeMode = isKiss ? 'closedSweet' : mood === 'proudMom' || mood === 'happyTogether' ? 'happyArc' : 'open';
+  const blushOpacity = isKissing
+    ? 0.88
+    : isKissLeanIn
+      ? 0.72
+      : isKissAfterglow
+        ? 0.72
+        : isKissApproach
+          ? 0.48
+          : isHappy
+            ? 0.5
+            : 0.38;
+  const eyeMode: 'open' | 'happyArc' | 'halfClosed' | 'closedSweet' = isKissing
+    ? 'closedSweet'
+    : isKissLeanIn
+      ? 'halfClosed'
+      : isKissApproach || isKissAfterglow
+        ? 'open'
+        : mood === 'proudMom' || mood === 'happyTogether'
+          ? 'happyArc'
+          : 'open';
+  const lookOffsetX = isKissApproach || isKissLeanIn || isKissAfterglow ? -2.1 : 0;
+  const resolvedHeadTilt = headTiltDeg !== 0 ? headTiltDeg : isKissing ? -7 : isKissLeanIn ? -6.2 : 0;
 
   return (
     <svg
@@ -580,19 +731,28 @@ export function ArchanaCharacter({
         />
       </g>
 
-      {/* Graceful arms & hands (right hand rests lovingly over belly during pregnancy) */}
+      {/* Graceful arms & hands (inner left arm rests gently near Shivjee's chest/shoulder during leanIn & kissing) */}
       <g>
-        {/* Left arm */}
-        <path
-          d={
-            isKiss
-              ? 'M 58 117 C 50 128 50 140 57 148 C 60 151 64 149 64 144 C 62 136 62 127 63 119 Z'
-              : 'M 58 117 C 52 130 51 144 55 155 C 57 159 62 158 63 154 C 62 143 62 131 63 120 Z'
-          }
-          fill={`url(#${skinId})`}
-        />
-        {/* Gold bangle left */}
-        <ellipse cx="59" cy={isKiss ? 145 : 152} rx="3.4" ry="1.3" fill="#E6B85C" />
+        {/* Left inner arm (kissArmGroup) */}
+        <g data-layer="kissArmGroup">
+          <path
+            d={
+              isKissEmbrace
+                ? 'M 59 116 C 47 121 38 124 34 119 C 32 115 36 111 41 113 C 47 115 54 114 62 112 Z'
+                : 'M 58 117 C 52 130 51 144 55 155 C 57 159 62 158 63 154 C 62 143 62 131 63 120 Z'
+            }
+            fill={`url(#${skinId})`}
+          />
+          {/* Gold bangle left */}
+          <ellipse
+            cx={isKissEmbrace ? 41 : 59}
+            cy={isKissEmbrace ? 117.5 : 152}
+            rx="3.4"
+            ry="1.3"
+            transform={isKissEmbrace ? 'rotate(-16 41 117.5)' : undefined}
+            fill="#E6B85C"
+          />
+        </g>
 
         {/* Right arm (cradles belly smoothly when pregnant) */}
         <path
@@ -612,7 +772,7 @@ export function ArchanaCharacter({
         />
       </g>
 
-      {/* Neck & Head */}
+      {/* Neck Anchor & Dedicated Neck-Pivoted Head Group (transform-origin at base of neck 80,102) */}
       <g>
         <rect x="74.5" y="92" width="11" height="12" rx="5" fill={`url(#${skinId})`} />
         {/* Delicate gold necklace */}
@@ -625,89 +785,126 @@ export function ArchanaCharacter({
         />
         <circle cx="80" cy="105.6" r="1.7" fill="#D94B7D" />
 
-        {/* Tiny gold jhumka earrings */}
-        <circle cx="57" cy="80.5" r="2.2" fill="#E6B85C" />
-        <path d="M 55 82.2 L 59 82.2 L 57 85.4 Z" fill="#F7D994" />
-        <circle cx="103" cy="80.5" r="2.2" fill="#E6B85C" />
-        <path d="M 101 82.2 L 105 82.2 L 103 85.4 Z" fill="#F7D994" />
+        <g
+          data-layer="headGroup"
+          style={{
+            transformOrigin: '80px 102px',
+            transform: `rotate(${resolvedHeadTilt}deg)`,
+            transition: 'transform 550ms cubic-bezier(0.37, 0, 0.63, 1)',
+          }}
+        >
+          {/* Tiny gold jhumka earrings */}
+          <circle cx="57" cy="80.5" r="2.2" fill="#E6B85C" />
+          <path d="M 55 82.2 L 59 82.2 L 57 85.4 Z" fill="#F7D994" />
+          <circle cx="103" cy="80.5" r="2.2" fill="#E6B85C" />
+          <path d="M 101 82.2 L 105 82.2 L 103 85.4 Z" fill="#F7D994" />
 
-        {/* Soft oval face */}
-        <path
-          d="M 58 69 C 58 53 67 45 80 45 C 93 45 102 53 102 69 C 102 85 93 95 80 95 C 67 95 58 85 58 69 Z"
-          fill={`url(#${skinId})`}
-        />
+          {/* Soft oval face */}
+          <path
+            d="M 58 69 C 58 53 67 45 80 45 C 93 45 102 53 102 69 C 102 85 93 95 80 95 C 67 95 58 85 58 69 Z"
+            fill={`url(#${skinId})`}
+          />
 
-        {/* Center-parted flowing dark hair framing face */}
-        <path
-          d="M 55 72 C 54 50 65 38 80 38 C 95 38 106 50 105 72 C 102 62 96 54 81 51 C 79 51 79 51 79 51 C 64 54 58 62 55 72 Z"
-          fill={`url(#${hairId})`}
-        />
-        {/* Soft glossy hair sheen arcs */}
-        <path
-          d="M 65 46 Q 72 42 78 45"
-          fill="none"
-          stroke="#FFFFFF"
-          strokeWidth="1.9"
-          strokeLinecap="round"
-          opacity="0.24"
-        />
-        <path
-          d="M 82 45 Q 88 42 95 46"
-          fill="none"
-          stroke="#FFFFFF"
-          strokeWidth="1.9"
-          strokeLinecap="round"
-          opacity="0.24"
-        />
+          {/* Center-parted flowing dark hair framing face */}
+          <path
+            d="M 55 72 C 54 50 65 38 80 38 C 95 38 106 50 105 72 C 102 62 96 54 81 51 C 79 51 79 51 79 51 C 64 54 58 62 55 72 Z"
+            fill={`url(#${hairId})`}
+          />
+          {/* Soft glossy hair sheen arcs */}
+          <path
+            d="M 65 46 Q 72 42 78 45"
+            fill="none"
+            stroke="#FFFFFF"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            opacity="0.24"
+          />
+          <path
+            d="M 82 45 Q 88 42 95 46"
+            fill="none"
+            stroke="#FFFFFF"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            opacity="0.24"
+          />
 
-        {/* Delicate Warm Rose Berry bindi */}
-        <circle cx="80" cy="60.5" r="1.9" fill="#D94B7D" />
+          {/* Delicate Warm Rose Berry bindi */}
+          <circle cx="80" cy="60.5" r="1.9" fill="#D94B7D" />
 
-        {/* Soft arched eyebrows */}
-        <g fill="none" stroke="#3A1A2F" strokeWidth="1.35" strokeLinecap="round">
-          <path d="M 66 64.8 Q 70.5 62.6 75 64.5" />
-          <path d="M 85 64.5 Q 89.5 62.6 94 64.8" />
+          {/* Soft arched eyebrows */}
+          <g fill="none" stroke="#3A1A2F" strokeWidth="1.35" strokeLinecap="round">
+            <path d="M 66 64.8 Q 70.5 62.6 75 64.5" />
+            <path d="M 85 64.5 Q 89.5 62.6 94 64.8" />
+          </g>
+
+          {/* Expressive glossy eyes with subtle lashes (staggered 3.6s natural blink) */}
+          <GlossyEyes
+            leftX={70.5}
+            rightX={89.5}
+            y={71.5}
+            radiusX={3.4}
+            radiusY={4.2}
+            mode={eyeMode}
+            lookOffsetX={lookOffsetX}
+            showLashes
+            blinkDurSec={3.6}
+            blinkDelaySec={1.45}
+          />
+
+          {/* Rosy blush cheeks */}
+          <ellipse cx="64.5" cy="78" rx="5.5" ry="3.2" fill="#EC7CA4" opacity={blushOpacity} />
+          <ellipse cx="95.5" cy="78" rx="5.5" ry="3.2" fill="#EC7CA4" opacity={blushOpacity} />
+
+          {/* Shy afterglow cheek glints */}
+          {isKissAfterglow && (
+            <g className="origin-story-afterglow-twinkle" style={{ animationDelay: '0.35s' }}>
+              <path
+                d="M 108 66 L 109.3 69 L 112.3 70.3 L 109.3 71.6 L 108 74.6 L 106.7 71.6 L 103.7 70.3 L 106.7 69 Z"
+                fill="#FFE7A8"
+              />
+              <circle cx="51" cy="74" r="1.8" fill="#F9B5D2" />
+            </g>
+          )}
+
+          {/* Sweet smile / inner-facing kiss pucker */}
+          {isKissing ? (
+            <path
+              d="M 65.5 83.4 Q 60.4 84.6 62.4 86.0 Q 60.4 87.3 65.2 88.2"
+              fill="none"
+              stroke="#D94B7D"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          ) : isKissLeanIn ? (
+            <path
+              d="M 68.8 84.6 Q 74.0 87.2 79.4 84.0"
+              fill="none"
+              stroke="#B43E6E"
+              strokeWidth="1.65"
+              strokeLinecap="round"
+            />
+          ) : isKissAfterglow ? (
+            <path
+              d="M 73.2 83.2 Q 79.0 88.5 84.8 83.2"
+              fill="none"
+              stroke="#B43E6E"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+            />
+          ) : (
+            <path
+              d={
+                isHappy
+                  ? 'M 74.8 83.6 Q 80 88.8 85.2 83.6'
+                  : 'M 75.8 84 Q 80 87.4 84.2 84'
+              }
+              fill="none"
+              stroke="#9B3960"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+            />
+          )}
         </g>
-
-        {/* Expressive glossy eyes with subtle lashes (staggered 3.6s natural blink) */}
-        <GlossyEyes
-          leftX={70.5}
-          rightX={89.5}
-          y={71.5}
-          radiusX={3.4}
-          radiusY={4.2}
-          mode={eyeMode}
-          showLashes
-          blinkDurSec={3.6}
-          blinkDelaySec={1.45}
-        />
-
-        {/* Rosy blush cheeks */}
-        <ellipse cx="64.5" cy="78" rx="5.2" ry="3" fill="#EC7CA4" opacity={blushOpacity} />
-        <ellipse cx="95.5" cy="78" rx="5.2" ry="3" fill="#EC7CA4" opacity={blushOpacity} />
-
-        {/* Sweet smile / kiss pucker */}
-        {isKiss ? (
-          <path
-            d="M 81.8 83.2 Q 78.2 84.4 80.6 85.8 Q 78.2 87.2 81.8 88"
-            fill="none"
-            stroke="#D94B7D"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-          />
-        ) : (
-          <path
-            d={
-              isHappy
-                ? 'M 74.8 83.6 Q 80 88.8 85.2 83.6'
-                : 'M 75.8 84 Q 80 87.4 84.2 84'
-            }
-            fill="none"
-            stroke="#9B3960"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-          />
-        )}
       </g>
     </svg>
   );
@@ -1303,6 +1500,9 @@ export function AnamikaTeen({
   const dupattaId = `${uid}_teen_dupatta`;
   const pantsId = `${uid}_teen_pants`;
   const crownId = `${uid}_teen_crown`;
+  const armSkinId = `${uid}_teen_arm_skin`;
+  const shoeId = `${uid}_teen_shoe`;
+  const tiaraBandId = `${uid}_teen_tiara_band`;
   // Exact 5'2" crown Y = 46.2 on unified 230-unit coordinate frame
   const crownY = inchesToSvgCrownY(FIVE_TWO_INCHES);
   const headCy = crownY + 23.2; // 69.4
@@ -1316,29 +1516,30 @@ export function AnamikaTeen({
 
   let topDecoration: ReactNode = null;
   if (isBonk) {
-    // 4 golden comic impact stars bursting wide around the point of contact & padlock pill
+    // 4 tiny golden comic impact stars strictly outside her left & right temples/crown
+    // (>= 12px clearance below the HEIGHT LOCKED pill and clear of her eyes)
     topDecoration = (
       <g className="origin-story-bump-star">
         <path
-          d={`M 48 ${crownY - 10} L 50.2 ${crownY - 4.2} L 56 ${crownY - 2} L 50.2 ${crownY + 0.2} L 48 ${crownY + 6} L 45.8 ${crownY + 0.2} L 40 ${crownY - 2} L 45.8 ${crownY - 4.2} Z`}
+          d={`M 42 ${crownY + 6} L 43.8 ${crownY + 10.6} L 48.4 ${crownY + 12.4} L 43.8 ${crownY + 14.2} L 42 ${crownY + 18.8} L 40.2 ${crownY + 14.2} L 35.6 ${crownY + 12.4} L 40.2 ${crownY + 10.6} Z`}
           fill="#F7D994"
           stroke="#D94B7D"
-          strokeWidth="1.1"
+          strokeWidth="1"
         />
         <path
-          d={`M 112 ${crownY - 10} L 114.2 ${crownY - 4.2} L 120 ${crownY - 2} L 114.2 ${crownY + 0.2} L 112 ${crownY + 6} L 109.8 ${crownY + 0.2} L 104 ${crownY - 2} L 109.8 ${crownY - 4.2} Z`}
+          d={`M 118 ${crownY + 6} L 119.8 ${crownY + 10.6} L 124.4 ${crownY + 12.4} L 119.8 ${crownY + 14.2} L 118 ${crownY + 18.8} L 116.2 ${crownY + 14.2} L 111.6 ${crownY + 12.4} L 116.2 ${crownY + 10.6} Z`}
           fill="#F7D994"
           stroke="#D94B7D"
-          strokeWidth="1.1"
+          strokeWidth="1"
         />
         <path
-          d={`M 38 ${crownY + 6} L 39.4 ${crownY + 9.6} L 43 ${crownY + 11} L 39.4 ${crownY + 12.4} L 38 ${crownY + 16} L 36.6 ${crownY + 12.4} L 33 ${crownY + 11} L 36.6 ${crownY + 9.6} Z`}
+          d={`M 33 ${crownY + 22} L 34.3 ${crownY + 25.1} L 37.4 ${crownY + 26.4} L 34.3 ${crownY + 27.7} L 33 ${crownY + 30.8} L 31.7 ${crownY + 27.7} L 28.6 ${crownY + 26.4} L 31.7 ${crownY + 25.1} Z`}
           fill="#FFE49C"
           stroke="#E6B85C"
           strokeWidth="0.9"
         />
         <path
-          d={`M 122 ${crownY + 6} L 123.4 ${crownY + 9.6} L 127 ${crownY + 11} L 123.4 ${crownY + 12.4} L 122 ${crownY + 16} L 120.6 ${crownY + 12.4} L 117 ${crownY + 11} L 120.6 ${crownY + 9.6} Z`}
+          d={`M 127 ${crownY + 22} L 128.3 ${crownY + 25.1} L 131.4 ${crownY + 26.4} L 128.3 ${crownY + 27.7} L 127 ${crownY + 30.8} L 125.7 ${crownY + 27.7} L 122.6 ${crownY + 26.4} L 125.7 ${crownY + 25.1} Z`}
           fill="#FFE49C"
           stroke="#E6B85C"
           strokeWidth="0.9"
@@ -1348,47 +1549,85 @@ export function AnamikaTeen({
   } else if (showQuestionSparkle) {
     topDecoration = (
       <g className="origin-story-bump-star">
-        <circle cx="115" cy={crownY + 8} r="8.5" fill="#FFF8E6" stroke="#E6B85C" strokeWidth="1.3" />
+        <circle cx="117" cy={crownY + 14} r="8.2" fill="#FFF8E6" stroke="#E6B85C" strokeWidth="1.3" />
         <text
-          x="115"
-          y={crownY + 11.4}
+          x="117"
+          y={crownY + 17.4}
           textAnchor="middle"
           fill="#D94B7D"
-          fontSize="10.5"
+          fontSize="10.2"
           fontWeight="800"
           fontFamily="Plus Jakarta Sans, sans-serif"
         >
           ?
         </text>
         <path
-          d={`M 127 ${crownY + 1} L 128.3 ${crownY + 4.2} L 131.5 ${crownY + 5.5} L 128.3 ${crownY + 6.8} L 127 ${crownY + 10} L 125.7 ${crownY + 6.8} L 122.5 ${crownY + 5.5} L 125.7 ${crownY + 4.2} Z`}
+          d={`M 129 ${crownY + 7} L 130.2 ${crownY + 10} L 133.2 ${crownY + 11.2} L 130.2 ${crownY + 12.4} L 129 ${crownY + 15.4} L 127.8 ${crownY + 12.4} L 124.8 ${crownY + 11.2} L 127.8 ${crownY + 10} Z`}
           fill="#E6B85C"
         />
       </g>
     );
   } else if (isQueen) {
     topDecoration = (
-      <g className="origin-story-crown-float">
-        {/* Glowing golden 17 celebration crown halo */}
-        <ellipse cx="80" cy={crownY - 16} rx="23" ry="13" fill="rgba(247, 217, 148, 0.38)" />
+      <g className="origin-story-crown-float" data-layer="birthdayTiara">
+        {/* Soft warm champagne-rose tiara aura */}
+        <ellipse cx="80" cy={crownY - 15} rx="27" ry="14" fill="rgba(247, 217, 148, 0.34)" />
+        {/* Delicate sculpted champagne-gold & rose tiara base */}
         <path
-          d={`M 65 ${crownY - 7} L 68 ${crownY - 21} L 74.5 ${crownY - 14} L 80 ${crownY - 25} L 85.5 ${crownY - 14} L 92 ${crownY - 21} L 95 ${crownY - 7} Z`}
+          d={`M 62 ${crownY - 6}
+              C 64 ${crownY - 16} 69 ${crownY - 21} 73.5 ${crownY - 14.5}
+              C 76 ${crownY - 21.5} 78.2 ${crownY - 26.5} 80 ${crownY - 28}
+              C 81.8 ${crownY - 26.5} 84 ${crownY - 21.5} 86.5 ${crownY - 14.5}
+              C 91 ${crownY - 21} 96 ${crownY - 16} 98 ${crownY - 6}
+              Q 80 ${crownY - 3} 62 ${crownY - 6} Z`}
           fill={`url(#${crownId})`}
+          stroke="#C88B2E"
+          strokeWidth="1.15"
+          strokeLinejoin="round"
         />
-        <circle cx="80" cy={crownY - 25} r="2.2" fill="#D94B7D" />
-        <circle cx="68" cy={crownY - 21} r="1.7" fill="#FFFDF9" />
-        <circle cx="92" cy={crownY - 21} r="1.7" fill="#FFFDF9" />
+        {/* Filigree rose-gold tiara rim band */}
+        <path
+          d={`M 63.5 ${crownY - 7.4} Q 80 ${crownY - 4.4} 96.5 ${crownY - 7.4}`}
+          fill="none"
+          stroke={`url(#${tiaraBandId})`}
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+        {/* Crown crest jewels (glowing rose-berry center gem + ivory pearl tips) */}
+        <circle cx="80" cy={crownY - 28} r="2.6" fill="#D94B7D" stroke="#FFF8FB" strokeWidth="0.9" />
+        <circle cx="67.5" cy={crownY - 18.8} r="1.8" fill="#FFFDF9" stroke="#E6B85C" strokeWidth="0.7" />
+        <circle cx="92.5" cy={crownY - 18.8} r="1.8" fill="#FFFDF9" stroke="#E6B85C" strokeWidth="0.7" />
+        {/* Crisp rose-gold 17 emblem */}
         <text
           x="80"
-          y={crownY - 10.2}
+          y={crownY - 10.6}
           textAnchor="middle"
           fill="#3A1233"
-          fontSize="8.5"
+          fontSize="8.8"
           fontWeight="800"
           fontFamily="Plus Jakarta Sans, sans-serif"
         >
           17
         </text>
+        {/* Tiny orbiting 4-point sparkles */}
+        <g className="origin-story-orbit-star">
+          <path
+            d={`M 54 ${crownY - 18} L 55.3 ${crownY - 14.8} L 58.5 ${crownY - 13.5} L 55.3 ${crownY - 12.2} L 54 ${crownY - 9} L 52.7 ${crownY - 12.2} L 49.5 ${crownY - 13.5} L 52.7 ${crownY - 14.8} Z`}
+            fill="#F3C46B"
+          />
+        </g>
+        <g className="origin-story-orbit-star" style={{ ['--orbit-delay' as string]: '0.55s' }}>
+          <path
+            d={`M 106 ${crownY - 19} L 107.2 ${crownY - 16} L 110.2 ${crownY - 14.8} L 107.2 ${crownY - 13.6} L 106 ${crownY - 10.6} L 104.8 ${crownY - 13.6} L 101.8 ${crownY - 14.8} L 104.8 ${crownY - 16} Z`}
+            fill="#E86A98"
+          />
+        </g>
+        <g className="origin-story-orbit-star" style={{ ['--orbit-delay' as string]: '1.05s' }}>
+          <path
+            d={`M 80 ${crownY - 37} L 80.9 ${crownY - 34.7} L 83.2 ${crownY - 33.8} L 80.9 ${crownY - 32.9} L 80 ${crownY - 30.6} L 79.1 ${crownY - 32.9} L 76.8 ${crownY - 33.8} L 79.1 ${crownY - 34.7} Z`}
+            fill="#FFE29A"
+          />
+        </g>
       </g>
     );
   }
@@ -1404,6 +1643,20 @@ export function AnamikaTeen({
           <stop offset="0%" stopColor="#FFE6D5" />
           <stop offset="72%" stopColor="#F5CCB0" />
           <stop offset="100%" stopColor="#EAB898" />
+        </linearGradient>
+        <linearGradient id={armSkinId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#F9D5BE" />
+          <stop offset="100%" stopColor="#EAB699" />
+        </linearGradient>
+        <linearGradient id={shoeId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#E86293" />
+          <stop offset="62%" stopColor="#CE3E72" />
+          <stop offset="100%" stopColor="#A62B58" />
+        </linearGradient>
+        <linearGradient id={tiaraBandId} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#F29BC0" />
+          <stop offset="50%" stopColor="#FFF5D6" />
+          <stop offset="100%" stopColor="#F29BC0" />
         </linearGradient>
         <linearGradient id={hairId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#3E2036" />
@@ -1424,17 +1677,29 @@ export function AnamikaTeen({
           <stop offset="100%" stopColor="#F3DDE6" />
         </linearGradient>
         <linearGradient id={crownId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#FFF0BA" />
+          <stop offset="0%" stopColor="#FFF3C6" />
           <stop offset="55%" stopColor="#F3C969" />
-          <stop offset="100%" stopColor="#DDA543" />
+          <stop offset="100%" stopColor="#D79E3B" />
         </linearGradient>
       </defs>
 
       {isQueen && (
-        <ellipse cx="80" cy="134" rx="52" ry="74" fill="rgba(247, 217, 148, 0.2)" />
+        <ellipse cx="80" cy="134" rx="52" ry="74" fill="rgba(247, 217, 148, 0.16)" />
       )}
 
-      <CharacterShadow rx={27} />
+      {/* Delicate grounded rose floor shadow underneath jootis */}
+      {isQueen ? (
+        <ellipse
+          cx="80"
+          cy="221.5"
+          rx="29"
+          ry="5.2"
+          fill="rgba(184, 58, 108, 0.22)"
+          className="origin-story-ground-shadow"
+        />
+      ) : (
+        <CharacterShadow rx={27} />
+      )}
 
       {/* Long flowing dark espresso-plum back hair with gentle sway */}
       <path
@@ -1447,43 +1712,101 @@ export function AnamikaTeen({
         style={{ transformOrigin: '80px 72px' }}
       />
 
-      {/* Neat fitted trousers & pastel festive juttis grounded cleanly at y = 220 */}
+      {/* Neat fitted trousers & smoothly shaded pastel rose-berry jootis / ballet flats */}
       <g>
-        <rect x="66.5" y="168" width="11" height="45" rx="5.2" fill={`url(#${pantsId})`} />
-        <rect x="82.5" y="168" width="11" height="45" rx="5.2" fill={`url(#${pantsId})`} />
-        {/* Pastel festive juttis */}
+        <rect x="66.5" y="168" width="11" height="44" rx="5.2" fill={`url(#${pantsId})`} />
+        <rect x="82.5" y="168" width="11" height="44" rx="5.2" fill={`url(#${pantsId})`} />
+        {/* Delicate warm ankles peeking into ballet jootis */}
+        <rect x="69" y="207" width="6.2" height="5" rx="2.5" fill={`url(#${armSkinId})`} />
+        <rect x="84.8" y="207" width="6.2" height="5" rx="2.5" fill={`url(#${armSkinId})`} />
+        {/* Left shaded rose-berry jooti / ballet flat */}
         <path
-          d="M 63.5 214 C 63.5 211 68 210 73 210 C 77.5 210 79.5 213 79.5 216.5 C 79.5 219.5 76 220.5 71 220.5 C 65.5 220.5 63.5 218 63.5 214 Z"
-          fill="#D94B7D"
+          d="M 61.5 216.2 C 61.5 212.5 65.8 210.8 70.6 211.2 C 74.8 211.5 78.2 213.4 78.4 216.8 C 78.6 219.4 75.2 220.6 69.8 220.6 C 64.4 220.6 61.5 218.8 61.5 216.2 Z"
+          fill={`url(#${shoeId})`}
+          stroke="#96234E"
+          strokeWidth="0.7"
+        />
+        {/* Right shaded rose-berry jooti / ballet flat */}
+        <path
+          d="M 81.6 216.8 C 81.8 213.4 85.2 211.5 89.4 211.2 C 94.2 210.8 98.5 212.5 98.5 216.2 C 98.5 218.8 95.6 220.6 90.2 220.6 C 84.8 220.6 81.4 219.4 81.6 216.8 Z"
+          fill={`url(#${shoeId})`}
+          stroke="#96234E"
+          strokeWidth="0.7"
+        />
+        {/* Soft highlight arcs + delicate champagne-gold jooti trim */}
+        <path
+          d="M 64.2 215.2 Q 68.8 212.9 73.8 214.4"
+          fill="none"
+          stroke="#FFD6E7"
+          strokeWidth="1.25"
+          strokeLinecap="round"
+          opacity="0.78"
         />
         <path
-          d="M 80.5 216.5 C 80.5 213 82.5 210 87 210 C 92 210 96.5 211 96.5 214 C 96.5 218 94.5 220.5 89 220.5 C 84 220.5 80.5 219.5 80.5 216.5 Z"
-          fill="#D94B7D"
+          d="M 86.2 214.4 Q 91.2 212.9 95.8 215.2"
+          fill="none"
+          stroke="#FFD6E7"
+          strokeWidth="1.25"
+          strokeLinecap="round"
+          opacity="0.78"
         />
-        <circle cx="71.5" cy="214.8" r="1.4" fill="#F7D994" />
-        <circle cx="88.5" cy="214.8" r="1.4" fill="#F7D994" />
+        <ellipse cx="69.2" cy="215.6" rx="2.1" ry="1.2" fill="#F7D994" />
+        <ellipse cx="90.8" cy="215.6" rx="2.1" ry="1.2" fill="#F7D994" />
       </g>
 
       {/* Arms (expressive poses for happy, determined, bonkBlush, birthdayQueen) */}
       <g>
         {isQueen ? (
           <>
+            {/* Clear warm peach-shaded raised celebratory arms with crisp pastel sleeve cuffs */}
             <path
               d="M 62 106 Q 44 96 42 81"
               fill="none"
-              stroke={`url(#${skinId})`}
-              strokeWidth="7.2"
+              stroke="#D89F82"
+              strokeWidth="8.6"
+              strokeLinecap="round"
+              opacity="0.7"
+            />
+            <path
+              d="M 62 106 Q 44 96 42 81"
+              fill="none"
+              stroke={`url(#${armSkinId})`}
+              strokeWidth="7"
               strokeLinecap="round"
             />
             <path
               d="M 98 106 Q 116 96 118 81"
               fill="none"
-              stroke={`url(#${skinId})`}
-              strokeWidth="7.2"
+              stroke="#D89F82"
+              strokeWidth="8.6"
+              strokeLinecap="round"
+              opacity="0.7"
+            />
+            <path
+              d="M 98 106 Q 116 96 118 81"
+              fill="none"
+              stroke={`url(#${armSkinId})`}
+              strokeWidth="7"
               strokeLinecap="round"
             />
-            <circle cx="42" cy="80" r="4.2" fill={`url(#${skinId})`} />
-            <circle cx="118" cy="80" r="4.2" fill={`url(#${skinId})`} />
+            {/* Crisp pastel blush-ivory cuffs with delicate gold bangle trim */}
+            <path
+              d="M 55.5 103.5 C 51 101 49.5 96.5 52 93.2 L 59.5 97.5 C 57.6 100.2 57 102 55.5 103.5 Z"
+              fill="#FFF3F8"
+              stroke="#E7A1BE"
+              strokeWidth="1"
+            />
+            <path
+              d="M 104.5 103.5 C 109 101 110.5 96.5 108 93.2 L 100.5 97.5 C 102.4 100.2 103 102 104.5 103.5 Z"
+              fill="#FFF3F8"
+              stroke="#E7A1BE"
+              strokeWidth="1"
+            />
+            <path d="M 42.6 87.2 L 48.2 88.2" stroke="#E6B85C" strokeWidth="1.6" strokeLinecap="round" />
+            <path d="M 111.8 88.2 L 117.4 87.2" stroke="#E6B85C" strokeWidth="1.6" strokeLinecap="round" />
+            {/* Shaded raised hands */}
+            <circle cx="42" cy="80" r="4.3" fill={`url(#${armSkinId})`} stroke="#D89F82" strokeWidth="0.9" />
+            <circle cx="118" cy="80" r="4.3" fill={`url(#${armSkinId})`} stroke="#D89F82" strokeWidth="0.9" />
           </>
         ) : isBonk ? (
           <>

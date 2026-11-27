@@ -1900,10 +1900,10 @@
     transform: translate3d(0, 0, 0) rotate(0deg);
   }
   38% {
-    transform: translate3d(-6px, -4px, 0) rotate(-7deg) scale3d(1.04, 1.02, 1);
+    transform: translate3d(6px, -4px, 0) rotate(7deg) scale3d(1.04, 1.02, 1);
   }
   75% {
-    transform: translate3d(-5px, -3px, 0) rotate(-6deg);
+    transform: translate3d(5px, -3px, 0) rotate(6deg);
   }
   100% {
     transform: translate3d(0, 0, 0) rotate(0deg);
@@ -2048,7 +2048,7 @@
 @keyframes modino-kiss-heart {
   0% {
     opacity: 0;
-    transform: translate3d(6px, 6px, 0) scale(0.45);
+    transform: translate3d(-6px, 6px, 0) scale(0.45);
   }
   16% {
     opacity: 0.92;
@@ -2056,15 +2056,15 @@
   }
   44% {
     opacity: 0.65;
-    transform: translate3d(-7px, -5px, 0) scale(0.95);
+    transform: translate3d(7px, -5px, 0) scale(0.95);
   }
   72% {
     opacity: 0.28;
-    transform: translate3d(-13px, -11px, 0) scale(0.84);
+    transform: translate3d(13px, -11px, 0) scale(0.84);
   }
   100% {
     opacity: 0;
-    transform: translate3d(-18px, -16px, 0) scale(0.68);
+    transform: translate3d(18px, -16px, 0) scale(0.68);
   }
 }
 
@@ -2300,6 +2300,7 @@
   animation: modino-tap-ripple 0.45s ease-out forwards;
 }
 .animate-modino-bubble {
+  transform-origin: bottom left;
   animation: modino-bubble-pop 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
@@ -2483,6 +2484,53 @@
   }
   50% {
     transform: translate3d(0, -3px, 0) rotate(0.9deg);
+  }
+}
+
+/* Scene 5 Phase 2: 2.5 organic gentle walking footsteps bobbing as Shivjee & Archana step closer */
+@keyframes origin-story-kiss-footsteps {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  18% {
+    transform: translate3d(0, -3.5px, 0);
+  }
+  38% {
+    transform: translate3d(0, 0, 0);
+  }
+  58% {
+    transform: translate3d(0, -2.8px, 0);
+  }
+  78% {
+    transform: translate3d(0, 0, 0);
+  }
+  90% {
+    transform: translate3d(0, -1.6px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Scene 5 Phase 4: Slow alive breathing micro-motion during the 3.5s kiss hold */
+@keyframes origin-story-kiss-breathe {
+  0%, 100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.012);
+  }
+}
+
+/* Scene 5 Phase 5: Delicate floating cheek sparkles during shy afterglow */
+@keyframes origin-story-afterglow-twinkle {
+  0%, 100% {
+    opacity: 0.35;
+    transform: translate3d(0, 0, 0) scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: translate3d(0, -3px, 0) scale(1.14);
   }
 }
 
@@ -2765,35 +2813,35 @@
 
 @keyframes origin-story-barrier-jiggle {
   0%, 100% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
+    transform: translate3d(0, 0, 0);
   }
-  20% {
-    transform: translate3d(0, -6px, 0) rotate(-1.6deg);
+  26% {
+    transform: translate3d(0, -4px, 0);
   }
-  45% {
-    transform: translate3d(0, 2.5px, 0) rotate(1.5deg);
+  56% {
+    transform: translate3d(0, 1.5px, 0);
   }
-  72% {
-    transform: translate3d(0, -1.5px, 0) rotate(-0.8deg);
+  80% {
+    transform: translate3d(0, -1px, 0);
   }
 }
 
-/* Scene 10 Age 16 Tiptoe Bonk Gag: crouch -> tiptoe spring -16px -> bonk -> land */
+/* Scene 10 Age 16 Tiptoe Bonk Gag: crouch -> tiptoe spring -10px -> bonk underside -> land */
 @keyframes origin-story-tiptoe-bonk {
   0% {
     transform: translate3d(0, 0, 0) scale(1, 1);
   }
   16% {
-    transform: translate3d(0, 3px, 0) scale(1.06, 0.94);
+    transform: translate3d(0, 2px, 0) scale(1.04, 0.96);
   }
   32% {
-    transform: translate3d(0, -16px, 0) scale(0.97, 1.03);
+    transform: translate3d(0, -10px, 0) scale(0.98, 1.02);
   }
-  46% {
-    transform: translate3d(0, -4px, 0) scale(1.03, 0.97);
+  48% {
+    transform: translate3d(0, -2.5px, 0) scale(1.02, 0.98);
   }
-  72% {
-    transform: translate3d(0, 2px, 0) scale(1.01, 0.99);
+  74% {
+    transform: translate3d(0, 1.5px, 0) scale(1.01, 0.99);
   }
   100% {
     transform: translate3d(0, 0, 0) scale(1, 1);
@@ -2817,46 +2865,141 @@
 
 @keyframes origin-story-crown-float {
   0%, 100% {
-    transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 2px, 0);
   }
   50% {
-    transform: translate3d(0, -3.5px, 0);
+    transform: translate3d(0, -4px, 0);
   }
 }
 
 @keyframes origin-story-confetti-flutter {
   0% {
     opacity: 0;
-    transform: translate3d(0, -12px, 0) scale(0.55) rotate(0deg);
+    transform: translate3d(0, -10px, 0) scale(0.55) rotate(0deg);
   }
   14% {
-    opacity: 1;
+    opacity: 0.92;
   }
   80% {
-    opacity: 0.88;
+    opacity: 0.82;
   }
   100% {
     opacity: 0;
-    transform: translate3d(var(--cf-x, 24px), var(--cf-y, 190px), 0) scale(1) rotate(var(--cf-rot, 240deg));
+    transform: translate3d(var(--cf-x, 20px), var(--cf-y, 180px), 0) scale(1) rotate(var(--cf-rot, 220deg));
   }
 }
 
-/* Scene 10 Finale Queen theatrical zoom-in (scale 1 -> 1.07) + celebratory hop */
-@keyframes origin-story-finale-queen-in {
+/* Scene 11 Celebratory Curtain-Shimmer Crossfade Veil */
+@keyframes origin-story-finale-curtain-shimmer {
   0% {
-    transform: translate3d(0, 6px, 0) scale(1);
-  }
-  34% {
-    transform: translate3d(0, -14px, 0) scale(1.08);
-  }
-  62% {
-    transform: translate3d(0, 0, 0) scale(1.05);
-  }
-  82% {
-    transform: translate3d(0, -5px, 0) scale(1.07);
+    opacity: 0.95;
+    transform: translate3d(-45%, 0, 0);
   }
   100% {
-    transform: translate3d(0, 0, 0) scale(1.07);
+    opacity: 0;
+    transform: translate3d(65%, 0, 0);
+  }
+}
+
+/* Scene 11 Beat 1 (0 -> 400ms): Golden radial bloom */
+@keyframes origin-story-finale-bloom {
+  0% {
+    opacity: 0;
+    transform: scale(0.45);
+  }
+  55% {
+    opacity: 0.95;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+}
+
+/* Scene 11 Beat 1: Twin Corner Confetti Bursts curving along outer edges */
+@keyframes origin-story-corner-burst {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.45) rotate(0deg);
+  }
+  16% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--cb-x, 30px), var(--cb-y, -150px), 0) scale(1) rotate(var(--cb-rot, 140deg));
+  }
+}
+
+/* Scene 11 Beat 2 (200 -> 650ms): Badge & Headline gentle upward glide */
+@keyframes origin-story-finale-headline-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Scene 11 Beat 3 (400 -> 900ms): AnamikaTeen celebratory bouncy hop scale(0.92 -> 1.04 -> 1) */
+@keyframes origin-story-finale-queen-hop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.92);
+  }
+  56% {
+    opacity: 1;
+    transform: translate3d(0, -9px, 0) scale(1.04);
+  }
+  80% {
+    opacity: 1;
+    transform: translate3d(0, 2px, 0) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* Scene 11 Continuous Soft Rising Bokeh Orbs */
+@keyframes origin-story-bokeh-drift {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.75);
+  }
+  20% {
+    opacity: 0.78;
+  }
+  80% {
+    opacity: 0.52;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--bk-dx, 8px), -145px, 0) scale(1.12);
+  }
+}
+
+/* Scene 11 CTA Subtle Diagonal Light Sheen Sweep every 3.2s */
+@keyframes origin-story-cta-sheen {
+  0%, 66% {
+    opacity: 0;
+    transform: translate3d(-140%, 0, 0) skewX(-24deg);
+  }
+  74% {
+    opacity: 0.55;
+  }
+  92% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(280%, 0, 0) skewX(-24deg);
   }
 }
 
@@ -2930,6 +3073,19 @@
 
 .origin-story-sway-gentle {
   animation: origin-story-sway-gentle 3.4s ease-in-out infinite;
+}
+
+.origin-story-kiss-footsteps {
+  animation: origin-story-kiss-footsteps 1100ms cubic-bezier(0.37, 0, 0.63, 1) both;
+}
+
+.origin-story-kiss-breathe {
+  transform-origin: 50% 95.65%;
+  animation: origin-story-kiss-breathe 2.6s ease-in-out infinite;
+}
+
+.origin-story-afterglow-twinkle {
+  animation: origin-story-afterglow-twinkle 1.8s ease-in-out infinite;
 }
 
 .origin-story-light-leak {
@@ -3047,9 +3203,42 @@
   animation: origin-story-confetti-flutter var(--cf-dur, 2.4s) ease-out var(--cf-delay, 0s) infinite;
 }
 
-.origin-story-finale-queen-in {
+.origin-story-finale-curtain-shimmer {
+  animation: origin-story-finale-curtain-shimmer 720ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.origin-story-finale-bloom {
+  animation: origin-story-finale-bloom 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.origin-story-corner-burst-left,
+.origin-story-corner-burst-right {
+  opacity: 0;
+  animation: origin-story-corner-burst 1.55s cubic-bezier(0.16, 1, 0.3, 1) var(--cb-delay, 0s) forwards;
+}
+
+.origin-story-finale-headline-in {
+  animation: origin-story-finale-headline-in 450ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+}
+
+.origin-story-finale-queen-hop {
   transform-origin: 50% 100%;
-  animation: origin-story-finale-queen-in 920ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: origin-story-finale-queen-hop 520ms cubic-bezier(0.22, 1, 0.36, 1) 400ms both;
+}
+
+.origin-story-bokeh-drift {
+  opacity: 0;
+  animation: origin-story-bokeh-drift var(--bk-dur, 4.8s) ease-in-out var(--bk-delay, 0s) infinite;
+}
+
+.origin-story-cta-sheen {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 253, 245, 0.34) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: origin-story-cta-sheen 3.2s ease-in-out infinite;
 }
 
 .origin-story-orbit-star {
@@ -3072,6 +3261,9 @@
   .origin-story-hair-sway,
   .origin-story-ground-shadow,
   .origin-story-sway-gentle,
+  .origin-story-kiss-footsteps,
+  .origin-story-kiss-breathe,
+  .origin-story-afterglow-twinkle,
   .origin-story-light-leak,
   .origin-story-sunbeams,
   .origin-story-cloud-drift,
@@ -3099,12 +3291,196 @@
   .origin-story-bump-star,
   .origin-story-crown-float,
   .origin-story-confetti-flutter,
-  .origin-story-finale-queen-in,
+  .origin-story-finale-curtain-shimmer,
+  .origin-story-finale-bloom,
+  .origin-story-corner-burst-left,
+  .origin-story-corner-burst-right,
+  .origin-story-finale-headline-in,
+  .origin-story-finale-queen-hop,
+  .origin-story-bokeh-drift,
+  .origin-story-cta-sheen,
   .origin-story-orbit-star,
   .origin-story-exit-bloom {
     animation: none !important;
   }
 }
+
+/* ============================================================
+   Stage 3 -> Stage 4 Rose-Cream & Champagne-Gold Silk Curtain
+   Bridge + Modino Delayed Upward Entrance (60fps GPU-Composited)
+   ============================================================ */
+@keyframes stage-bridge-veil-gather {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes stage-bridge-veil-parting {
+  0% {
+    opacity: 1;
+  }
+  65% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes stage-bridge-curtain-gather {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes stage-bridge-curtain-left-open {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  84% {
+    opacity: 0.96;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-105%, 0, 0);
+  }
+}
+
+@keyframes stage-bridge-curtain-right-open {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  84% {
+    opacity: 0.96;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(105%, 0, 0);
+  }
+}
+
+@keyframes stage-bridge-particle-float {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.55) rotate(0deg);
+  }
+  20% {
+    opacity: 0.95;
+  }
+  75% {
+    opacity: 0.72;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--bp-dx, 16px), var(--bp-dy, -130px), 0) scale(1.05) rotate(var(--bp-rot, 110deg));
+  }
+}
+
+@keyframes stage-bridge-hero-settle {
+  0% {
+    opacity: 0.94;
+    transform: translate3d(0, 10px, 0) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes stage-bridge-crossfade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes stage-bridge-crossfade-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes modino-dock-entrance {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 22px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.stage-bridge-veil-gather {
+  animation: stage-bridge-veil-gather 360ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.stage-bridge-veil-parting {
+  animation: stage-bridge-veil-parting 740ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.stage-bridge-curtain-gather {
+  animation: stage-bridge-curtain-gather 360ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.stage-bridge-curtain-left-open {
+  animation: stage-bridge-curtain-left-open 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.stage-bridge-curtain-right-open {
+  animation: stage-bridge-curtain-right-open 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.stage-bridge-particle {
+  opacity: 0;
+  animation: stage-bridge-particle-float var(--bp-dur, 920ms) cubic-bezier(0.16, 1, 0.3, 1) var(--bp-delay, 0ms) forwards;
+}
+
+.stage-bridge-hero-settle {
+  transform-origin: 50% 18%;
+  animation: stage-bridge-hero-settle 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.stage-bridge-crossfade-in {
+  animation: stage-bridge-crossfade-in 175ms ease-out forwards;
+}
+
+.stage-bridge-crossfade-out {
+  animation: stage-bridge-crossfade-out 175ms ease-in forwards;
+}
+
+.animate-modino-entrance {
+  animation: modino-dock-entrance 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-bridge-veil-gather,
+  .stage-bridge-veil-parting,
+  .stage-bridge-curtain-gather,
+  .stage-bridge-curtain-left-open,
+  .stage-bridge-curtain-right-open,
+  .stage-bridge-particle,
+  .stage-bridge-hero-settle,
+  .animate-modino-entrance {
+    animation: none !important;
+  }
+}
+
 
 
 

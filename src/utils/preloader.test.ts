@@ -202,3 +202,104 @@ test('preloadOriginStoryStageAssets warms chunk and kiss audio once on idle and 
   resetOriginStoryPreloadForTesting();
 });
 
+test('preloadMainPageDuringStory runs Tier 1 after 350ms, then Tier 2 in 180ms idle slices, and is idempotent', async () => {
+  const {
+    STORY_PRELOAD_TIER1_DELAY_MS,
+    STORY_PRELOAD_TIER2_GAP_MS,
+    STAGE3_TO_MAIN_TIMING,
+    preloadMainPageDuringStory,
+    resetStoryMainPreloadForTesting,
+  } = await import('./preloader');
+  resetStoryMainPreloadForTesting();
+
+  const recordedDelays: number[] = [];
+  const executed: string[] = [];
+  const scheduler = createImmediateTestScheduler(recordedDelays);
+
+  await new Promise<void>((resolve) => {
+    preloadMainPageDuringStory({
+      imageUrls: ['/hero.jpg'],
+      tier1ChunkLoaders: [
+        async () => {
+          executed.push('tier1:toggles');
+        },
+        async () => {
+          executed.push('tier1:modino');
+        },
+      ],
+      tier2ChunkLoaders: [
+        async () => {
+          executed.push('tier2:calendar');
+        },
+        async () => {
+          executed.push('tier2:backstory');
+        },
+        async () => {
+          executed.push('tier2:footer');
+        },
+      ],
+      decodeImage: async (url) => {
+        executed.push(`decode:${url}`);
+      },
+      onUpgradeAudioPreload: () => {
+        executed.push('audio:milky_auto');
+      },
+      scheduler,
+      onTier1Complete: () => {
+        executed.push('tier1:done');
+      },
+      onAllComplete: resolve,
+    });
+
+    // Second call must be ignored (idempotent)
+    preloadMainPageDuringStory({
+      imageUrls: ['/duplicate.jpg'],
+      tier1ChunkLoaders: [
+        async () => {
+          executed.push('duplicate');
+        },
+      ],
+      scheduler,
+    });
+  });
+
+  // First delay must be Tier 1's 350ms breather; subsequent delays must be Tier 2's 180ms slices
+  assert.equal(recordedDelays[0], STORY_PRELOAD_TIER1_DELAY_MS);
+  assert.equal(STORY_PRELOAD_TIER1_DELAY_MS, 350);
+  assert.deepEqual(recordedDelays.slice(1), [STORY_PRELOAD_TIER2_GAP_MS, STORY_PRELOAD_TIER2_GAP_MS]);
+  assert.equal(STORY_PRELOAD_TIER2_GAP_MS, 180);
+
+  // All Tier 1 work completes strictly before Tier 2 begins
+  const tier1DoneIdx = executed.indexOf('tier1:done');
+  assert.ok(tier1DoneIdx > 0);
+  assert.ok(executed.indexOf('tier1:toggles') < tier1DoneIdx);
+  assert.ok(executed.indexOf('tier1:modino') < tier1DoneIdx);
+  assert.ok(executed.indexOf('decode:/hero.jpg') < tier1DoneIdx);
+  assert.ok(executed.indexOf('audio:milky_auto') < tier1DoneIdx);
+  assert.deepEqual(executed.slice(tier1DoneIdx + 1), [
+    'tier2:calendar',
+    'tier2:backstory',
+    'tier2:footer',
+  ]);
+  assert.equal(executed.includes('duplicate'), false);
+
+  // Verify exact Stage 3 -> Stage 4 staggered arrival timing contract
+  assert.equal(STAGE3_TO_MAIN_TIMING.musicStartMs, 280);
+  assert.equal(STAGE3_TO_MAIN_TIMING.musicFadeInMs, 750);
+  assert.equal(STAGE3_TO_MAIN_TIMING.stageSwapMs, 360);
+  assert.equal(STAGE3_TO_MAIN_TIMING.curtainPartStartMs, 380);
+  assert.equal(STAGE3_TO_MAIN_TIMING.confettiBurstMs, 650);
+  assert.equal(STAGE3_TO_MAIN_TIMING.totalDurationMs, 1150);
+  assert.equal(
+    STAGE3_TO_MAIN_TIMING.stageSwapMs + STAGE3_TO_MAIN_TIMING.modinoDelayAfterMainMountMs,
+    STAGE3_TO_MAIN_TIMING.modinoArrivalFromTransitionMs,
+  );
+  assert.ok(
+    STAGE3_TO_MAIN_TIMING.modinoArrivalFromTransitionMs >= 1950 &&
+      STAGE3_TO_MAIN_TIMING.modinoArrivalFromTransitionMs <= 2100,
+  );
+
+  resetStoryMainPreloadForTesting();
+});
+
+

@@ -29,16 +29,23 @@ import {
   RED_MARK_HOLD_START_SEC,
   SKIP_CLOSE_STAGE1_END_SEC,
   SKIP_CLOSE_TOTAL_SEC,
+  STAGE3_AUDIO_END_PROGRESS_THRESHOLD,
+  STAGE3_AUDIO_FADE_EXPONENT,
+  STAGE3_AUDIO_INTERRUPT_FADE_MS,
+  STAGE3_AUDIO_MIN_REMAINING_SEC,
   clampDeltaSec,
   computeClosingExitFrame,
   computeCurtainOpenFrame,
   computeIntroAudioGain,
   computePreloaderProgress,
   computeSmartPreloaderTarget,
+  computeStage3RemainingTailSec,
+  computeStage3TrailingAudioGain,
   cubicBezierStandard,
   getAudioTimelineCues,
   getPlaybackCues,
   getPreloaderStatusText,
+  isStage3TrailingAudioAlreadyFinished,
   stepPreloaderDisplayPct,
 } from './theatrePhysics';
 
@@ -302,3 +309,89 @@ test('smart preloader skips card during 150ms grace or when cached, trickles up 
   assert.equal(ready.isReady, true);
   assert.equal(ready.progress01, 1);
 });
+
+test('Stage 3 trailing intro audio fades monotonically over full remaining video tail (duration - handoffTime) using (1 - p)^1.5', () => {
+  assert.equal(STAGE3_AUDIO_FADE_EXPONENT, 1.5);
+  assert.equal(STAGE3_AUDIO_INTERRUPT_FADE_MS, 180);
+  assert.equal(STAGE3_AUDIO_MIN_REMAINING_SEC, 0.12);
+  assert.equal(STAGE3_AUDIO_END_PROGRESS_THRESHOLD, 0.995);
+
+  // Already-finished guard: ended === true or duration - currentTime <= 0.12s
+  assert.equal(
+    isStage3TrailingAudioAlreadyFinished({ ended: true, currentTimeSec: 10, durationSec: 23.1 }),
+    true,
+  );
+  assert.equal(
+    isStage3TrailingAudioAlreadyFinished({ ended: false, currentTimeSec: 23.0, durationSec: 23.1 }),
+    true,
+  );
+  assert.equal(
+    isStage3TrailingAudioAlreadyFinished({ ended: false, currentTimeSec: 15.35, durationSec: 23.1 }),
+    false,
+  );
+
+  // Full remaining tail calculation (e.g., 15.35s -> 23.1s = 7.75s remaining, or NaN -> null)
+  const remainingSec = computeStage3RemainingTailSec(23.1, 15.35);
+  assert.ok(remainingSec !== null && Math.abs(remainingSec - 7.75) < 1e-6);
+  assert.equal(computeStage3RemainingTailSec(Number.NaN, 15.35), null);
+  assert.equal(computeStage3RemainingTailSec(Number.POSITIVE_INFINITY, 15.35), null);
+
+  // Pending duration holds start volume safely until duration resolves or ended fires
+  const pending = computeStage3TrailingAudioGain({
+    currentTimeSec: 16.0,
+    handoffTimeSec: 15.35,
+    remainingSec: null,
+    startVolume: 0.95,
+  });
+  assert.equal(pending.gain, 0.95);
+  assert.equal(pending.isDone, false);
+
+  // Start of handoff (p = 0)
+  const start = computeStage3TrailingAudioGain({
+    currentTimeSec: 15.35,
+    handoffTimeSec: 15.35,
+    remainingSec,
+    startVolume: 1.0,
+  });
+  assert.equal(start.progress, 0);
+  assert.equal(start.gain, 1.0);
+  assert.equal(start.isDone, false);
+
+  // Halfway through remaining tail (p = 0.5 -> (0.5)^1.5 ≈ 0.35355)
+  const mid = computeStage3TrailingAudioGain({
+    currentTimeSec: 15.35 + (remainingSec ?? 0) * 0.5,
+    handoffTimeSec: 15.35,
+    remainingSec,
+    startVolume: 1.0,
+  });
+  assert.ok(Math.abs(mid.progress - 0.5) < 1e-6);
+  const expectedMid = Math.pow(0.5, 1.5);
+  assert.ok(Math.abs(mid.gain - expectedMid) < 1e-6, `Expected ${expectedMid}, got ${mid.gain}`);
+  assert.equal(mid.isDone, false);
+
+  // Strictly monotonic decrease all the way from 15.35s to 23.1s
+  let prev = 1.0;
+  for (let frac = 0.05; frac <= 1.0; frac += 0.05) {
+    const f = computeStage3TrailingAudioGain({
+      currentTimeSec: 15.35 + (remainingSec ?? 0) * frac,
+      handoffTimeSec: 15.35,
+      remainingSec,
+      startVolume: 1.0,
+    });
+    assert.ok(f.gain <= prev, `Expected gain at frac=${frac} (${f.gain}) <= ${prev}`);
+    prev = f.gain;
+  }
+
+  // Clean teardown once p >= 0.995
+  const nearEnd = computeStage3TrailingAudioGain({
+    currentTimeSec: 15.35 + (remainingSec ?? 0) * 0.996,
+    handoffTimeSec: 15.35,
+    remainingSec,
+    startVolume: 1.0,
+  });
+  assert.equal(nearEnd.gain, 0);
+  assert.equal(nearEnd.progress, 1);
+  assert.equal(nearEnd.isDone, true);
+});
+
+

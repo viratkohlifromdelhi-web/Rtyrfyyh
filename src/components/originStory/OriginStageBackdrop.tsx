@@ -1,6 +1,6 @@
 import type { OriginBackdropMood, OriginSceneId } from './originScript';
 
-export type OriginKissBeat = 'twilight' | 'shyGlance' | 'kissing' | 'afterglow';
+export type OriginKissBeat = 'twilight' | 'shyGlance' | 'leanIn' | 'kissing' | 'afterglow';
 
 export interface OriginStageBackdropProps {
   mood: OriginBackdropMood;
@@ -79,7 +79,7 @@ export function OriginStageBackdrop({
   const isDawn = mood === 'celebration_dawn';
   const isGala = mood === 'gala_finale';
   const isKissingPeak = isStarry && kissBeat === 'kissing';
-  const isKissApproach = isStarry && kissBeat === 'shyGlance';
+  const isKissApproach = isStarry && (kissBeat === 'shyGlance' || kissBeat === 'leanIn');
   const isKissAfterglow = isStarry && kissBeat === 'afterglow';
 
   return (
@@ -286,23 +286,23 @@ export function OriginStageBackdrop({
           ),
         )}
 
-        {/* 2 Shooting Stars synced to Beat 1 entry (0.25s) and mid-kiss musical peak (2.65s) */}
-        {isStarry && (
+        {/* 2 Subtle Shooting Stars gliding across the upper twilight sky during Phase 4 Kiss Hold */}
+        {isStarry && (isKissingPeak || isKissAfterglow) && (
           <div key={`shooting_${kissRunKey}`} className="absolute inset-0">
             <span
-              className="origin-story-shooting-star absolute top-[14%] left-[18%] h-[2px] w-16 rounded-full"
+              className="origin-story-shooting-star absolute top-[13%] left-[16%] h-[2px] w-16 rounded-full"
               style={{
                 background:
                   'linear-gradient(90deg, rgba(255,248,224,0) 0%, rgba(255,248,224,0.95) 75%, #FFFFFF 100%)',
-                ['--shoot-delay' as string]: '0.25s',
+                ['--shoot-delay' as string]: '0.2s',
               }}
             />
             <span
-              className="origin-story-shooting-star absolute top-[24%] left-[44%] h-[2px] w-14 rounded-full"
+              className="origin-story-shooting-star absolute top-[23%] left-[46%] h-[2px] w-14 rounded-full"
               style={{
                 background:
                   'linear-gradient(90deg, rgba(255,235,200,0) 0%, rgba(255,241,210,0.92) 75%, #FFFFFF 100%)',
-                ['--shoot-delay' as string]: '2.65s',
+                ['--shoot-delay' as string]: '1.65s',
               }}
             />
           </div>
@@ -340,22 +340,22 @@ export function OriginStageBackdrop({
         )}
       </div>
 
-      {/* 1E. Scene 10 Grand Finale: Champagne-Gold & Rose-Petal Gala Sky with Rotating Light Rays */}
+      {/* 1E. Scene 11 Grand Finale: Champagne-Gold & Rose-Petal Gala Sky with Rotating Light Rays */}
       <div
         className={`absolute inset-0 transition-opacity duration-[900ms] ease-out ${
           isGala ? 'opacity-100' : 'opacity-0 anim-paused'
         }`}
         style={{
           background:
-            'radial-gradient(circle at 50% 42%, #FFFDF4 0%, #FFF3F8 54%, #FCE2EE 100%)',
+            'radial-gradient(circle at 50% 44%, #FFFDF5 0%, #FFF4F9 52%, #FCE3EF 100%)',
         }}
       >
-        {/* Rotating soft radial light-burst rays (conic-gradient spinning gently at 26s, 0.18 opacity) */}
+        {/* Rotating soft radial champagne-gold light rays (opacity 0.14 so headline stays razor-sharp) */}
         <div
-          className="origin-story-gala-rays absolute -inset-[35%] opacity-[0.18]"
+          className="origin-story-gala-rays absolute -inset-[35%] opacity-[0.14]"
           style={{
             background:
-              'conic-gradient(from 0deg at 50% 50%, rgba(230,184,92,0.85) 0deg, rgba(255,248,251,0) 20deg, rgba(217,75,125,0.55) 40deg, rgba(255,248,251,0) 60deg, rgba(230,184,92,0.85) 80deg, rgba(255,248,251,0) 100deg, rgba(217,75,125,0.55) 120deg, rgba(255,248,251,0) 140deg, rgba(230,184,92,0.85) 160deg, rgba(255,248,251,0) 180deg, rgba(217,75,125,0.55) 200deg, rgba(255,248,251,0) 220deg, rgba(230,184,92,0.85) 240deg, rgba(255,248,251,0) 260deg, rgba(217,75,125,0.55) 280deg, rgba(255,248,251,0) 300deg, rgba(230,184,92,0.85) 320deg, rgba(255,248,251,0) 340deg, rgba(230,184,92,0.85) 360deg)',
+              'conic-gradient(from 0deg at 50% 50%, rgba(230,184,92,0.85) 0deg, rgba(255,248,251,0) 20deg, rgba(217,75,125,0.48) 40deg, rgba(255,248,251,0) 60deg, rgba(230,184,92,0.85) 80deg, rgba(255,248,251,0) 100deg, rgba(217,75,125,0.48) 120deg, rgba(255,248,251,0) 140deg, rgba(230,184,92,0.85) 160deg, rgba(255,248,251,0) 180deg, rgba(217,75,125,0.48) 200deg, rgba(255,248,251,0) 220deg, rgba(230,184,92,0.85) 240deg, rgba(255,248,251,0) 260deg, rgba(217,75,125,0.48) 280deg, rgba(255,248,251,0) 300deg, rgba(230,184,92,0.85) 320deg, rgba(255,248,251,0) 340deg, rgba(230,184,92,0.85) 360deg)',
           }}
         />
         {/* Warm golden center spotlight halo */}
@@ -416,30 +416,38 @@ export function OriginStageBackdrop({
       </div>
 
       {/* =====================================================================
-          LAYER 3: SOFT GROUND STAGE HORIZON & WARM PEARL-ROSE VIGNETTE
+          LAYER 3: SOFT GROUND STAGE HORIZON (seamless radial floor glow on Scene 11 gala!)
           ===================================================================== */}
-      {sceneId !== 'prologue' && (
-        <div
-          className="absolute inset-x-0 bottom-0 h-[21%] transition-all duration-700"
-          style={{
-            background: isStarry
-              ? 'radial-gradient(ellipse at 50% 0%, rgba(247,217,148,0.18) 0%, rgba(56,24,64,0.42) 85%)'
-              : isGala
-                ? 'radial-gradient(ellipse at 50% 0%, rgba(247,217,148,0.42) 0%, rgba(247,196,219,0.28) 85%)'
-                : 'radial-gradient(ellipse at 50% 0%, rgba(247,217,148,0.24) 0%, rgba(244,189,213,0.24) 85%)',
-          }}
-        >
-          {/* Delicate curved horizon rim line */}
+      {sceneId !== 'prologue' &&
+        (isGala ? (
           <div
-            className="mx-auto h-[1.5px] w-[86%] rounded-full"
+            data-testid="origin-gala-floor-glow"
+            className="absolute inset-x-0 bottom-0 h-[34%] transition-all duration-700"
             style={{
-              background: isStarry
-                ? 'linear-gradient(90deg, transparent 0%, rgba(247,217,148,0.34) 50%, transparent 100%)'
-                : 'linear-gradient(90deg, transparent 0%, rgba(217,75,125,0.18) 50%, transparent 100%)',
+              background:
+                'radial-gradient(ellipse 68% 60% at 50% 94%, rgba(247, 217, 148, 0.44) 0%, rgba(246, 189, 214, 0.24) 48%, rgba(255, 248, 251, 0) 82%)',
             }}
           />
-        </div>
-      )}
+        ) : (
+          <div
+            className="absolute inset-x-0 bottom-0 h-[21%] transition-all duration-700"
+            style={{
+              background: isStarry
+                ? 'radial-gradient(ellipse at 50% 0%, rgba(247,217,148,0.18) 0%, rgba(56,24,64,0.42) 85%)'
+                : 'radial-gradient(ellipse at 50% 0%, rgba(247,217,148,0.24) 0%, rgba(244,189,213,0.24) 85%)',
+            }}
+          >
+            {/* Delicate curved horizon rim line */}
+            <div
+              className="mx-auto h-[1.5px] w-[86%] rounded-full"
+              style={{
+                background: isStarry
+                  ? 'linear-gradient(90deg, transparent 0%, rgba(247,217,148,0.34) 50%, transparent 100%)'
+                  : 'linear-gradient(90deg, transparent 0%, rgba(217,75,125,0.18) 50%, transparent 100%)',
+              }}
+            />
+          </div>
+        ))}
 
       {/* Delicate warm pearl-rose cinema vignette around the outer frame edges */}
       <div

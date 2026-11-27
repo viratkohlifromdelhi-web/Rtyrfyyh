@@ -9,6 +9,7 @@ import {
   triggerKeepsakePngDownload,
   type RenderedKeepsakePoster,
 } from '../utils/keepsakeCard';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { soundEngine } from '../utils/soundEngine';
 
 interface KeepsakePreviewModalProps {
@@ -101,6 +102,7 @@ export function KeepsakePreviewModal({ onClose }: KeepsakePreviewModalProps) {
     } catch {
       // silent
     }
+    emitModinoEvent('cute', { force: true, source: 'keepsake-download' });
     try {
       trackEvent('keepsake_card_downloaded', 'Keepsake Poster', {
         outcome,

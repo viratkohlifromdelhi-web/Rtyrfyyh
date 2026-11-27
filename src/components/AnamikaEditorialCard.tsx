@@ -344,7 +344,7 @@ export function AnamikaEditorialCard({ onLightboxChange }: AnamikaEditorialCardP
       triggerHeroPhotoCannonsOnce();
       haptics.tap();
       soundEngine.playBubbleClick(1.06);
-      emitModinoEvent('cute');
+      emitModinoEvent('cute', { force: true, source: 'editorial-photo-zoom' });
       trackEvent('photo_card_zoomed', 'Anamika Photo Lightbox');
       setLightboxOpen(true);
     },

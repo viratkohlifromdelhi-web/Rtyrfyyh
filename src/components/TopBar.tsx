@@ -8,6 +8,7 @@ import {
   HEADER_EASTER_EGG_TOAST_VISIBLE_MS,
   advanceHeaderTapStreak,
 } from '../utils/headerEasterEgg';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { soundEngine } from '../utils/soundEngine';
 
 interface TopBarProps {
@@ -127,30 +128,35 @@ export function TopBar({
         >
           <a
             href="#toggles"
+            onClick={() => emitModinoEvent('friends_and_banter', { source: 'nav-toggles' })}
             className="whitespace-nowrap shrink-0 transition-colors hover:text-[#3A1233] hover:underline underline-offset-4"
           >
             Vibe Controls
           </a>
           <a
             href="#calendar"
+            onClick={() => emitModinoEvent('cute', { source: 'nav-calendar' })}
             className="whitespace-nowrap shrink-0 transition-colors hover:text-[#3A1233] hover:underline underline-offset-4"
           >
             Dec 2026
           </a>
           <a
             href="#backstory"
+            onClick={() => emitModinoEvent('backstory', { source: 'nav-backstory' })}
             className="whitespace-nowrap shrink-0 transition-colors hover:text-[#3A1233] hover:underline underline-offset-4"
           >
             Backstory
           </a>
           <a
             href="#agreement"
+            onClick={() => emitModinoEvent('interaction_hype', { source: 'nav-fun-zone' })}
             className="whitespace-nowrap shrink-0 transition-colors hover:text-[#3A1233] hover:underline underline-offset-4"
           >
             Fun Zone
           </a>
           <a
             href="#gift"
+            onClick={() => emitModinoEvent('interaction_hype', { source: 'nav-gift' })}
             className="whitespace-nowrap shrink-0 transition-colors hover:text-[#3A1233] hover:underline underline-offset-4"
           >
             Surprise Gift

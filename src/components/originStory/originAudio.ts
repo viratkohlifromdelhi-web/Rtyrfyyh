@@ -273,13 +273,18 @@ export class OriginStoryAudioController {
     try {
       this.stopSynthPad(0.05);
       const now = ctx.currentTime;
-      const totalSec = ORIGIN_AUDIO_CONFIG.kissDurationMs / 1000;
+      const activeAudioMs =
+        ORIGIN_AUDIO_CONFIG.audioFadeOutStartMs +
+        ORIGIN_AUDIO_CONFIG.fadeOutMs -
+        ORIGIN_AUDIO_CONFIG.audioSwellStartMs;
+      const totalSec = Math.max(1.5, activeAudioMs / 1000);
+      const fadeInSec = ORIGIN_AUDIO_CONFIG.fadeInMs / 1000;
       const fadeOutSec = ORIGIN_AUDIO_CONFIG.fadeOutMs / 1000;
       const holdUntilSec = Math.max(0.5, totalSec - fadeOutSec);
 
       const masterGain = ctx.createGain();
       masterGain.gain.setValueAtTime(0.0001, now);
-      masterGain.gain.linearRampToValueAtTime(0.075, now + 0.3);
+      masterGain.gain.linearRampToValueAtTime(0.075, now + fadeInSec);
       masterGain.gain.setValueAtTime(0.075, now + holdUntilSec);
       masterGain.gain.linearRampToValueAtTime(0.0001, now + totalSec);
 
@@ -533,7 +538,8 @@ export class OriginStoryAudioController {
 
     try {
       const now = ctx.currentTime;
-      const chord = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+      // Warm celebratory Cmaj7 harp/bell arpeggio (C5 -> E5 -> G5 -> B5 -> C6 -> E6)
+      const chord = [523.25, 659.25, 783.99, 987.77, 1046.5, 1318.5];
       chord.forEach((freq, i) => {
         const osc = ctx.createOscillator();
         const g = ctx.createGain();
@@ -541,12 +547,12 @@ export class OriginStoryAudioController {
         osc.type = i % 2 === 0 ? 'sine' : 'triangle';
         osc.frequency.setValueAtTime(freq, t);
         g.gain.setValueAtTime(0.0001, t);
-        g.gain.linearRampToValueAtTime(0.072, t + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.85);
+        g.gain.linearRampToValueAtTime(0.07, t + 0.018);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.92);
         osc.connect(g);
         g.connect(ctx.destination);
         osc.start(t);
-        osc.stop(t + 0.9);
+        osc.stop(t + 0.96);
       });
     } catch {
       // silent

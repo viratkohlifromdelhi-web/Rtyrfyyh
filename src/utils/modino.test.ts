@@ -52,6 +52,18 @@ test('Modino dialogue bank has 70+ unique lines and zero visible dashes across e
   for (const wake of MODINO_WAKE_LINES) {
     assert.equal(dashRegex.test(wake.text), false, `Dash found in wake line: "${wake.text}"`);
   }
+
+  assert.equal(MODINO_SIGNATURE_GREETING.text, "Hey Bra, Happy B'day! 🎂✨");
+  const forbiddenNotBroRegex = /\(\s*not\s+bro\s*\)/i;
+  for (const [category, items] of Object.entries(MODINO_REACTION_BANKS)) {
+    for (const item of items) {
+      assert.equal(
+        forbiddenNotBroRegex.test(item.text),
+        false,
+        `Forbidden "(Not Bro)" found in ${category}: "${item.text}"`,
+      );
+    }
+  }
 });
 
 test('Modino delivers signature greeting first, exhausts all direct taps without repeats, and avoids back-to-back mood repeats', () => {
@@ -277,8 +289,9 @@ test('Micro-hearts emitter enforces contextual rules, never emits during sleepy_
   }
 });
 
-test('emitModinoEvent enforces 750ms spam cooldown unless force=true', () => {
+test('emitModinoEvent enforces 650ms spam cooldown unless force=true', () => {
   resetModinoBusCooldown();
+  assert.equal(MODINO_SPAM_COOLDOWN_MS, 650);
   assert.equal(emitModinoEvent('cute', { nowMs: 1000 }), true);
   assert.equal(emitModinoEvent('cute', { nowMs: 1000 + MODINO_SPAM_COOLDOWN_MS - 1 }), false);
   assert.equal(emitModinoEvent('gift_ew', { force: true, nowMs: 1200 }), true);

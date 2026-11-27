@@ -18,12 +18,17 @@ import type { OneTimeSummaryGiftData } from './utils/infinityVault';
 import { shouldShowMidnightLock } from './utils/midnightLock';
 import { bgMusicPlayer } from './utils/musicSynth';
 import {
+  MAIN_PREMOUNT_BREATHER_MS,
+  STAGE3_TO_MAIN_TIMING,
   getDefaultPreloadImageUrls,
+  preloadMainPageDuringStory,
   preloadOriginStoryStageAssets,
   startBackgroundWarmup,
 } from './utils/preloader';
 import {
   BACKGROUND_SECTION_LOADERS,
+  TIER1_MAIN_LOADERS,
+  TIER2_MAIN_LOADERS,
   loadAdoptionCertificateSection,
   loadBackstorySection,
   loadBauniMeterSection,
@@ -45,10 +50,18 @@ import {
   loadStarterPackGrid,
   loadSurpriseGiftSection,
 } from './utils/sectionLoaders';
+import {
+  StageBridgeTransition,
+  type StageBridgeMode,
+  type StageBridgePhase,
+} from './components/StageBridgeTransition';
 import { emitModinoEvent } from './utils/modinoBus';
 import { playUiSfx } from './utils/uiSoundEngine';
 import { soundEngine } from './utils/soundEngine';
-import { BG_MUSIC_AUTOPLAY_FADE_MS } from './utils/theatrePhysics';
+import {
+  BG_MUSIC_AUTOPLAY_FADE_MS,
+  STAGE3_AUDIO_INTERRUPT_FADE_MS,
+} from './utils/theatrePhysics';
 
 // Code-split below-the-fold sections & owner-only dashboard into independent lazy chunks
 const InteractiveTogglesSection = lazy(() =>
@@ -152,10 +165,20 @@ function BirthdayWebsiteShell() {
   const [hasReachedMainStage, setHasReachedMainStage] = useState<boolean>(
     () => initialBypassIntro,
   );
+  const [shouldPreMountMain, setShouldPreMountMain] = useState<boolean>(
+    () => initialBypassIntro,
+  );
+  const [bridgeTransition, setBridgeTransition] = useState<{
+    mode: StageBridgeMode;
+    phase: StageBridgePhase;
+  } | null>(null);
   const enteredOriginForRunRef = useRef(false);
   const originExitHandledRef = useRef(false);
   const originStoryModeRef = useRef<'pipeline' | 'replay'>('pipeline');
   const wasMusicPlayingBeforeReplayRef = useRef(false);
+  const savedReplayScrollYRef = useRef(0);
+  const originReturnTimerRef = useRef<number | null>(null);
+  const bridgeTimersRef = useRef<number[]>([]);
 
   const [showMusicHint, setShowMusicHint] = useState(false);
   const [isPhotoLightboxOpen, setIsPhotoLightboxOpen] = useState(false);
@@ -170,6 +193,20 @@ function BirthdayWebsiteShell() {
   // Session-only one-time footer summary card state (strictly false on every page load)
   const [showOneTimeSummary, setShowOneTimeSummary] = useState(false);
   const [summaryGiftData, setSummaryGiftData] = useState<OneTimeSummaryGiftData | null>(null);
+
+  const clearBridgeTimers = useCallback(() => {
+    bridgeTimersRef.current.forEach((id) => window.clearTimeout(id));
+    bridgeTimersRef.current = [];
+  }, []);
+
+  const scheduleBridgeTimer = useCallback((fn: () => void, delayMs: number) => {
+    const id = window.setTimeout(() => {
+      bridgeTimersRef.current = bridgeTimersRef.current.filter((item) => item !== id);
+      fn();
+    }, delayMs);
+    bridgeTimersRef.current.push(id);
+    return id;
+  }, []);
 
   const triggerBackgroundWarmup = useCallback(() => {
     if (cancelWarmupRef.current) return;
@@ -194,8 +231,13 @@ function BirthdayWebsiteShell() {
       unsubscribeSfx();
       cancelWarmupRef.current?.();
       cancelWarmupRef.current = null;
+      clearBridgeTimers();
+      if (originReturnTimerRef.current !== null) {
+        window.clearTimeout(originReturnTimerRef.current);
+        originReturnTimerRef.current = null;
+      }
     };
-  }, []);
+  }, [clearBridgeTimers]);
 
   // Stage 2 -> Stage 3 silent preload while Opening Curtain / Intro Video plays
   useEffect(() => {
@@ -208,11 +250,33 @@ function BirthdayWebsiteShell() {
     };
   }, [showIntro]);
 
-  // Stage 3 -> Stage 4 preload: trigger main-page lazy chunks + hero image decode the moment OriginStoryPlay mounts
+  // Stage 3 -> Stage 4 true silent background loading + pre-painting while Origin Story is ongoing:
+  // 1. Trigger staggered Tier 1 (350ms) & Tier 2 (180ms idle slices) preload immediately on Stage 3 mount
+  // 2. Begin pre-mounting & pre-painting the Main Page behind Stage 3 after a 450ms Scene 1 breather
   useEffect(() => {
     if (!showOriginStory) return;
-    triggerBackgroundWarmup();
-  }, [showOriginStory, triggerBackgroundWarmup]);
+
+    const cancelStoryPreload = preloadMainPageDuringStory({
+      imageUrls: getDefaultPreloadImageUrls(import.meta.env.BASE_URL),
+      tier1ChunkLoaders: TIER1_MAIN_LOADERS,
+      tier2ChunkLoaders: TIER2_MAIN_LOADERS,
+      onUpgradeAudioPreload: () => {
+        bgMusicPlayer.upgradePreloadToAuto();
+      },
+    });
+
+    const preMountTimer = window.setTimeout(() => {
+      setShouldPreMountMain(true);
+    }, MAIN_PREMOUNT_BREATHER_MS);
+
+    return () => {
+      window.clearTimeout(preMountTimer);
+      // Only cancel if still unmounted before reaching Stage 4; keeping preload running across transition is safe
+      if (stageRef.current === 'intro') {
+        cancelStoryPreload();
+      }
+    };
+  }, [showOriginStory]);
 
   // Keep body scroll strictly locked during Stage 3 (including after TheatreIntroOverlay unmounts),
   // and guarantee clean scroll unlock when Stage 4 activates.
@@ -232,6 +296,7 @@ function BirthdayWebsiteShell() {
   // kick off the staggered background warmup after a 300ms breathing gap.
   useEffect(() => {
     if (!siteRevealed) return;
+    setShouldPreMountMain(true);
     const timer = window.setTimeout(() => {
       triggerBackgroundWarmup();
     }, 300);
@@ -253,11 +318,13 @@ function BirthdayWebsiteShell() {
   const handleToggleSfx = useCallback(() => {
     haptics.tap();
     soundEngine.toggle();
+    emitModinoEvent('interaction_hype', { source: 'sfx-toggle' });
   }, []);
 
   const handleToggleMusic = useCallback(() => {
     haptics.tap();
     soundEngine.playBubbleClick(isPlaying ? 0.92 : 1.08);
+    emitModinoEvent(isPlaying ? 'interaction_hype' : 'cute', { source: 'music-toggle' });
     trackEvent('music_toggled', isPlaying ? 'Pause Music Button' : 'Play Music Button', {
       action: isPlaying ? 'pause' : 'play',
     });
@@ -315,11 +382,16 @@ function BirthdayWebsiteShell() {
 
   // Entering Stage 3 (Origin Story Play) the moment Intro Video begins collapsing its curtain:
   // Mount OriginStoryPlay (z-9500) right behind the collapsing curtain (z-9999) for zero flash,
-  // immediately fade out any intro video audio, and keep Milky strictly paused (volume = 0).
+  // keep Milky strictly paused (volume = 0), and let 100% of any leftover unmuted Stage 2 intro
+  // video audio fade progressively to 0 right until the video's natural end.
   const handleBeginMainReveal = useCallback(
-    (_opts: { audioUnlocked: boolean; willContinueVideoAudio: boolean }) => {
-      theatreOverlayRef.current?.fadeOutForMusicTakeover();
+    (opts: { audioUnlocked: boolean; willContinueVideoAudio: boolean }) => {
       bgMusicPlayer.resetForReplayIntro(80);
+      if (opts.willContinueVideoAudio) {
+        theatreOverlayRef.current?.startStage3TrailingAudioFade();
+      } else {
+        theatreOverlayRef.current?.interruptTrailingAudio(STAGE3_AUDIO_INTERRUPT_FADE_MS);
+      }
       if (enteredOriginForRunRef.current) return;
       enteredOriginForRunRef.current = true;
       originStoryModeRef.current = 'pipeline';
@@ -344,10 +416,10 @@ function BirthdayWebsiteShell() {
     }
   }, []);
 
-  // Once Intro visual exit finishes, cleanly unmount TheatreIntroOverlay so zero hidden video audio lingers
+  // Visual curtains have collapsed — do NOT kill or unmount TheatreIntroOverlay here if its
+  // Stage 3 full-tail trailing audio fade is running; onFinishUnmount will unmount it cleanly
+  // as soon as the video reaches its natural end or an interrupt fires.
   const handleVisualExitDone = useCallback(() => {
-    theatreOverlayRef.current?.fadeOutForMusicTakeover();
-    setShowIntro(false);
     if (!enteredOriginForRunRef.current) {
       enteredOriginForRunRef.current = true;
       originStoryModeRef.current = 'pipeline';
@@ -378,18 +450,20 @@ function BirthdayWebsiteShell() {
     setShowIntro(false);
   }, []);
 
+  const handleInterruptIntroAudio = useCallback(() => {
+    theatreOverlayRef.current?.interruptTrailingAudio(STAGE3_AUDIO_INTERRUPT_FADE_MS);
+  }, []);
+
   const finishOriginStory = useCallback(
     (outcome: { kind: 'completed' } | { kind: 'skipped'; skippedAtMs: number }) => {
       if (originExitHandledRef.current) return;
       originExitHandledRef.current = true;
+      clearBridgeTimers();
+
+      // Immediately fast-fade (180ms) & stop any lingering Stage 2 intro audio before Stage 4 / Milky opens
+      theatreOverlayRef.current?.interruptTrailingAudio(STAGE3_AUDIO_INTERRUPT_FADE_MS);
 
       const mode = originStoryModeRef.current;
-      stageRef.current = 'main';
-      setShowOriginStory(false);
-      setStage('main');
-      setSiteRevealed(true);
-      setVisualExitDone(true);
-      setHasReachedMainStage(true);
 
       try {
         if (outcome.kind === 'completed') {
@@ -403,36 +477,149 @@ function BirthdayWebsiteShell() {
         // silent analytics fallback
       }
 
-      if (mode === 'pipeline') {
+      // Replay Origin Story return: snappy 350ms smooth warm crossfade back to saved scroll position
+      // without re-running initial welcome confetti or Modino's first-time greeting.
+      if (mode === 'replay') {
+        setBridgeTransition({ mode: 'replay', phase: 'gather' });
+
+        scheduleBridgeTimer(() => {
+          stageRef.current = 'main';
+          setShowOriginStory(false);
+          setStage('main');
+          setSiteRevealed(true);
+          setVisualExitDone(true);
+          setHasReachedMainStage(true);
+          setBridgeTransition({ mode: 'replay', phase: 'parting' });
+
+          try {
+            window.scrollTo({ top: savedReplayScrollYRef.current, behavior: 'instant' });
+          } catch {
+            // silent
+          }
+
+          if (wasMusicPlayingBeforeReplayRef.current) {
+            wasMusicPlayingBeforeReplayRef.current = false;
+            try {
+              void bgMusicPlayer.playManual(600);
+            } catch {
+              // silent
+            }
+          }
+        }, STAGE3_TO_MAIN_TIMING.replayCrossfadeSwapMs);
+
+        scheduleBridgeTimer(() => {
+          setBridgeTransition(null);
+        }, STAGE3_TO_MAIN_TIMING.replayCrossfadeTotalMs);
+        return;
+      }
+
+      // Pipeline Mode (Initial Watch): 1150ms 3-Beat Rose-Cream & Champagne-Gold Silk Curtain Reveal
+      try {
+        haptics.celebrate();
+      } catch {
+        // silent haptic fallback
+      }
+
+      setShouldPreMountMain(true);
+      const reducedMotion =
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (reducedMotion) {
+        setBridgeTransition({ mode: 'reduced', phase: 'gather' });
+
+        scheduleBridgeTimer(() => {
+          stageRef.current = 'main';
+          setShowOriginStory(false);
+          setStage('main');
+          setSiteRevealed(true);
+          setHasReachedMainStage(true);
+          try {
+            window.scrollTo(0, 0);
+          } catch {
+            // silent
+          }
+          setBridgeTransition({ mode: 'reduced', phase: 'parting' });
+
+          try {
+            void bgMusicPlayer
+              .autoplayAfterIntro(STAGE3_TO_MAIN_TIMING.musicFadeInMs)
+              .then((started) => {
+                if (started) {
+                  try {
+                    trackEvent('music_autoplay_started', 'Background Music Autoplay');
+                  } catch {
+                    // silent
+                  }
+                }
+              });
+          } catch {
+            // silent
+          }
+        }, STAGE3_TO_MAIN_TIMING.reducedMotionSwapMs);
+
+        scheduleBridgeTimer(() => {
+          setVisualExitDone(true);
+          setBridgeTransition(null);
+        }, STAGE3_TO_MAIN_TIMING.reducedMotionTotalMs);
+        return;
+      }
+
+      // Beat 1 (0ms -> 380ms): Warm Luminescent Veil gathers while OriginStoryPlay gently zooms forward
+      setBridgeTransition({ mode: 'curtain', phase: 'gather' });
+
+      // +280ms: Milky - Just The Way You Are starts smoothly (0 -> targetVolume over 750ms)
+      scheduleBridgeTimer(() => {
+        try {
+          void bgMusicPlayer
+            .autoplayAfterIntro(STAGE3_TO_MAIN_TIMING.musicFadeInMs)
+            .then((started) => {
+              if (started) {
+                try {
+                  trackEvent('music_autoplay_started', 'Background Music Autoplay');
+                } catch {
+                  // silent
+                }
+              }
+            });
+        } catch {
+          // autoplay safety fallback
+        }
+      }, STAGE3_TO_MAIN_TIMING.musicStartMs);
+
+      // +360ms: Unmount OriginStoryPlay, scroll cleanly to top: 0, activate pre-painted Main Page behind veil
+      scheduleBridgeTimer(() => {
+        stageRef.current = 'main';
+        setShowOriginStory(false);
+        setStage('main');
+        setSiteRevealed(true);
+        setVisualExitDone(false);
+        setHasReachedMainStage(true);
         try {
           window.scrollTo(0, 0);
         } catch {
           // silent
         }
+      }, STAGE3_TO_MAIN_TIMING.stageSwapMs);
+
+      // Beat 2 (+380ms -> +1080ms): Dual feathered Rose-Cream & Champagne-Gold Silk Curtains glide apart
+      scheduleBridgeTimer(() => {
+        setBridgeTransition({ mode: 'curtain', phase: 'parting' });
+      }, STAGE3_TO_MAIN_TIMING.curtainPartStartMs);
+
+      // +650ms: Main Page Welcome Confetti cannons fire cleanly as curtains finish clearing center Hero
+      scheduleBridgeTimer(() => {
         confettiRef.current?.fireCannons();
-        try {
-          void bgMusicPlayer.autoplayAfterIntro(600).then((started) => {
-            if (started) {
-              try {
-                trackEvent('music_autoplay_started', 'Background Music Autoplay');
-              } catch {
-                // silent
-              }
-            }
-          });
-        } catch {
-          // autoplay safety fallback
-        }
-      } else if (wasMusicPlayingBeforeReplayRef.current) {
-        wasMusicPlayingBeforeReplayRef.current = false;
-        try {
-          void bgMusicPlayer.playManual(600);
-        } catch {
-          // silent
-        }
-      }
+      }, STAGE3_TO_MAIN_TIMING.confettiBurstMs);
+
+      // Beat 3 (+1150ms): Curtain overlay unmounts cleanly from DOM; Hero settle transform clears so sticky stays unbroken
+      scheduleBridgeTimer(() => {
+        setVisualExitDone(true);
+        setBridgeTransition(null);
+      }, STAGE3_TO_MAIN_TIMING.totalDurationMs);
     },
-    [],
+    [clearBridgeTimers, scheduleBridgeTimer],
   );
 
   const handleOriginStoryComplete = useCallback(() => {
@@ -458,6 +645,15 @@ function BirthdayWebsiteShell() {
       // silent
     }
 
+    // Never allow any trailing Stage 2 intro audio during a later Replay Origin Story
+    theatreOverlayRef.current?.interruptTrailingAudio(STAGE3_AUDIO_INTERRUPT_FADE_MS);
+
+    try {
+      savedReplayScrollYRef.current = window.scrollY || 0;
+    } catch {
+      savedReplayScrollYRef.current = 0;
+    }
+
     const snap = bgMusicPlayer.getSnapshot();
     wasMusicPlayingBeforeReplayRef.current = Boolean(snap.isPlaying);
     if (snap.isPlaying) {
@@ -476,6 +672,8 @@ function BirthdayWebsiteShell() {
     haptics.tap();
     soundEngine.playBubbleClick(1.06);
     trackEvent('intro_replayed', 'Replay Intro Button');
+    clearBridgeTimers();
+    setBridgeTransition(null);
     // Smoothly fade local MP3 down to 0 (0.4s), pause, reset currentTime = 0 & button state
     bgMusicPlayer.resetForReplayIntro();
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -488,7 +686,7 @@ function BirthdayWebsiteShell() {
     setVisualExitDone(false);
     setIntroRunId((n) => n + 1);
     setShowIntro(true);
-  }, []);
+  }, [clearBridgeTimers]);
 
   const handleSetBirthdayTruce = useCallback(
     (next: boolean) => {
@@ -554,8 +752,9 @@ function BirthdayWebsiteShell() {
     }
   }, [friendOverride]);
 
-  // Pause background floating sparkles & 1s ticking timers while Stage 2 (Intro) or Stage 3 (Origin Story) owns the screen
-  const isMainStageActive = stage === 'main' && siteRevealed && !showIntro && !showOriginStory;
+  // Pause background floating sparkles & 1s ticking timers while Stage 2 (Intro visual) or Stage 3 (Origin Story) owns the screen
+  const isIntroVisualActive = showIntro && stage === 'intro';
+  const isMainStageActive = stage === 'main' && siteRevealed && !isIntroVisualActive && !showOriginStory;
   const pauseBackgroundWork = !isMainStageActive;
   const suppressSparkleRain =
     pauseBackgroundWork ||
@@ -595,8 +794,16 @@ function BirthdayWebsiteShell() {
             key={originStoryRunId}
             onComplete={handleOriginStoryComplete}
             onSkip={handleOriginStorySkip}
+            onInterruptIntroAudio={handleInterruptIntroAudio}
           />
         </Suspense>
+      )}
+
+      {bridgeTransition && (
+        <StageBridgeTransition
+          mode={bridgeTransition.mode}
+          phase={bridgeTransition.phase}
+        />
       )}
 
       <SparkleRainCanvas enabled={isSparkleRainOn} suppressed={suppressSparkleRain} />
@@ -611,31 +818,32 @@ function BirthdayWebsiteShell() {
         onHeaderEasterEgg={handleHeaderEasterEgg}
       />
 
-      {/* Pre-rendered main birthday website quietly underneath (zero flash & zero layout stutter when Stage 3 exits) */}
+      {/* Pre-mounted & pre-painted main birthday website quietly underneath Stage 3 (zero flash & zero layout stutter) */}
       <div
         data-testid="main-site-shell"
         data-revealed={String(siteRevealed)}
+        data-premounted={String(shouldPreMountMain)}
         data-bg-paused={String(pauseBackgroundWork)}
         aria-hidden={!isMainStageActive || undefined}
-        className={`transition-[transform,opacity] duration-[550ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          !isMainStageActive ? 'pointer-events-none' : ''
-        } ${
-          visualExitDone && siteRevealed
-            ? 'opacity-100'
-            : siteRevealed
-              ? 'scale-100 opacity-100 will-change-[transform,opacity]'
-              : 'scale-[0.97] opacity-90 will-change-[transform,opacity]'
+        className={`${!isMainStageActive ? 'pointer-events-none' : ''} ${
+          isMainStageActive && !visualExitDone
+            ? 'stage-bridge-hero-settle will-change-[transform,opacity]'
+            : 'opacity-100'
         }`}
       >
         {/* CRITICAL: Keep <main> free of content-visibility / contain / overflow:hidden so Backstory sticky stacking never breaks */}
         <main className="overflow-x-clip pt-14">
-          {/* 1. Hero Section (Eager-loaded behind curtain for zero-flash reveal) */}
+          {/* 1. Hero Section (Eager-loaded & GPU-painted behind Stage 3 for instant zero-flash reveal) */}
           <HeroSection
             isBirthdayTruce={isBirthdayTruce}
             onPopConfetti={handleHeroPopConfetti}
             isSiteRevealed={isMainStageActive}
             onPhotoLightboxChange={setIsPhotoLightboxOpen}
           />
+
+          {/* Pre-mount all lazy sections quietly behind Stage 3 (after 450ms Scene 1 breather) with heavy effects paused */}
+          {(shouldPreMountMain || stage === 'main') && (
+            <>
 
           {/* 2. Interactive Toggles & Control Bar */}
           <Suspense fallback={<SectionPlaceholder id="toggles" minHeight={720} />}>
@@ -666,7 +874,7 @@ function BirthdayWebsiteShell() {
 
           {/* 5. Our Backstory Timeline ("From Classmates to #1 HG") */}
           <Suspense fallback={<SectionPlaceholder id="backstory" minHeight={980} />}>
-            <BackstorySection isSiteRevealed={siteRevealed} />
+            <BackstorySection isSiteRevealed={isMainStageActive} />
           </Suspense>
 
           {/* 6. Tappable Inside-Joke Cards ("The Morgan Starter Pack" — Icons/SVGs Only) */}
@@ -725,6 +933,8 @@ function BirthdayWebsiteShell() {
           <Suspense fallback={<SectionPlaceholder id="make-a-wish" minHeight={560} />}>
             <MakeAWishCake onBlowOutConfetti={handleCelebrationBurst} />
           </Suspense>
+            </>
+          )}
         </main>
 
         <div className="relative z-[2] border-t border-[#F2C6D8] bg-transparent pt-8 pb-2">
@@ -751,7 +961,10 @@ function BirthdayWebsiteShell() {
               </span>
               <a
                 href="#top"
-                onClick={() => trackEvent('back_to_top_clicked', 'Back to Top Link')}
+                onClick={() => {
+                  trackEvent('back_to_top_clicked', 'Back to Top Link');
+                  emitModinoEvent('interaction_hype', { source: 'back-to-top' });
+                }}
                 className="text-xs font-semibold text-[#D94B7D] transition-colors hover:text-[#3A1233] hover:underline underline-offset-4"
               >
                 Back to top
@@ -770,24 +983,29 @@ function BirthdayWebsiteShell() {
           )}
         </div>
 
-        {/* Bonus Canon Lore Mini Pastel Chicken Farm Comic Card (directly above Closing Sign-Off Footer) */}
-        <Suspense fallback={<SectionPlaceholder id="little-coop" minHeight={360} />}>
-          <ChickenFarmSection isSiteRevealed={siteRevealed} />
-        </Suspense>
+        {(shouldPreMountMain || stage === 'main') && (
+          <>
+            {/* Bonus Canon Lore Mini Pastel Chicken Farm Comic Card (directly above Closing Sign-Off Footer) */}
+            <Suspense fallback={<SectionPlaceholder id="little-coop" minHeight={360} />}>
+              <ChickenFarmSection isSiteRevealed={isMainStageActive} />
+            </Suspense>
 
-        <Suspense fallback={<SectionPlaceholder id="closing-signoff" minHeight={260} />}>
-          <ClosingSignOffFooter isSiteRevealed={siteRevealed} />
-        </Suspense>
+            <Suspense fallback={<SectionPlaceholder id="closing-signoff" minHeight={260} />}>
+              <ClosingSignOffFooter isSiteRevealed={isMainStageActive} />
+            </Suspense>
+          </>
+        )}
       </div>
 
       <FloatingConfettiButton onPop={handleBurstConfetti} />
 
-      {hasReachedMainStage && (
+      {(shouldPreMountMain || hasReachedMainStage) && (
         <Suspense fallback={null}>
           <ModinoPet
             isSiteRevealed={isMainStageActive}
+            entranceDelayMs={STAGE3_TO_MAIN_TIMING.modinoDelayAfterMainMountMs}
             isBlockedByOverlay={
-              showIntro ||
+              isIntroVisualActive ||
               showOriginStory ||
               isPhotoLightboxOpen ||
               isCaseFileLightboxOpen ||

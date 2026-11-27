@@ -301,6 +301,7 @@ export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFo
         hasAutoPlayedRef.current = true;
         detachAutoPlayWatchers();
         playChoreography();
+        emitModinoEvent('ending', { force: true, source: 'footer-auto-enter' });
       }
     };
 

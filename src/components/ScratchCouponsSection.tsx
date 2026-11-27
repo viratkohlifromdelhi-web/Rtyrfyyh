@@ -554,6 +554,7 @@ export function ScratchCouponsSection({
   const handleRecoatAll = () => {
     haptics.tap();
     soundEngine.playBubbleClick();
+    emitModinoEvent('interaction_hype', { source: 'scratch-recoat-all' });
     setRevealedMap({ nothing: false, party: false, troll: false });
     setRecoatVersion((v) => v + 1);
   };

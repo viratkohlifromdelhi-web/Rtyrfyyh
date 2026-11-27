@@ -22,7 +22,7 @@ export interface ModinoEventDetail {
 }
 
 export const MODINO_EVENT_NAME = 'modino:react';
-export const MODINO_SPAM_COOLDOWN_MS = 750;
+export const MODINO_SPAM_COOLDOWN_MS = 650;
 
 let lastEmitTimestamp = -Infinity;
 
@@ -35,7 +35,7 @@ export function resetModinoBusCooldown(): void {
 
 /**
  * Emits a reaction event for Modino.
- * Applies a 750ms spam-cooldown guard for passive/rapid triggers unless `options.force === true`.
+ * Applies a 650ms spam-cooldown guard for passive/rapid triggers unless `options.force === true`.
  */
 export function emitModinoEvent(
   category: ModinoReactionCategory,

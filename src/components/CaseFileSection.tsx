@@ -453,6 +453,7 @@ export function CaseFileSection({ onLightboxChange }: CaseFileSectionProps = {})
 
     haptics.tap();
     soundEngine.playCardstockSlide();
+    emitModinoEvent('backstory', { source: 'case-file-tuck' });
 
     const prefersReducedMotion =
       typeof window !== 'undefined' &&
@@ -555,6 +556,7 @@ export function CaseFileSection({ onLightboxChange }: CaseFileSectionProps = {})
     haptics.tap();
     trackEvent('case_file_zoomed', 'Case File #0721 Receipt Lightbox');
     soundEngine.playBubbleClick(1.06);
+    emitModinoEvent('backstory', { force: true, source: 'case-file-zoom' });
     setIsZoomed(true);
   }, []);
 

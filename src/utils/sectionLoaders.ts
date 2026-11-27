@@ -58,10 +58,21 @@ export const loadKeepsakePreviewModal = () =>
   import('../components/KeepsakePreviewModal');
 
 /**
- * Top-to-bottom visual scroll order used by the staggered idle background preloader.
+ * Priority Tier 1 (starts 350ms after Origin Story Scene 1 mounts):
+ * Above-the-fold lazy controls + Modino companion chunk (HeroSection, TopBar,
+ * and SparkleRainCanvas are already eagerly bundled).
  */
-export const BACKGROUND_SECTION_LOADERS: ReadonlyArray<() => Promise<unknown>> = [
+export const TIER1_MAIN_LOADERS: ReadonlyArray<() => Promise<unknown>> = [
   loadInteractiveTogglesSection,
+  loadModinoPet,
+];
+
+/**
+ * Priority Tier 2 (runs in staggered 180ms requestIdleCallback slices during Origin Story):
+ * All remaining below-the-fold Main Birthday Page sections in top-to-bottom visual scroll order.
+ * Strictly excludes OwnerAnalyticsDashboard (?insights=9876).
+ */
+export const TIER2_MAIN_LOADERS: ReadonlyArray<() => Promise<unknown>> = [
   loadCalendarAndCounterSection,
   loadLifeStatsSection,
   loadBackstorySection,
@@ -78,5 +89,12 @@ export const BACKGROUND_SECTION_LOADERS: ReadonlyArray<() => Promise<unknown>> =
   loadBirthdaySummaryCard,
   loadChickenFarmSection,
   loadClosingSignOffFooter,
-  loadModinoPet,
+];
+
+/**
+ * Top-to-bottom visual scroll order used by the staggered idle background preloader.
+ */
+export const BACKGROUND_SECTION_LOADERS: ReadonlyArray<() => Promise<unknown>> = [
+  ...TIER1_MAIN_LOADERS,
+  ...TIER2_MAIN_LOADERS,
 ];

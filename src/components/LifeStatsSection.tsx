@@ -11,6 +11,7 @@ import {
   SparkleStarSvg,
 } from './DoodleSvgs';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { soundEngine } from '../utils/soundEngine';
 import { useInViewAnimation } from '../utils/useInViewAnimation';
 
@@ -45,9 +46,13 @@ export function LifeStatsSection({ paused = false }: LifeStatsSectionProps) {
     };
   }, []);
 
-  const handleTileBounce = (id: string) => {
+  const handleTileBounce = (
+    id: string,
+    category: 'interaction_hype' | 'friends_and_banter' | 'cute' = 'interaction_hype',
+  ) => {
     haptics.tap();
     soundEngine.playBubbleClick(1.05);
+    emitModinoEvent(category, { source: `life-stats-${id}` });
     setActiveTile(id);
     if (bounceTimerRef.current !== null) {
       window.clearTimeout(bounceTimerRef.current);
@@ -236,15 +241,33 @@ export function LifeStatsSection({ paused = false }: LifeStatsSectionProps) {
           data-testid="life-mini-strip"
           className="mt-6 flex flex-wrap items-center justify-center gap-3"
         >
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F1C1DF] bg-[#FFE4F0] px-4 py-2 text-xs font-bold text-[#3B1535] shadow-xs sm:text-sm">
+          <button
+            type="button"
+            onClick={() => handleTileBounce('turning-17', 'cute')}
+            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#F1C1DF] bg-[#FFE4F0] px-4 py-2 text-xs font-bold text-[#3B1535] shadow-xs transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2377E] sm:text-sm ${
+              activeTile === 'turning-17' ? 'scale-95' : ''
+            }`}
+          >
             🎂 Turning: 17
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#DDD0F7] bg-[#EBE3FF] px-4 py-2 text-xs font-bold text-[#3B1535] shadow-xs sm:text-sm">
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTileBounce('height-growth', 'friends_and_banter')}
+            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#DDD0F7] bg-[#EBE3FF] px-4 py-2 text-xs font-bold text-[#3B1535] shadow-xs transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2377E] sm:text-sm ${
+              activeTile === 'height-growth' ? 'scale-95' : ''
+            }`}
+          >
             📏 Height Growth: Still 0%
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F0D37D] bg-[#FFE898] px-4 py-2 text-xs font-bold text-[#3B1535] shadow-xs sm:text-sm">
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTileBounce('friend-rank', 'friends_and_banter')}
+            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#F0D37D] bg-[#FFE898] px-4 py-2 text-xs font-bold text-[#3B1535] shadow-xs transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2377E] sm:text-sm ${
+              activeTile === 'friend-rank' ? 'scale-95' : ''
+            }`}
+          >
             🏆 Friend List Rank: #2 (Behind Abhay)
-          </span>
+          </button>
         </div>
       </div>
     </section>

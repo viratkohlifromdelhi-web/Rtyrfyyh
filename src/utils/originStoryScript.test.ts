@@ -9,6 +9,7 @@ import {
   ORIGIN_RULER_TICKS,
   ORIGIN_SCENES,
   ORIGIN_TOTAL_SCENES,
+  SCENE5_KISS_TIMING,
   SCENE_10_FREEZE_STEPS,
   SCENE_8_GROWTH_STEPS,
   SCENE_9_GROWTH_STEPS,
@@ -16,6 +17,7 @@ import {
   getIstMonthDay,
   getOriginFinaleCopy,
   getOriginRomanticGlowIntensity,
+  getScene5KissPose,
   inchesToChartRatio,
   inchesToStageBottomPct,
   inchesToSvgCrownY,
@@ -23,9 +25,9 @@ import {
 
 const VISIBLE_DASH_REGEX = /[-–—]/;
 
-test('Origin Story defines all 10 interactive scenes with atmospheric backdrop moods', () => {
-  assert.equal(ORIGIN_TOTAL_SCENES, 10);
-  assert.equal(ORIGIN_SCENES.length, 10);
+test('Origin Story defines all 11 interactive scenes with atmospheric backdrop moods', () => {
+  assert.equal(ORIGIN_TOTAL_SCENES, 11);
+  assert.equal(ORIGIN_SCENES.length, 11);
 
   ORIGIN_SCENES.forEach((scene, idx) => {
     assert.equal(scene.index, idx);
@@ -37,6 +39,11 @@ test('Origin Story defines all 10 interactive scenes with atmospheric backdrop m
   assert.equal(ORIGIN_SCENES[0].title, 'Before the Cake and the Chaos');
   assert.equal(ORIGIN_SCENES[1].nameplateSubtitle, 'Peaceful, proud, and smiling');
   assert.equal(ORIGIN_SCENES[2].nameplateSubtitle, 'Kind, graceful, and glowing');
+  assert.equal(ORIGIN_SCENES[9].id, 'padlock_freeze');
+  assert.equal(ORIGIN_SCENES[9].sceneNumber, 10);
+  assert.equal(ORIGIN_SCENES[10].id, 'grand_finale');
+  assert.equal(ORIGIN_SCENES[10].sceneNumber, 11);
+  assert.equal(ORIGIN_SCENES[10].backdropMood, 'gala_finale');
 });
 
 test('Zero visible dashes appear in any user-facing Origin Story string', () => {
@@ -106,25 +113,26 @@ test('Growth pacing enforces exact 1000ms per year for Ages 10 to 14 and Ages 14
     }
   }
 
-  // Scene 10 Beat 1: Ages 14..17 frozen dead-flat at 62" (5'2") for 1000ms each
+  // Scene 10 of 11: Ages 14..17 frozen dead-flat at 62" (5'2") for 1000ms each
   assert.deepEqual(
     SCENE_10_FREEZE_STEPS.map((s) => ({
       age: s.age,
       year: s.year,
       inches: s.inches,
+      heightLabel: s.heightLabel,
       durationMs: s.durationMs,
       stage: s.stage,
     })),
     [
-      { age: 14, year: 2023, inches: FIVE_TWO_INCHES, durationMs: 1000, stage: 'teen' },
-      { age: 15, year: 2024, inches: FIVE_TWO_INCHES, durationMs: 1000, stage: 'teen' },
-      { age: 16, year: 2025, inches: FIVE_TWO_INCHES, durationMs: 1000, stage: 'teen' },
-      { age: 17, year: 2026, inches: FIVE_TWO_INCHES, durationMs: 1000, stage: 'teen' },
+      { age: 14, year: 2023, inches: FIVE_TWO_INCHES, heightLabel: "5'2\"", durationMs: 1000, stage: 'teen' },
+      { age: 15, year: 2024, inches: FIVE_TWO_INCHES, heightLabel: "Still 5'2\"", durationMs: 1000, stage: 'teen' },
+      { age: 16, year: 2025, inches: FIVE_TWO_INCHES, heightLabel: "Still 5'2\"", durationMs: 1000, stage: 'teen' },
+      { age: 17, year: 2026, inches: FIVE_TWO_INCHES, heightLabel: "Still 5'2\"", durationMs: 1000, stage: 'teen' },
     ],
   );
 });
 
-test('Unified proportional height ruler math locks 5\'2" (62") to exact 79% chart ratio', () => {
+test('Unified proportional height ruler math locks 5\'2" (62") to exact 79% and includes all foot ticks 1\'0" to 6\'0"', () => {
   const ratio = inchesToChartRatio(FIVE_TWO_INCHES);
   assert.ok(Math.abs(ratio - 0.79) < 1e-9, `Expected 0.79, got ${ratio}`);
 
@@ -133,6 +141,9 @@ test('Unified proportional height ruler math locks 5\'2" (62") to exact 79% char
 
   const stageBottomPct = inchesToStageBottomPct(FIVE_TWO_INCHES);
   assert.ok(stageBottomPct > 79 && stageBottomPct < 81);
+
+  const majorLabels = ORIGIN_RULER_TICKS.filter((t) => t.major).map((t) => t.label);
+  assert.deepEqual(majorLabels, ["6'0\"", "5'2\"", "5'0\"", "4'0\"", "3'0\"", "2'0\"", "1'0\""]);
 });
 
 test('Live IST (Asia/Kolkata) finale copy switches cleanly between 03 December and all other dates', () => {
@@ -143,6 +154,7 @@ test('Live IST (Asia/Kolkata) finale copy switches cleanly between 03 December a
   assert.equal(birthdayCopy.isBirthdayToday, true);
   assert.equal(birthdayCopy.badgeLabel, 'CHAPTER 17 · UNLOCKED');
   assert.equal(birthdayCopy.headline, 'Today, she is turning 17!');
+  assert.equal(birthdayCopy.ctaLabel, 'Enter Birthday World');
   assert.equal(
     birthdayCopy.subcaption,
     "Still 5'2 feet. Still pure sunshine and chaos. Happy 17th Birthday, Anamika!",
@@ -155,13 +167,14 @@ test('Live IST (Asia/Kolkata) finale copy switches cleanly between 03 December a
   assert.equal(beforeCopy.isBirthdayToday, false);
   assert.equal(beforeCopy.badgeLabel, 'CHAPTER 17 · UNLOCKED');
   assert.equal(beforeCopy.headline, 'She has turned 17 on 03 Dec 2026!');
+  assert.equal(beforeCopy.ctaLabel, 'Enter Birthday World');
   assert.equal(
     beforeCopy.subcaption,
     "Still 5'2 feet. Still pure sunshine and chaos. Welcome to Anamika's 17th Birthday!",
   );
 });
 
-test('Scene 5 starry kiss audio path and 5-second timing stay exactly synchronized', () => {
+test('Scene 5 starry kiss 5-phase timeline, audio cues, and pose contact geometry stay synchronized', () => {
   const expectedFilename =
     'In The Night No Control 🖤🔥  Song Lyrics Status #shorts_ #lyrics_.mp3';
 
@@ -169,17 +182,46 @@ test('Scene 5 starry kiss audio path and 5-second timing stay exactly synchroniz
   assert.equal(buildOriginKissTrackSrc('/'), '/origin-kiss-track.mp3');
   assert.equal(buildOriginKissTrackSrc('/birthday-site/'), '/birthday-site/origin-kiss-track.mp3');
   assert.equal(ORIGIN_AUDIO_CONFIG.kissTrackSrc, buildOriginKissTrackSrc('/'));
-  assert.equal(ORIGIN_AUDIO_CONFIG.kissDurationMs, 5000);
-  assert.equal(
-    ORIGIN_AUDIO_CONFIG.kissStartDelayMs +
-      ORIGIN_AUDIO_CONFIG.kissHoldMs +
-      ORIGIN_AUDIO_CONFIG.fadeOutMs,
-    5000,
-  );
+
+  // Exact 5-phase choreography milestones
+  assert.equal(SCENE5_KISS_TIMING.phase2StepStartMs, 750);
+  assert.equal(SCENE5_KISS_TIMING.phase3LeanInStartMs, 1850);
+  assert.equal(SCENE5_KISS_TIMING.audioSwellStartMs, 2150);
+  assert.equal(SCENE5_KISS_TIMING.phase4KissStartMs, 2400);
+  assert.equal(SCENE5_KISS_TIMING.phase4KissHoldMs, 3500);
+  assert.equal(SCENE5_KISS_TIMING.audioFadeOutStartMs, 5550);
+  assert.equal(SCENE5_KISS_TIMING.phase5AfterglowStartMs, 5900);
+  assert.equal(SCENE5_KISS_TIMING.settleMs, 6600);
+  assert.equal(ORIGIN_AUDIO_CONFIG.fadeInMs, 300);
+  assert.equal(ORIGIN_AUDIO_CONFIG.fadeOutMs, 450);
+  assert.equal(ORIGIN_AUDIO_CONFIG.maxVolume, 0.82);
 
   const kissScene = ORIGIN_SCENES.find((s) => s.id === 'starry_kiss');
   assert.ok(kissScene);
-  assert.equal(kissScene.settleDurationMs, 5000);
+  assert.equal(kissScene.settleDurationMs, SCENE5_KISS_TIMING.settleMs);
+
+  // Resolution-independent contact math verification:
+  // Apart (+/-74u) -> Stepped in (+/-41u) -> Lean in (+/-37.5u) -> Kiss contact (+/-36u) -> Shy pull-back (+/-47u)
+  const moonlight = getScene5KissPose('moonlight');
+  const stepping = getScene5KissPose('stepping');
+  const leanIn = getScene5KissPose('leanIn');
+  const kissing = getScene5KissPose('kissing');
+  const afterglow = getScene5KissPose('afterglow');
+
+  assert.equal(moonlight.shivjee.dxUnits, -74);
+  assert.equal(moonlight.archana.dxUnits, 74);
+  assert.ok(Math.abs(stepping.shivjee.dxUnits) < Math.abs(moonlight.shivjee.dxUnits));
+  assert.ok(Math.abs(leanIn.shivjee.dxUnits) < Math.abs(stepping.shivjee.dxUnits));
+  assert.equal(kissing.shivjee.dxUnits, -36);
+  assert.equal(kissing.archana.dxUnits, 36);
+  assert.equal(kissing.shivjee.torsoRotateDeg, 3.5);
+  assert.equal(kissing.archana.torsoRotateDeg, -3.5);
+  assert.equal(kissing.shivjee.headTiltDeg, 7);
+  assert.equal(kissing.archana.headTiltDeg, -7);
+  assert.ok(kissing.archana.dyUnits < 0, 'Archana should have subtle upward tiptoe lift during kiss');
+  assert.ok(Math.abs(afterglow.shivjee.dxUnits) > Math.abs(kissing.shivjee.dxUnits));
+  assert.equal(afterglow.shivjee.headTiltDeg, 0);
+  assert.equal(afterglow.archana.headTiltDeg, 0);
 });
 
 test('Romantic soft-pink radial lighting intensity ramps up to peak during the Scene 5 kiss', () => {
@@ -187,8 +229,10 @@ test('Romantic soft-pink radial lighting intensity ramps up to peak during the S
   assert.equal(getOriginRomanticGlowIntensity('happy_together', 'kissing'), 'ambient');
   assert.equal(getOriginRomanticGlowIntensity('starry_kiss', 'twilight'), 'twilight');
   assert.equal(getOriginRomanticGlowIntensity('starry_kiss', 'shyGlance'), 'building');
+  assert.equal(getOriginRomanticGlowIntensity('starry_kiss', 'leanIn'), 'building');
   assert.equal(getOriginRomanticGlowIntensity('starry_kiss', 'kissing'), 'peak');
   assert.equal(getOriginRomanticGlowIntensity('starry_kiss', 'afterglow'), 'afterglow');
 });
+
 
 

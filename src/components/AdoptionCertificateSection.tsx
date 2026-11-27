@@ -38,7 +38,7 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
 
   const handleStamp = (e: MouseEvent<HTMLButtonElement>) => {
     haptics.celebrate();
-    emitModinoEvent('cute', { force: true });
+    emitModinoEvent('friends_and_banter', { force: true, source: 'adoption-certificate-stamp' });
     const nextCount = stampCount + 1;
     setStampCount(nextCount);
     soundEngine.playWaxStamp();

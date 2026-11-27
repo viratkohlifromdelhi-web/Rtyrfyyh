@@ -38,7 +38,7 @@ export const MODINO_HEART_COLORS = [
 ] as const;
 
 export const MODINO_SIGNATURE_GREETING: ModinoReaction = {
-  text: "Hey Bra, (Not Bro) Happy B'day! 🎂✨",
+  text: "Hey Bra, Happy B'day! 🎂✨",
   mood: 'greeting',
   sfx: 'awww_chime',
   priority: true,
@@ -355,7 +355,7 @@ export const MODINO_REACTION_BANKS: Record<ModinoReactionCategory, readonly Modi
   ],
 
   direct_tap: [
-    { text: "Hey Bra, (Not Bro) Happy B'day! 🎂😆", mood: 'greeting', sfx: 'awww_chime', priority: true },
+    { text: "Hey Bra, Happy B'day! 🎂😆", mood: 'greeting', sfx: 'awww_chime', priority: true },
     { text: 'Achhaw Cutie 🌸😊', mood: 'shy_blush', sfx: 'awww_chime', priority: true },
     { text: 'Kuttii 😂🐾', mood: 'laugh', sfx: 'giggle', priority: true },
     { text: 'Re gawarr 😹✨', mood: 'ew_cringe', sfx: 'ew_boing', priority: true },
@@ -821,16 +821,16 @@ export function createModinoMicroHearts(
       continue;
     }
 
-    // Spread multiple hearts gently left-to-right above ears/head so they never stack identically
+    // Bias micro-hearts gently upward and inward (toward center-right) from Modino's bottom-left dock
     const fanBias =
-      safeCount > 1 ? ((i / (safeCount - 1)) - 0.5) * 28 : (rand() - 0.5) * 18;
-    const dx = Math.max(-26, Math.min(26, Math.round(fanBias + (rand() - 0.5) * 14)));
-    const curveWobble = Math.round((rand() - 0.5) * 14);
+      safeCount > 1 ? 2 + (i / (safeCount - 1)) * 20 : 6 + rand() * 14;
+    const dx = Math.max(-26, Math.min(26, Math.round(fanBias + (rand() - 0.35) * 10)));
+    const curveWobble = Math.round((rand() - 0.4) * 10);
     const dxMid = Math.max(-28, Math.min(28, Math.round(dx * 0.52 + curveWobble)));
     const dy = -Math.round(48 + rand() * 34); // -48px to -82px
     const rot = Math.round((rand() * 36) - 18); // -18deg to +18deg
     const durationMs = Math.round(1350 + rand() * 500); // 1350ms to 1850ms
-    const startX = Math.round((rand() - 0.5) * 22);
+    const startX = Math.round(rand() * 18 - 4);
 
     if (i > 0) {
       cumulativeDelay += Math.round(70 + rand() * 70); // 70ms to 140ms stagger
