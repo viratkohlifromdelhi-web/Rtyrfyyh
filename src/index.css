@@ -2946,7 +2946,8 @@
 }
 
 .origin-story-heart {
-  animation: origin-story-heart-rise 2.4s cubic-bezier(0.16, 1, 0.3, 1) var(--heart-delay, 0s) infinite;
+  opacity: 0;
+  animation: origin-story-heart-rise var(--heart-dur, 2.05s) cubic-bezier(0.16, 1, 0.3, 1) var(--heart-delay, 0s) both;
 }
 
 .origin-story-month-flip {

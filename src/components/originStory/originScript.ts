@@ -78,6 +78,12 @@ export const ORIGIN_CAST = {
 export const ORIGIN_KISS_AUDIO_FILENAME =
   'In The Night No Control 🖤🔥  Song Lyrics Status #shorts_ #lyrics_.mp3';
 
+/**
+ * URL-safe route backed directly by `public/${ORIGIN_KISS_AUDIO_FILENAME}` via Vite's
+ * dev middleware and production build copy hook (avoids `#` fragment stripping in URLs).
+ */
+export const ORIGIN_KISS_AUDIO_ROUTE = 'origin-kiss-track.mp3';
+
 function getViteBaseUrl(): string {
   const env =
     typeof import.meta !== 'undefined'
@@ -87,12 +93,12 @@ function getViteBaseUrl(): string {
 }
 
 /**
- * Safely encodes the public/ kissing scene MP3 path with Vite's BASE_URL so spaces
- * and parentheses resolve reliably on root or subpath deployments.
+ * Safely resolves the kissing scene MP3 URL using Vite's BASE_URL so it works reliably
+ * on both root and subpath deployments without `#` or emoji URL issues.
  */
 export function buildOriginKissTrackSrc(baseUrl: string = getViteBaseUrl()): string {
   const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
-  return `${normalizedBase}${encodeURIComponent(ORIGIN_KISS_AUDIO_FILENAME)}`;
+  return `${normalizedBase}${ORIGIN_KISS_AUDIO_ROUTE}`;
 }
 
 export const ORIGIN_AUDIO_CONFIG = {

@@ -196,7 +196,7 @@ test('preloadOriginStoryStageAssets warms chunk and kiss audio once on idle and 
 
   assert.deepEqual(events, [
     'chunk:originStory',
-    `audio:/${encodeURIComponent('In The Night No Control 🖤🔥  Song Lyrics Status #shorts_ #lyrics_.mp3')}`,
+    'audio:/origin-kiss-track.mp3',
   ]);
 
   resetOriginStoryPreloadForTesting();

@@ -27,6 +27,79 @@ export default defineConfig(() => {
           }
         },
       },
+      // Serves the Scene 5 kissing MP3 (whose filename includes `#` and emojis,
+      // which Vite's default static middleware strips as URL fragments) at a
+      // clean URL-safe route `/origin-kiss-track.mp3` with HTTP Range support
+      // in dev and copies it into `dist/origin-kiss-track.mp3` on build.
+      {
+        name: 'serve-origin-kiss-audio',
+        configureServer(server) {
+          const sourceFile = path.resolve(
+            __dirname,
+            'public',
+            'In The Night No Control 🖤🔥  Song Lyrics Status #shorts_ #lyrics_.mp3',
+          );
+          server.middlewares.use((req, res, next) => {
+            const urlPath = (req.url || '').split('?')[0];
+            if (urlPath !== '/origin-kiss-track.mp3') {
+              return next();
+            }
+            if (!fs.existsSync(sourceFile)) {
+              res.statusCode = 404;
+              res.end('Not found');
+              return;
+            }
+            const stat = fs.statSync(sourceFile);
+            const totalSize = stat.size;
+            const range = req.headers.range;
+
+            res.setHeader('Content-Type', 'audio/mpeg');
+            res.setHeader('Accept-Ranges', 'bytes');
+            res.setHeader('Cache-Control', 'no-cache');
+
+            if (req.method === 'HEAD') {
+              res.setHeader('Content-Length', totalSize);
+              res.statusCode = 200;
+              res.end();
+              return;
+            }
+
+            if (range) {
+              const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+              if (match) {
+                const start = match[1] ? parseInt(match[1], 10) : 0;
+                const end = match[2] ? parseInt(match[2], 10) : totalSize - 1;
+                if (start < totalSize && end < totalSize && start <= end) {
+                  res.statusCode = 206;
+                  res.setHeader('Content-Range', `bytes ${start}-${end}/${totalSize}`);
+                  res.setHeader('Content-Length', end - start + 1);
+                  fs.createReadStream(sourceFile, {start, end}).pipe(res);
+                  return;
+                }
+              }
+            }
+
+            res.statusCode = 200;
+            res.setHeader('Content-Length', totalSize);
+            fs.createReadStream(sourceFile).pipe(res);
+          });
+        },
+        closeBundle(error?: Error): void {
+          if (error) {
+            return;
+          }
+          const sourceFile = path.resolve(
+            __dirname,
+            'public',
+            'In The Night No Control 🖤🔥  Song Lyrics Status #shorts_ #lyrics_.mp3',
+          );
+          const distDir = path.resolve(__dirname, 'dist');
+          const targetFile = path.resolve(distDir, 'origin-kiss-track.mp3');
+          if (fs.existsSync(distDir) && fs.existsSync(sourceFile)) {
+            fs.copyFileSync(sourceFile, targetFile);
+          }
+        },
+      },
     ],
     resolve: {
       alias: {

@@ -1,10 +1,13 @@
 import type { OriginBackdropMood, OriginSceneId } from './originScript';
 
+export type OriginKissBeat = 'twilight' | 'shyGlance' | 'kissing' | 'afterglow';
+
 export interface OriginStageBackdropProps {
   mood: OriginBackdropMood;
   sceneId: OriginSceneId;
   isRulerStage: boolean;
   kissRunKey?: number;
+  kissBeat?: OriginKissBeat;
 }
 
 interface StarNode {
@@ -68,18 +71,23 @@ export function OriginStageBackdrop({
   sceneId,
   isRulerStage,
   kissRunKey = 0,
+  kissBeat = 'twilight',
 }: OriginStageBackdropProps) {
   const isSunrise = mood === 'sunrise';
   const isMeadow = mood === 'meadow';
   const isStarry = mood === 'starry_twilight';
   const isDawn = mood === 'celebration_dawn';
   const isGala = mood === 'gala_finale';
+  const isKissingPeak = isStarry && kissBeat === 'kissing';
+  const isKissApproach = isStarry && kissBeat === 'shyGlance';
+  const isKissAfterglow = isStarry && kissBeat === 'afterglow';
 
   return (
     <div
       aria-hidden="true"
       data-testid="origin-stage-backdrop"
       data-backdrop-mood={mood}
+      data-kiss-beat={isStarry ? kissBeat : undefined}
       className="pointer-events-none absolute inset-0 overflow-hidden select-none"
     >
       {/* =====================================================================
@@ -166,9 +174,9 @@ export function OriginStageBackdrop({
         </svg>
       </div>
 
-      {/* 1C. Scene 5: One Starry Night Kiss Velvet-Twilight Sky */}
+      {/* 1C. Scene 5: One Starry Night Kiss Velvet-Twilight Sky (synced to 5s audio beats) */}
       <div
-        className={`absolute inset-0 transition-opacity duration-[900ms] ease-out ${
+        className={`absolute inset-0 transition-opacity duration-[550ms] ease-out ${
           isStarry ? 'opacity-100' : 'opacity-0'
         }`}
         style={{
@@ -176,33 +184,58 @@ export function OriginStageBackdrop({
             'linear-gradient(180deg, #2D183B 0%, #5E2E5C 48%, #B25E89 82%, #E8A4BD 100%)',
         }}
       >
-        {/* Soft radial rose-gold moonbeam spotlight illuminating center stage */}
+        {/* Romantic rose-gold twilight bloom swelling right as the kiss & song peak hit (1.1s -> 4.65s) */}
         <div
-          className="absolute inset-x-0 top-6 mx-auto h-[84%] w-[80%] rounded-full"
+          className={`absolute inset-0 transition-opacity duration-700 ease-out ${
+            isKissingPeak ? 'opacity-100' : isKissAfterglow ? 'opacity-45' : isKissApproach ? 'opacity-30' : 'opacity-0'
+          }`}
           style={{
             background:
-              'radial-gradient(ellipse at 52% 48%, rgba(255,224,186,0.24) 0%, rgba(242,158,198,0.11) 46%, rgba(45,24,59,0) 76%)',
+              'radial-gradient(ellipse at 50% 62%, rgba(244,142,184,0.34) 0%, rgba(247,217,148,0.18) 42%, rgba(45,24,59,0) 76%)',
+          }}
+        />
+
+        {/* Soft radial rose-gold moonbeam spotlight focusing smoothly across the 4 beats */}
+        <div
+          className="absolute inset-x-0 top-6 mx-auto h-[84%] w-[80%] rounded-full transition-all duration-700 ease-out"
+          style={{
+            opacity: isKissingPeak ? 1 : isKissApproach ? 0.86 : isKissAfterglow ? 0.72 : 0.65,
+            transform: isKissingPeak
+              ? 'scale(1.06)'
+              : isKissApproach
+                ? 'scale(1.02)'
+                : 'scale(0.98)',
+            background:
+              'radial-gradient(ellipse at 52% 48%, rgba(255,224,186,0.3) 0%, rgba(242,158,198,0.15) 46%, rgba(45,24,59,0) 76%)',
           }}
         />
 
         {/* Luminous glowing crescent moon with multi-ring soft buttercream aura */}
         <div
-          className={`absolute top-5 right-6 h-16 w-16 transition-transform duration-1000 ease-out ${
-            isStarry ? 'translate-y-0 scale-100' : '-translate-y-4 scale-90'
+          className={`absolute top-5 right-6 h-16 w-16 transition-all duration-700 ease-out ${
+            isKissingPeak
+              ? 'translate-y-0 scale-108'
+              : isStarry
+                ? 'translate-y-0 scale-100'
+                : '-translate-y-4 scale-90'
           }`}
         >
           <div
-            className="absolute -inset-4 rounded-full opacity-55"
+            className={`absolute -inset-4 rounded-full transition-opacity duration-700 ${
+              isKissingPeak ? 'opacity-85' : 'opacity-55'
+            }`}
             style={{
               background:
-                'radial-gradient(circle, rgba(255,243,204,0.5) 0%, rgba(255,222,173,0.18) 52%, rgba(255,243,204,0) 75%)',
+                'radial-gradient(circle, rgba(255,243,204,0.58) 0%, rgba(255,222,173,0.22) 52%, rgba(255,243,204,0) 75%)',
             }}
           />
           <div
-            className="absolute -inset-1.5 rounded-full opacity-70"
+            className={`absolute -inset-1.5 rounded-full transition-opacity duration-700 ${
+              isKissingPeak ? 'opacity-95' : 'opacity-70'
+            }`}
             style={{
               background:
-                'radial-gradient(circle, rgba(255,246,214,0.65) 0%, rgba(255,246,214,0) 72%)',
+                'radial-gradient(circle, rgba(255,246,214,0.72) 0%, rgba(255,246,214,0) 72%)',
             }}
           />
           <svg
@@ -253,7 +286,7 @@ export function OriginStageBackdrop({
           ),
         )}
 
-        {/* 2 Subtle Shooting Stars streaking gracefully across the upper sky */}
+        {/* 2 Shooting Stars synced to Beat 1 entry (0.25s) and mid-kiss musical peak (2.65s) */}
         {isStarry && (
           <div key={`shooting_${kissRunKey}`} className="absolute inset-0">
             <span
@@ -261,7 +294,7 @@ export function OriginStageBackdrop({
               style={{
                 background:
                   'linear-gradient(90deg, rgba(255,248,224,0) 0%, rgba(255,248,224,0.95) 75%, #FFFFFF 100%)',
-                ['--shoot-delay' as string]: '0.35s',
+                ['--shoot-delay' as string]: '0.25s',
               }}
             />
             <span
@@ -269,7 +302,7 @@ export function OriginStageBackdrop({
               style={{
                 background:
                   'linear-gradient(90deg, rgba(255,235,200,0) 0%, rgba(255,241,210,0.92) 75%, #FFFFFF 100%)',
-                ['--shoot-delay' as string]: '2.15s',
+                ['--shoot-delay' as string]: '2.65s',
               }}
             />
           </div>

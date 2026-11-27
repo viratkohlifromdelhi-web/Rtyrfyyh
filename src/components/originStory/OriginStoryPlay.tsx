@@ -48,6 +48,7 @@ interface HeartSpec {
   id: number;
   leftPct: number;
   delaySec: number;
+  durSec: number;
   dxMid: number;
   dxEnd: number;
   color: string;
@@ -70,18 +71,25 @@ interface ConfettiSpec {
 }
 
 /**
- * 9 tiny pastel rose & champagne-gold hearts floating upward during the 5-second starry kiss scene.
+ * 12 staggered pastel rose & champagne-gold hearts timed across the 3.55s kiss hold
+ * (1.1s -> 4.65s) in three musical waves so every heart finishes fading right at 5.0s.
  */
 const KISS_HEARTS: readonly HeartSpec[] = [
-  { id: 1, leftPct: 45, delaySec: 0.05, dxMid: -11, dxEnd: -18, color: '#F9A8C9', sizePx: 14 },
-  { id: 2, leftPct: 53, delaySec: 0.42, dxMid: 12, dxEnd: 19, color: '#F7D994', sizePx: 12 },
-  { id: 3, leftPct: 49, delaySec: 0.8, dxMid: -6, dxEnd: 9, color: '#F48EB8', sizePx: 16 },
-  { id: 4, leftPct: 51, delaySec: 1.18, dxMid: 10, dxEnd: -12, color: '#FFE7A8', sizePx: 13 },
-  { id: 5, leftPct: 47, delaySec: 1.56, dxMid: -14, dxEnd: -7, color: '#F9B5D2', sizePx: 15 },
-  { id: 6, leftPct: 54, delaySec: 1.95, dxMid: 9, dxEnd: 16, color: '#E6B85C', sizePx: 12 },
-  { id: 7, leftPct: 50, delaySec: 2.34, dxMid: -8, dxEnd: 11, color: '#F27BA9', sizePx: 15 },
-  { id: 8, leftPct: 46, delaySec: 2.74, dxMid: -12, dxEnd: -15, color: '#FCE0A2', sizePx: 12 },
-  { id: 9, leftPct: 52, delaySec: 3.12, dxMid: 11, dxEnd: 14, color: '#F49AC0', sizePx: 14 },
+  // Wave 1: immediate lip-touch burst right on the 1.1s song swell
+  { id: 1, leftPct: 47, delaySec: 0.0, durSec: 1.9, dxMid: -11, dxEnd: -18, color: '#F9A8C9', sizePx: 14 },
+  { id: 2, leftPct: 52, delaySec: 0.16, durSec: 1.95, dxMid: 12, dxEnd: 19, color: '#F7D994', sizePx: 12 },
+  { id: 3, leftPct: 49, delaySec: 0.34, durSec: 2.05, dxMid: -6, dxEnd: 9, color: '#F48EB8', sizePx: 16 },
+  { id: 4, leftPct: 51, delaySec: 0.54, durSec: 1.95, dxMid: 10, dxEnd: -12, color: '#FFE7A8', sizePx: 13 },
+  // Wave 2: warm mid-kiss floating drift (1.9s -> 2.7s of scene)
+  { id: 5, leftPct: 46, delaySec: 0.82, durSec: 2.0, dxMid: -14, dxEnd: -8, color: '#F9B5D2', sizePx: 15 },
+  { id: 6, leftPct: 54, delaySec: 1.06, durSec: 2.05, dxMid: 9, dxEnd: 16, color: '#E6B85C', sizePx: 12 },
+  { id: 7, leftPct: 50, delaySec: 1.32, durSec: 2.1, dxMid: -8, dxEnd: 11, color: '#F27BA9', sizePx: 15 },
+  { id: 8, leftPct: 48, delaySec: 1.56, durSec: 2.0, dxMid: -12, dxEnd: -15, color: '#FCE0A2', sizePx: 13 },
+  // Wave 3: golden-rose peak burst right on the 3.0s musical swell, fading by 5.0s
+  { id: 9, leftPct: 52, delaySec: 1.78, durSec: 1.95, dxMid: 11, dxEnd: 14, color: '#F49AC0', sizePx: 15 },
+  { id: 10, leftPct: 49, delaySec: 1.96, durSec: 1.85, dxMid: -9, dxEnd: -14, color: '#F7D994', sizePx: 14 },
+  { id: 11, leftPct: 51, delaySec: 2.14, durSec: 1.75, dxMid: 8, dxEnd: 12, color: '#F9A8C9', sizePx: 13 },
+  { id: 12, leftPct: 50, delaySec: 2.32, durSec: 1.55, dxMid: -5, dxEnd: 6, color: '#FFE7A8', sizePx: 12 },
 ];
 
 /**
@@ -667,6 +675,7 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
             sceneId={currentScene.id}
             isRulerStage={isGrowthRulerScene}
             kissRunKey={sceneRunKey}
+            kissBeat={kissBeat}
           />
 
           {/* Scene Content Layer */}
@@ -826,20 +835,24 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
                 </div>
 
                 {/* Pulsing Warm Rose-Gold Heart Halo behind Shivjee & Archana during Beat 3 Kiss */}
-                {(kissBeat === 'kissing' || kissBeat === 'afterglow') && (
-                  <div
-                    aria-hidden="true"
-                    className="origin-story-heart-halo pointer-events-none absolute bottom-[22%] left-1/2 z-10 h-52 w-52 -translate-x-1/2 rounded-full"
-                    style={{
-                      background:
-                        'radial-gradient(circle, rgba(249,168,201,0.38) 0%, rgba(247,217,148,0.22) 48%, rgba(45,24,59,0) 74%)',
-                    }}
-                  />
-                )}
+                <div
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute bottom-[22%] left-1/2 z-10 h-56 w-56 -translate-x-1/2 rounded-full transition-opacity duration-500 ${
+                    kissBeat === 'kissing'
+                      ? 'origin-story-heart-halo opacity-100'
+                      : kissBeat === 'afterglow'
+                        ? 'opacity-35'
+                        : 'opacity-0'
+                  }`}
+                  style={{
+                    background:
+                      'radial-gradient(circle, rgba(249,168,201,0.42) 0%, rgba(247,217,148,0.24) 48%, rgba(45,24,59,0) 74%)',
+                  }}
+                />
 
-                {/* 9 Rising Faded Pastel Rose & Gold Hearts */}
+                {/* 12 Rising Faded Pastel Rose & Gold Hearts synced to the 5-second song */}
                 {(kissBeat === 'kissing' || kissBeat === 'afterglow') && (
-                  <div className="pointer-events-none absolute inset-x-0 bottom-[38%] z-20 h-44">
+                  <div className="pointer-events-none absolute inset-x-0 bottom-[38%] z-20 h-48">
                     {KISS_HEARTS.map((heart) => (
                       <svg
                         key={heart.id}
@@ -851,6 +864,7 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
                           width: `${heart.sizePx}px`,
                           height: `${heart.sizePx}px`,
                           ['--heart-delay' as string]: `${heart.delaySec}s`,
+                          ['--heart-dur' as string]: `${heart.durSec}s`,
                           ['--heart-dx-mid' as string]: `${heart.dxMid}px`,
                           ['--heart-dx-end' as string]: `${heart.dxEnd}px`,
                         }}
@@ -864,10 +878,10 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
                   </div>
                 )}
 
-                {/* 4-Beat Romance-Comedy Character Positioning */}
+                {/* 4-Beat Romance-Comedy Character Positioning synced to the 5-second audio */}
                 <div className="relative z-10 flex h-[74%] w-full items-end justify-center">
                   <div
-                    className="h-full transition-transform duration-700 ease-out"
+                    className="h-full transition-transform duration-[540ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                     style={{
                       transform:
                         kissBeat === 'kissing'
@@ -875,7 +889,7 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
                           : kissBeat === 'shyGlance'
                             ? 'translate3d(8px, -2px, 0) rotate(0.8deg)'
                             : kissBeat === 'afterglow'
-                              ? 'translate3d(13px, 0, 0)'
+                              ? 'translate3d(12px, 0, 0)'
                               : 'translate3d(-14px, 0, 0)',
                     }}
                   >
@@ -884,7 +898,7 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
                     </div>
                   </div>
                   <div
-                    className="h-[97%] transition-transform duration-700 ease-out"
+                    className="h-[97%] transition-transform duration-[540ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                     style={{
                       transform:
                         kissBeat === 'kissing'
@@ -892,7 +906,7 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
                           : kissBeat === 'shyGlance'
                             ? 'translate3d(-8px, -2px, 0) rotate(-0.8deg)'
                             : kissBeat === 'afterglow'
-                              ? 'translate3d(-13px, 0, 0)'
+                              ? 'translate3d(-12px, 0, 0)'
                               : 'translate3d(14px, 0, 0)',
                     }}
                   >

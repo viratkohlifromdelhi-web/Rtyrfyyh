@@ -163,11 +163,10 @@ test('Live IST (Asia/Kolkata) finale copy switches cleanly between 03 December a
 test('Scene 5 starry kiss audio path and 5-second timing stay exactly synchronized', () => {
   const expectedFilename =
     'In The Night No Control 🖤🔥  Song Lyrics Status #shorts_ #lyrics_.mp3';
-  const expectedEncoded = encodeURIComponent(expectedFilename);
 
   assert.equal(ORIGIN_KISS_AUDIO_FILENAME, expectedFilename);
-  assert.equal(buildOriginKissTrackSrc('/'), `/${expectedEncoded}`);
-  assert.equal(buildOriginKissTrackSrc('/birthday-site/'), `/birthday-site/${expectedEncoded}`);
+  assert.equal(buildOriginKissTrackSrc('/'), '/origin-kiss-track.mp3');
+  assert.equal(buildOriginKissTrackSrc('/birthday-site/'), '/birthday-site/origin-kiss-track.mp3');
   assert.equal(ORIGIN_AUDIO_CONFIG.kissTrackSrc, buildOriginKissTrackSrc('/'));
   assert.equal(ORIGIN_AUDIO_CONFIG.kissDurationMs, 5000);
   assert.equal(
