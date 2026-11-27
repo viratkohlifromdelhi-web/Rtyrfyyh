@@ -391,3 +391,28 @@ export function getOriginFinaleCopy(now: Date = new Date()): OriginFinaleCopy {
     ctaLabel: 'Enter the Birthday World',
   };
 }
+
+export type OriginRomanticGlowLevel =
+  | 'ambient'
+  | 'twilight'
+  | 'building'
+  | 'peak'
+  | 'afterglow';
+
+/**
+ * Maps the active scene and Scene 5 kiss beat to the romantic soft-pink
+ * radial gradient lighting intensity level.
+ */
+export function getOriginRomanticGlowIntensity(
+  sceneId: OriginSceneId,
+  kissBeat: 'twilight' | 'shyGlance' | 'kissing' | 'afterglow',
+): OriginRomanticGlowLevel {
+  if (sceneId !== 'starry_kiss') {
+    return 'ambient';
+  }
+  if (kissBeat === 'kissing') return 'peak';
+  if (kissBeat === 'shyGlance') return 'building';
+  if (kissBeat === 'afterglow') return 'afterglow';
+  return 'twilight';
+}
+

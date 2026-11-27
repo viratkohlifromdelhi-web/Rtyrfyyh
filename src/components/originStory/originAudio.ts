@@ -29,9 +29,12 @@ export class OriginStoryAudioController {
 
   private audioCtx: AudioContext | null = null;
   private rampRafId: number | null = null;
+  private fadeOutSafetyTimer: number | null = null;
+  private fadingOut = false;
   private activePadNodes: AudioNode[] = [];
   private activePadGain: GainNode | null = null;
   private kissPlaying = false;
+  private onKissEndedHandler: (() => void) | null = null;
 
   constructor() {
     this.prepareKissTrack();
@@ -94,6 +97,11 @@ export class OriginStoryAudioController {
       window.cancelAnimationFrame(this.rampRafId);
       this.rampRafId = null;
     }
+    if (this.fadeOutSafetyTimer !== null && typeof window !== 'undefined') {
+      window.clearTimeout(this.fadeOutSafetyTimer);
+      this.fadeOutSafetyTimer = null;
+    }
+    this.fadingOut = false;
   }
 
   private stopSynthPad(fadeOutSec = 0.15): void {
@@ -191,20 +199,39 @@ export class OriginStoryAudioController {
     }
   }
 
-  public startKissCue(options?: { restart?: boolean }): void {
+  private clearKissEndedListener(): void {
+    if (this.audioEl && this.onKissEndedHandler) {
+      this.audioEl.removeEventListener('ended', this.onKissEndedHandler);
+    }
+    this.onKissEndedHandler = null;
+  }
+
+  public startKissCue(options?: { restart?: boolean; onEnded?: () => void }): void {
     if (this.disposed) return;
     if (this.kissPlaying && !options?.restart) return;
 
     this.cancelVolumeRamp();
     this.stopSynthPad(0.05);
+    this.clearKissEndedListener();
     this.kissPlaying = true;
-    if (this.muted) return;
 
     const el = this.audioEl;
     const canTryMp3 = Boolean(el && !this.mp3Failed);
 
     if (canTryMp3 && el) {
       try {
+        if (options?.onEnded) {
+          const onEndedCb = options.onEnded;
+          this.onKissEndedHandler = () => {
+            this.clearKissEndedListener();
+            this.kissPlaying = false;
+            if (!this.disposed) {
+              onEndedCb();
+            }
+          };
+          el.addEventListener('ended', this.onKissEndedHandler, { once: true });
+        }
+
         el.currentTime = 0;
         el.volume = 0;
         el.muted = this.muted;
@@ -212,19 +239,24 @@ export class OriginStoryAudioController {
         if (playPromise && typeof playPromise.then === 'function') {
           playPromise
             .then(() => {
-              if (!this.disposed && this.kissPlaying && !this.muted) {
-                this.rampElementVolume(
-                  ORIGIN_AUDIO_CONFIG.maxVolume,
-                  ORIGIN_AUDIO_CONFIG.fadeInMs,
-                );
+              if (!this.disposed && this.kissPlaying) {
+                if (this.muted) {
+                  el.volume = 0;
+                } else {
+                  this.rampElementVolume(
+                    ORIGIN_AUDIO_CONFIG.maxVolume,
+                    ORIGIN_AUDIO_CONFIG.fadeInMs,
+                  );
+                }
               }
             })
             .catch(() => {
+              this.clearKissEndedListener();
               if (!this.disposed && this.kissPlaying && !this.muted) {
                 this.playDreamyKissFallbackPad();
               }
             });
-        } else {
+        } else if (!this.muted) {
           this.rampElementVolume(
             ORIGIN_AUDIO_CONFIG.maxVolume,
             ORIGIN_AUDIO_CONFIG.fadeInMs,
@@ -232,11 +264,14 @@ export class OriginStoryAudioController {
         }
         return;
       } catch {
+        this.clearKissEndedListener();
         // Fall through to Web Audio dreamy synth pad
       }
     }
 
-    this.playDreamyKissFallbackPad();
+    if (!this.muted) {
+      this.playDreamyKissFallbackPad();
+    }
   }
 
   private playDreamyKissFallbackPad(): void {
@@ -310,21 +345,36 @@ export class OriginStoryAudioController {
   }
 
   public fadeOutKissCue(durationMs: number = ORIGIN_AUDIO_CONFIG.fadeOutMs): void {
-    if (!this.kissPlaying) return;
-    this.kissPlaying = false;
+    this.clearKissEndedListener();
+    const el = this.audioEl;
+    const isElementActive = Boolean(el && !el.paused);
 
+    if (!this.kissPlaying && !isElementActive) return;
+    if (this.fadingOut && isElementActive) return;
+
+    this.kissPlaying = false;
     this.stopSynthPad(durationMs / 1000);
 
-    const el = this.audioEl;
-    if (el && !el.paused) {
-      this.rampElementVolume(0, durationMs, () => {
+    if (isElementActive && el) {
+      const finalizePause = () => {
+        this.cancelVolumeRamp();
         try {
+          el.volume = 0;
           el.pause();
           el.currentTime = 0;
         } catch {
           // ignore
         }
-      });
+      };
+
+      this.rampElementVolume(0, durationMs, finalizePause);
+      this.fadingOut = true;
+
+      if (typeof window !== 'undefined') {
+        this.fadeOutSafetyTimer = window.setTimeout(() => {
+          finalizePause();
+        }, Math.max(20, durationMs) + 40);
+      }
     } else {
       this.cancelVolumeRamp();
     }
@@ -551,6 +601,7 @@ export class OriginStoryAudioController {
   public dispose(): void {
     this.disposed = true;
     this.kissPlaying = false;
+    this.clearKissEndedListener();
     this.cancelVolumeRamp();
     this.stopSynthPad(0.05);
 

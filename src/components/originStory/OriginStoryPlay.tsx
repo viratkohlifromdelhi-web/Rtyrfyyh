@@ -32,6 +32,7 @@ import {
   SCENE_8_GROWTH_STEPS,
   SCENE_9_GROWTH_STEPS,
   getOriginFinaleCopy,
+  getOriginRomanticGlowIntensity,
   inchesToStageBottomPct,
   type GrowthStep,
   type OriginBackdropMood,
@@ -251,28 +252,29 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
     }
 
     if (scene.id === 'starry_kiss') {
-      // Beat 1 (0.0s -> 0.55s): 5-second audio clip starts immediately; twilight sky & shooting stars bloom
+      // Beat 1 (0.0s -> 0.55s): Full song starts immediately and plays continuously until skipped/left or natural end
       setKissBeat('twilight');
-      audioRef.current?.startKissCue({ restart: true });
+      audioRef.current?.startKissCue({
+        restart: true,
+        onEnded: () => {
+          setKissBeat('afterglow');
+          setSceneSettled(true);
+        },
+      });
 
       // Beat 2 (0.55s -> 1.1s): Shy glance & tiny steps closer into the moonlight beam
       schedule(() => {
         setKissBeat('shyGlance');
       }, ORIGIN_AUDIO_CONFIG.shyGlanceDelayMs);
 
-      // Beat 3 (1.1s -> 4.65s): Sweet kiss + 9 rising pastel hearts + warm rose-gold heart halo
+      // Beat 3 (1.1s+): Sweet kiss + pulsating soft-pink romantic glow + continuously rising pastel hearts
+      // Held smoothly for the entire duration of the song until the user leaves/skips or the track ends.
       schedule(() => {
         setKissBeat('kissing');
         haptics.tap();
       }, ORIGIN_AUDIO_CONFIG.kissStartDelayMs);
 
-      // Beat 4 (4.65s -> 5.0s): Smooth 350ms audio fade-out ending right at 5.0s + shy blushing afterglow
-      schedule(() => {
-        setKissBeat('afterglow');
-        audioRef.current?.fadeOutKissCue(ORIGIN_AUDIO_CONFIG.fadeOutMs);
-      }, ORIGIN_AUDIO_CONFIG.kissStartDelayMs + ORIGIN_AUDIO_CONFIG.kissHoldMs);
-
-      // Scene settles cleanly at exact 5.0s (5000ms)
+      // Highlight the Next button once the opening 5s kiss moment has unfolded (without cutting off the song)
       schedule(() => {
         setSceneSettled(true);
       }, ORIGIN_AUDIO_CONFIG.kissDurationMs);
@@ -557,6 +559,29 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
     currentScene.id === 'nine_months' &&
     (pregnancyMonth === 3 || pregnancyMonth === 6 || pregnancyMonth === 9);
 
+  const romanticGlowLevel = getOriginRomanticGlowIntensity(currentScene.id, kissBeat);
+  const isRomanticPeak = romanticGlowLevel === 'peak';
+  const viewportGlowOpacity =
+    romanticGlowLevel === 'peak'
+      ? 1
+      : romanticGlowLevel === 'building'
+        ? 0.62
+        : romanticGlowLevel === 'afterglow'
+          ? 0.46
+          : romanticGlowLevel === 'twilight'
+            ? 0.36
+            : 0.16;
+  const stageWashOpacity =
+    romanticGlowLevel === 'peak'
+      ? 1
+      : romanticGlowLevel === 'building'
+        ? 0.58
+        : romanticGlowLevel === 'afterglow'
+          ? 0.38
+          : romanticGlowLevel === 'twilight'
+            ? 0.3
+            : 0;
+
   return (
     <section
       aria-label="The Origin Story Play"
@@ -576,6 +601,28 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
           'background 900ms cubic-bezier(0.22, 1, 0.36, 1), opacity 450ms ease-out, transform 450ms ease-out',
       }}
     >
+      {/* Dynamic Pulsating Soft-Pink Romantic Lighting Overlay (intensifies during Scene 5 kiss) */}
+      <div
+        aria-hidden="true"
+        data-testid="origin-romantic-glow"
+        data-intensity={romanticGlowLevel}
+        className="pointer-events-none fixed inset-0 z-[5] overflow-hidden transition-opacity duration-700 ease-out"
+        style={{ opacity: viewportGlowOpacity }}
+      >
+        <div
+          className={`absolute -inset-12 ${
+            isRomanticPeak
+              ? 'origin-story-romantic-pulse-peak'
+              : 'origin-story-romantic-pulse-ambient'
+          }`}
+          style={{
+            background: isStarryScene
+              ? 'radial-gradient(circle at 50% 45%, rgba(255, 194, 222, 0.52) 0%, rgba(244, 114, 182, 0.32) 32%, rgba(217, 75, 125, 0.14) 56%, rgba(39, 19, 52, 0) 78%)'
+              : 'radial-gradient(circle at 50% 42%, rgba(252, 198, 222, 0.42) 0%, rgba(249, 168, 201, 0.18) 44%, rgba(255, 248, 251, 0) 76%)',
+          }}
+        />
+      </div>
+
       {/* Magical Warm Ivory-Rose Light Bloom Overlay on Exit */}
       {isExiting && (
         <div
@@ -662,11 +709,13 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
       <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-[480px] flex-1 items-center justify-center px-4 py-2">
         <div
           className={`relative flex h-full max-h-[415px] w-full flex-col items-center justify-end overflow-hidden rounded-[28px] border transition-all duration-700 sm:max-h-[465px] ${
-            isStarryScene
-              ? 'border-[#F7D994]/35 shadow-[0_22px_50px_rgba(32,12,40,0.42)]'
-              : isFinaleReveal
-                ? 'border-[#E6B85C]/50 shadow-[0_20px_50px_rgba(217,75,125,0.18)]'
-                : 'border-[#D94B7D]/20 shadow-[0_18px_45px_rgba(181,74,119,0.12)]'
+            isRomanticPeak
+              ? 'border-[#F9B5D2]/55 shadow-[0_22px_58px_rgba(244,114,182,0.38)]'
+              : isStarryScene
+                ? 'border-[#F7D994]/35 shadow-[0_22px_50px_rgba(32,12,40,0.42)]'
+                : isFinaleReveal
+                  ? 'border-[#E6B85C]/50 shadow-[0_20px_50px_rgba(217,75,125,0.18)]'
+                  : 'border-[#D94B7D]/20 shadow-[0_18px_45px_rgba(181,74,119,0.12)]'
           }`}
         >
           {/* 5-Layer Depth-Staged Atmospheric Backdrop Engine */}
@@ -677,6 +726,26 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
             kissRunKey={sceneRunKey}
             kissBeat={kissBeat}
           />
+
+          {/* In-Stage Pulsating Soft-Pink Romantic Lighting Wash over the Kissing Scene */}
+          <div
+            aria-hidden="true"
+            data-testid="origin-stage-romantic-wash"
+            className="pointer-events-none absolute inset-0 z-[15] overflow-hidden mix-blend-screen transition-opacity duration-700 ease-out"
+            style={{ opacity: stageWashOpacity }}
+          >
+            <div
+              className={`absolute -inset-6 ${
+                isRomanticPeak
+                  ? 'origin-story-romantic-pulse-peak'
+                  : 'origin-story-romantic-pulse-ambient'
+              }`}
+              style={{
+                background:
+                  'radial-gradient(ellipse at 50% 56%, rgba(255, 204, 228, 0.4) 0%, rgba(249, 152, 198, 0.24) 38%, rgba(244, 114, 182, 0.08) 64%, rgba(255, 248, 251, 0) 82%)',
+              }}
+            />
+          </div>
 
           {/* Scene Content Layer */}
           <div
@@ -850,9 +919,13 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
                   }}
                 />
 
-                {/* 12 Rising Faded Pastel Rose & Gold Hearts synced to the 5-second song */}
+                {/* 12 Continuously Rising Pastel Rose & Gold Hearts while the song plays */}
                 {(kissBeat === 'kissing' || kissBeat === 'afterglow') && (
-                  <div className="pointer-events-none absolute inset-x-0 bottom-[38%] z-20 h-48">
+                  <div
+                    className={`pointer-events-none absolute inset-x-0 bottom-[38%] z-20 h-48 transition-opacity duration-700 ${
+                      kissBeat === 'afterglow' ? 'opacity-0' : 'opacity-100'
+                    }`}
+                  >
                     {KISS_HEARTS.map((heart) => (
                       <svg
                         key={heart.id}

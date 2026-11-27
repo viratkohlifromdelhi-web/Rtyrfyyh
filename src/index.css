@@ -2565,6 +2565,28 @@
   }
 }
 
+@keyframes origin-story-romantic-pulse-ambient {
+  0%, 100% {
+    opacity: 0.84;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes origin-story-romantic-pulse-peak {
+  0%, 100% {
+    opacity: 0.82;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
 @keyframes origin-story-next-glow {
   0%, 100% {
     box-shadow: 0 8px 22px rgba(217, 75, 125, 0.32), 0 0 0 0 rgba(230, 184, 92, 0.45);
@@ -2933,6 +2955,14 @@
   animation: origin-story-heart-halo 2.2s ease-in-out infinite;
 }
 
+.origin-story-romantic-pulse-ambient {
+  animation: origin-story-romantic-pulse-ambient 4.8s ease-in-out infinite;
+}
+
+.origin-story-romantic-pulse-peak {
+  animation: origin-story-romantic-pulse-peak 2.05s ease-in-out infinite;
+}
+
 .origin-story-next-glow {
   animation: origin-story-next-glow 1.9s ease-in-out infinite;
 }
@@ -2947,7 +2977,7 @@
 
 .origin-story-heart {
   opacity: 0;
-  animation: origin-story-heart-rise var(--heart-dur, 2.05s) cubic-bezier(0.16, 1, 0.3, 1) var(--heart-delay, 0s) both;
+  animation: origin-story-heart-rise var(--heart-dur, 2.05s) cubic-bezier(0.16, 1, 0.3, 1) var(--heart-delay, 0s) infinite backwards;
 }
 
 .origin-story-month-flip {
@@ -3042,6 +3072,8 @@
   .origin-story-gala-rays,
   .origin-story-ambient-mote,
   .origin-story-heart-halo,
+  .origin-story-romantic-pulse-ambient,
+  .origin-story-romantic-pulse-peak,
   .origin-story-next-glow,
   .origin-story-arrow-nudge,
   .origin-story-star,

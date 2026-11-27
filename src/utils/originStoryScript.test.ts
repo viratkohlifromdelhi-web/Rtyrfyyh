@@ -15,6 +15,7 @@ import {
   buildOriginKissTrackSrc,
   getIstMonthDay,
   getOriginFinaleCopy,
+  getOriginRomanticGlowIntensity,
   inchesToChartRatio,
   inchesToStageBottomPct,
   inchesToSvgCrownY,
@@ -180,4 +181,14 @@ test('Scene 5 starry kiss audio path and 5-second timing stay exactly synchroniz
   assert.ok(kissScene);
   assert.equal(kissScene.settleDurationMs, 5000);
 });
+
+test('Romantic soft-pink radial lighting intensity ramps up to peak during the Scene 5 kiss', () => {
+  assert.equal(getOriginRomanticGlowIntensity('prologue', 'twilight'), 'ambient');
+  assert.equal(getOriginRomanticGlowIntensity('happy_together', 'kissing'), 'ambient');
+  assert.equal(getOriginRomanticGlowIntensity('starry_kiss', 'twilight'), 'twilight');
+  assert.equal(getOriginRomanticGlowIntensity('starry_kiss', 'shyGlance'), 'building');
+  assert.equal(getOriginRomanticGlowIntensity('starry_kiss', 'kissing'), 'peak');
+  assert.equal(getOriginRomanticGlowIntensity('starry_kiss', 'afterglow'), 'afterglow');
+});
+
 
