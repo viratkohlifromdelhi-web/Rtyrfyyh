@@ -4,15 +4,13 @@ import { soundEngine } from '../../utils/soundEngine';
 /**
  * Self-contained, crash-proof audio controller for The Origin Story Play.
  *
- * - Attempts to load the 5-second Scene 5 MP3 (`ORIGIN_AUDIO_CONFIG.kissTrackSrc`)
- *   with graceful error handling.
- * - If the MP3 is available, ramps volume smoothly (0 -> 0.85 over 200ms,
- *   and 0.85 -> 0 over 350ms before pausing) via `requestAnimationFrame`.
- * - If the MP3 is missing (404) or blocked by autoplay policy, silently plays
- *   a dreamy 5-second warm pastel Web Audio synth pad/chime chord (gain <= 0.08)
- *   so timing and emotion stay polished with zero console errors.
+ * - Loads the Scene 5 MP3 (`ORIGIN_AUDIO_CONFIG.kissTrackSrc`) with `loop = false`
+ *   and plays the full track to its natural `ended` event after a smooth 300ms fade-in to 0.82.
+ * - Immediately fast-fades down to 0 over 150ms, pauses, resets `currentTime = 0`, and cancels
+ *   any active `requestAnimationFrame` ramp when interrupted (Next, Back, Skip, Mute, or dispose).
+ * - If the MP3 is missing (404) or blocked by autoplay policy, plays a finite dreamy Web Audio
+ *   synth pad/chime chord (gain <= 0.08) without looping endlessly.
  * - Provides subtle capped-gain (<= 0.10) Web Audio SFX for story milestones.
- * - Cleans up all timers, animation frames, `<audio>`, and Web Audio nodes on dispose.
  */
 export class OriginStoryAudioController {
   private audioEl: HTMLAudioElement | null = null;
@@ -23,7 +21,6 @@ export class OriginStoryAudioController {
   private audioCtx: AudioContext | null = null;
   private rampRafId: number | null = null;
   private fadeOutSafetyTimer: number | null = null;
-  private fadingOut = false;
   private activePadNodes: AudioNode[] = [];
   private activePadGain: GainNode | null = null;
   private kissPlaying = false;
@@ -92,7 +89,6 @@ export class OriginStoryAudioController {
       window.clearTimeout(this.fadeOutSafetyTimer);
       this.fadeOutSafetyTimer = null;
     }
-    this.fadingOut = false;
   }
 
   private stopSynthPad(fadeOutSec = 0.15): void {
@@ -129,6 +125,7 @@ export class OriginStoryAudioController {
     targetVolume: number,
     durationMs: number,
     onDone?: () => void,
+    options?: { allowAudibleWhileMuted?: boolean },
   ): void {
     this.cancelVolumeRamp();
     const el = this.audioEl;
@@ -140,6 +137,7 @@ export class OriginStoryAudioController {
     const startVol = el.volume;
     const startTs = performance.now();
     const safeDuration = Math.max(16, durationMs);
+    const allowWhileMuted = Boolean(options?.allowAudibleWhileMuted);
 
     const step = (now: number) => {
       if (this.disposed || !this.audioEl) {
@@ -150,7 +148,7 @@ export class OriginStoryAudioController {
       const eased = progress * (2 - progress);
       const nextVol = Math.max(0, Math.min(1, startVol + (targetVolume - startVol) * eased));
       try {
-        this.audioEl.volume = this.muted ? 0 : nextVol;
+        this.audioEl.volume = this.muted && !allowWhileMuted ? 0 : nextVol;
       } catch {
         // ignore iOS read-only volume errors
       }
@@ -167,12 +165,16 @@ export class OriginStoryAudioController {
 
   public setMuted(nextMuted: boolean): void {
     this.muted = Boolean(nextMuted);
+    if (this.muted) {
+      // Immediately fast-fade any playing kiss audio to 0 (150ms), pause, reset currentTime = 0, and cancel active rAF
+      this.fadeOutKissCue(ORIGIN_AUDIO_CONFIG.interruptFadeOutMs);
+      return;
+    }
+
     if (this.audioEl) {
       try {
-        this.audioEl.muted = this.muted;
-        if (this.muted) {
-          this.audioEl.volume = 0;
-        } else if (this.kissPlaying && !this.audioEl.paused) {
+        this.audioEl.muted = false;
+        if (this.kissPlaying && !this.audioEl.paused) {
           this.audioEl.volume = ORIGIN_AUDIO_CONFIG.maxVolume;
         }
       } catch {
@@ -183,7 +185,7 @@ export class OriginStoryAudioController {
       try {
         const now = this.audioCtx.currentTime;
         this.activePadGain.gain.cancelScheduledValues(now);
-        this.activePadGain.gain.setTargetAtTime(this.muted ? 0.0001 : 0.075, now, 0.05);
+        this.activePadGain.gain.setTargetAtTime(0.075, now, 0.05);
       } catch {
         // silent fallback
       }
@@ -198,7 +200,7 @@ export class OriginStoryAudioController {
   }
 
   public startKissCue(options?: { restart?: boolean; onEnded?: () => void }): void {
-    if (this.disposed) return;
+    if (this.disposed || this.muted) return;
     if (this.kissPlaying && !options?.restart) return;
 
     this.cancelVolumeRamp();
@@ -211,28 +213,36 @@ export class OriginStoryAudioController {
 
     if (canTryMp3 && el) {
       try {
-        if (options?.onEnded) {
-          const onEndedCb = options.onEnded;
-          this.onKissEndedHandler = () => {
-            this.clearKissEndedListener();
-            this.kissPlaying = false;
-            if (!this.disposed) {
-              onEndedCb();
-            }
-          };
-          el.addEventListener('ended', this.onKissEndedHandler, { once: true });
-        }
+        el.loop = false;
+
+        // Always listen for natural `ended` so the full audio clip plays to completion and cleans up state cleanly
+        const onEndedCb = options?.onEnded;
+        this.onKissEndedHandler = () => {
+          this.clearKissEndedListener();
+          this.cancelVolumeRamp();
+          this.kissPlaying = false;
+          try {
+            el.volume = 0;
+            el.currentTime = 0;
+          } catch {
+            // ignore reset errors
+          }
+          if (!this.disposed) {
+            onEndedCb?.();
+          }
+        };
+        el.addEventListener('ended', this.onKissEndedHandler, { once: true });
 
         el.currentTime = 0;
         el.volume = 0;
-        el.muted = this.muted;
+        el.muted = false;
         const playPromise = el.play();
         if (playPromise && typeof playPromise.then === 'function') {
           playPromise
             .then(() => {
               if (!this.disposed && this.kissPlaying) {
                 if (this.muted) {
-                  el.volume = 0;
+                  this.fadeOutKissCue(ORIGIN_AUDIO_CONFIG.interruptFadeOutMs);
                 } else {
                   this.rampElementVolume(
                     ORIGIN_AUDIO_CONFIG.maxVolume,
@@ -244,7 +254,7 @@ export class OriginStoryAudioController {
             .catch(() => {
               this.clearKissEndedListener();
               if (!this.disposed && this.kissPlaying && !this.muted) {
-                this.playDreamyKissFallbackPad();
+                this.playDreamyKissFallbackPad(options?.onEnded);
               }
             });
         } else if (!this.muted) {
@@ -261,11 +271,11 @@ export class OriginStoryAudioController {
     }
 
     if (!this.muted) {
-      this.playDreamyKissFallbackPad();
+      this.playDreamyKissFallbackPad(options?.onEnded);
     }
   }
 
-  private playDreamyKissFallbackPad(): void {
+  private playDreamyKissFallbackPad(onEnded?: () => void): void {
     if (this.disposed || this.muted) return;
     const ctx = this.ensureAudioContext();
     if (!ctx) return;
@@ -273,13 +283,9 @@ export class OriginStoryAudioController {
     try {
       this.stopSynthPad(0.05);
       const now = ctx.currentTime;
-      const activeAudioMs =
-        ORIGIN_AUDIO_CONFIG.audioFadeOutStartMs +
-        ORIGIN_AUDIO_CONFIG.fadeOutMs -
-        ORIGIN_AUDIO_CONFIG.audioSwellStartMs;
-      const totalSec = Math.max(1.5, activeAudioMs / 1000);
+      const totalSec = Math.max(1.5, ORIGIN_AUDIO_CONFIG.fallbackSynthDurationMs / 1000);
       const fadeInSec = ORIGIN_AUDIO_CONFIG.fadeInMs / 1000;
-      const fadeOutSec = ORIGIN_AUDIO_CONFIG.fadeOutMs / 1000;
+      const fadeOutSec = 0.45;
       const holdUntilSec = Math.max(0.5, totalSec - fadeOutSec);
 
       const masterGain = ctx.createGain();
@@ -335,18 +341,43 @@ export class OriginStoryAudioController {
 
       this.activePadGain = masterGain;
       this.activePadNodes = created;
+
+      if (typeof window !== 'undefined') {
+        const padRef = masterGain;
+        window.setTimeout(() => {
+          if (this.activePadGain === padRef) {
+            this.activePadGain = null;
+            this.activePadNodes = [];
+            this.kissPlaying = false;
+            if (!this.disposed) {
+              onEnded?.();
+            }
+          }
+        }, Math.ceil(totalSec * 1000) + 120);
+      }
     } catch {
       // silent fallback
     }
   }
 
-  public fadeOutKissCue(durationMs: number = ORIGIN_AUDIO_CONFIG.fadeOutMs): void {
+  public fadeOutKissCue(durationMs: number = ORIGIN_AUDIO_CONFIG.interruptFadeOutMs): void {
     this.clearKissEndedListener();
     const el = this.audioEl;
     const isElementActive = Boolean(el && !el.paused);
 
-    if (!this.kissPlaying && !isElementActive) return;
-    if (this.fadingOut && isElementActive) return;
+    if (!this.kissPlaying && !isElementActive) {
+      this.cancelVolumeRamp();
+      if (el) {
+        try {
+          el.muted = this.muted;
+          el.volume = 0;
+          el.currentTime = 0;
+        } catch {
+          // ignore
+        }
+      }
+      return;
+    }
 
     this.kissPlaying = false;
     this.stopSynthPad(durationMs / 1000);
@@ -358,13 +389,14 @@ export class OriginStoryAudioController {
           el.volume = 0;
           el.pause();
           el.currentTime = 0;
+          el.muted = this.muted;
         } catch {
           // ignore
         }
       };
 
-      this.rampElementVolume(0, durationMs, finalizePause);
-      this.fadingOut = true;
+      // Always override any prior ramp so interrupt fast-fades complete cleanly in `durationMs`
+      this.rampElementVolume(0, durationMs, finalizePause, { allowAudibleWhileMuted: true });
 
       if (typeof window !== 'undefined') {
         this.fadeOutSafetyTimer = window.setTimeout(() => {
@@ -373,6 +405,15 @@ export class OriginStoryAudioController {
       }
     } else {
       this.cancelVolumeRamp();
+      if (el) {
+        try {
+          el.volume = 0;
+          el.currentTime = 0;
+          el.muted = this.muted;
+        } catch {
+          // ignore
+        }
+      }
     }
   }
 

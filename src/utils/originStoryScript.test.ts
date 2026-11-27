@@ -183,17 +183,18 @@ test('Scene 5 starry kiss 5-phase timeline, audio cues, and pose contact geometr
   assert.equal(buildOriginKissTrackSrc('/birthday-site/'), '/birthday-site/origin-kiss-track.mp3');
   assert.equal(ORIGIN_AUDIO_CONFIG.kissTrackSrc, buildOriginKissTrackSrc('/'));
 
-  // Exact 5-phase choreography milestones
+  // Exact 5-phase choreography milestones (full kiss track plays to natural end; no early fade-out cutoff)
   assert.equal(SCENE5_KISS_TIMING.phase2StepStartMs, 750);
   assert.equal(SCENE5_KISS_TIMING.phase3LeanInStartMs, 1850);
   assert.equal(SCENE5_KISS_TIMING.audioSwellStartMs, 2150);
   assert.equal(SCENE5_KISS_TIMING.phase4KissStartMs, 2400);
   assert.equal(SCENE5_KISS_TIMING.phase4KissHoldMs, 3500);
-  assert.equal(SCENE5_KISS_TIMING.audioFadeOutStartMs, 5550);
+  assert.equal('audioFadeOutStartMs' in SCENE5_KISS_TIMING, false);
   assert.equal(SCENE5_KISS_TIMING.phase5AfterglowStartMs, 5900);
   assert.equal(SCENE5_KISS_TIMING.settleMs, 6600);
+  assert.equal(ORIGIN_AUDIO_CONFIG.playFullTrackToEnd, true);
   assert.equal(ORIGIN_AUDIO_CONFIG.fadeInMs, 300);
-  assert.equal(ORIGIN_AUDIO_CONFIG.fadeOutMs, 450);
+  assert.equal(ORIGIN_AUDIO_CONFIG.interruptFadeOutMs, 150);
   assert.equal(ORIGIN_AUDIO_CONFIG.maxVolume, 0.82);
 
   const kissScene = ORIGIN_SCENES.find((s) => s.id === 'starry_kiss');

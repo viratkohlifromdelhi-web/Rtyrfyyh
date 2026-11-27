@@ -22,7 +22,6 @@ import {
 import { OriginStageBackdrop, type OriginKissBeat } from './OriginStageBackdrop';
 import {
   FIVE_TWO_INCHES,
-  ORIGIN_AUDIO_CONFIG,
   ORIGIN_CAPTION_KEYWORDS,
   ORIGIN_RULER_TICKS,
   ORIGIN_SCENES,
@@ -210,6 +209,7 @@ export default function OriginStoryPlay({
   const [kissWalkStage, setKissWalkStage] = useState<KissWalkStage>('moonlight');
   const [kissPhase, setKissPhase] = useState<KissPhase>('approach');
   const [kissBeat, setKissBeat] = useState<OriginKissBeat>('twilight');
+  const [isKissAudioPlaying, setIsKissAudioPlaying] = useState(false);
 
   // Scene 6 (Nine Months) state
   const [pregnancyMonth, setPregnancyMonth] = useState(1);
@@ -282,6 +282,7 @@ export default function OriginStoryPlay({
     if (!scene) return;
 
     if (scene.id !== 'starry_kiss') {
+      setIsKissAudioPlaying(false);
       audioRef.current?.fadeOutAllAndStop(150);
     }
     setSceneSettled(false);
@@ -330,9 +331,16 @@ export default function OriginStoryPlay({
         setKissBeat('leanIn');
       }, SCENE5_KISS_TIMING.phase3LeanInStartMs);
 
-      // Audio Swell (2150ms): 300ms smooth fade-in up to 0.82 right before lip contact
+      // Audio Swell (2150ms): 300ms smooth fade-in up to 0.82; plays entire track uninterrupted to natural end
+      setIsKissAudioPlaying(false);
       schedule(() => {
-        audioRef.current?.startKissCue({ restart: true });
+        setIsKissAudioPlaying(true);
+        audioRef.current?.startKissCue({
+          restart: true,
+          onEnded: () => {
+            setIsKissAudioPlaying(false);
+          },
+        });
       }, SCENE5_KISS_TIMING.audioSwellStartMs);
 
       // Phase 4 (2400ms -> 5900ms, 3.5s hold): Realistic Kiss Hold + soft haptic + hearts + 2 shooting stars
@@ -347,12 +355,7 @@ export default function OriginStoryPlay({
         }
       }, SCENE5_KISS_TIMING.phase4KissStartMs);
 
-      // Audio Fade-Out (5550ms): Smooth 450ms ramp down from 0.82 -> 0 & clean pause
-      schedule(() => {
-        audioRef.current?.fadeOutAllAndStop(ORIGIN_AUDIO_CONFIG.fadeOutMs);
-      }, SCENE5_KISS_TIMING.audioFadeOutStartMs);
-
-      // Phase 5 (5900ms -> 6600ms+): Shy Pull-Back & Glowing Afterglow
+      // Phase 5 (5900ms -> 6600ms+): Shy Pull-Back & Glowing Afterglow (full kiss audio continues warmly until natural end)
       schedule(() => {
         setKissWalkStage('afterglow');
         setKissPhase('afterglow');
@@ -579,6 +582,7 @@ export default function OriginStoryPlay({
     setIsMuted((prev) => {
       const nextMuted = !prev;
       if (nextMuted) {
+        setIsKissAudioPlaying(false);
         onInterruptIntroAudio?.();
       }
       return nextMuted;
@@ -976,6 +980,7 @@ export default function OriginStoryPlay({
                   data-testid="origin-kiss-stage"
                   data-kiss-phase={kissPhase}
                   data-kiss-walk-stage={kissWalkStage}
+                  data-kiss-audio-playing={isKissAudioPlaying ? 'true' : 'false'}
                   className="relative z-10 flex h-full w-full flex-col items-center justify-between px-4 pt-4 pb-4"
                 >
                   {/* Compact Replay Kiss pill tucked in top-left of stage */}

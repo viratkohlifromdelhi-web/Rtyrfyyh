@@ -13,7 +13,6 @@ import {
   PRELOADER_CARD_FADE_MS,
   PRELOADER_GLIDE_TO_100_MS,
   PRELOADER_MAX_TIMEOUT_MS,
-  SKIP_FADE_IN_SEC,
   STAGE3_AUDIO_INTERRUPT_FADE_MS,
   clampDeltaSec,
   computeClosingExitFrame,
@@ -166,7 +165,6 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
     const [phase, setPhase] = useState<TheatrePhase>('loading');
     const [pointerEventsDisabled, setPointerEventsDisabled] = useState(false);
     const [showSoundPill, setShowSoundPill] = useState(false);
-    const [showSkipLink, setShowSkipLink] = useState(false);
     const [captionPhase, setCaptionPhase] = useState<'initial' | 'finale'>('initial');
     const [showSparkleGlints, setShowSparkleGlints] = useState(false);
     const [videoMissingFallback, setVideoMissingFallback] = useState(false);
@@ -224,7 +222,6 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
     const audioFadeRafRef = useRef<number | null>(null);
     const trailingAudioCleanupRef = useRef<(() => void) | null>(null);
     const fallbackClockRafRef = useRef<number | null>(null);
-    const skipTimerRef = useRef<number | null>(null);
 
     // Latest callback refs
     const onBeginMainRevealRef = useRef(onBeginMainReveal);
@@ -292,10 +289,6 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
       if (fallbackClockRafRef.current !== null) {
         window.cancelAnimationFrame(fallbackClockRafRef.current);
         fallbackClockRafRef.current = null;
-      }
-      if (skipTimerRef.current !== null) {
-        window.clearTimeout(skipTimerRef.current);
-        skipTimerRef.current = null;
       }
     }, []);
 
@@ -417,7 +410,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
 
     /**
      * Smoothly ramps hidden intro video audio from its current gain down to 0 over `durationMs`,
-     * then pauses & unmounts cleanly (used for Skip Intro 1.2s fade & early Play Music 0.4s takeover).
+     * then pauses & unmounts cleanly (used for early Play Music 0.4s takeover & Stage 3 fast interrupt).
      * Strictly sequential: waits until gain reaches 0 & video pauses before handing off to local MP3.
      */
     const startTimedAudioFadeOut = useCallback(
@@ -777,21 +770,8 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
       };
     }, [cancelAllTimersAndRafs]);
 
-    // Gently fade in subtle "Skip Intro ->" link at 4.0s
-    useEffect(() => {
-      skipTimerRef.current = window.setTimeout(() => {
-        setShowSkipLink(true);
-      }, SKIP_FADE_IN_SEC * 1000);
-      return () => {
-        if (skipTimerRef.current !== null) {
-          window.clearTimeout(skipTimerRef.current);
-          skipTimerRef.current = null;
-        }
-      };
-    }, []);
-
     /**
-     * Three-Stage Closing Sequence at 13.5s (13.5s -> 15.9s, or snappy 1.1s Skip version):
+     * Three-Stage Closing Sequence at 13.5s (13.5s -> 15.9s):
      * - Stage 1 (0.00s - 1.50s): Permanently anchored rod + rings; curtains slide smoothly inward
      *   (scaleX ~0.21 -> 1.0) with +/-4deg outward cloth inertia, damped settle, and bow pop/seal at 14.7s.
      * - Stage 2 (1.50s - 1.70s): 200ms clean beat holding on bow-sealed closed curtains.
@@ -800,26 +780,18 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
      *   simultaneous 550ms backdrop/text fade & site reveal (15.35s); scroll unlock, pointer-events none &
      *   twin side-cannon confetti at 15.60s; visual unmount / audioOnly handoff at 15.90s.
      */
-    const startExitSequence = useCallback(
-      (triggeredBySkip: boolean) => {
-        if (
-          exitTriggeredRef.current ||
-          phaseRef.current === 'exiting' ||
-          phaseRef.current === 'audioOnly' ||
-          phaseRef.current === 'done'
-        ) {
-          return;
-        }
-        exitTriggeredRef.current = true;
+    const startExitSequence = useCallback(() => {
+      if (
+        exitTriggeredRef.current ||
+        phaseRef.current === 'exiting' ||
+        phaseRef.current === 'audioOnly' ||
+        phaseRef.current === 'done'
+      ) {
+        return;
+      }
+      exitTriggeredRef.current = true;
 
-        const currentVideoSec = Number((videoRef.current?.currentTime ?? 0).toFixed(1));
-        if (triggeredBySkip) {
-          trackEvent('intro_skipped', 'Skip Intro Button', { atVideoSecond: currentVideoSec });
-          audioUnlockedRef.current = true;
-          soundEngine.unlock();
-        } else {
-          trackEvent('intro_completed', 'Opening Curtain Intro');
-        }
+      trackEvent('intro_completed', 'Opening Curtain Intro');
 
         // Stop preloader, opening & playback watchers
         if (loaderRafRef.current !== null) {
@@ -913,7 +885,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
           const elapsedSec = Math.max(0, (now - exitStartTs) / 1000);
           const frame = computeClosingExitFrame(elapsedSec, {
             startScaleX,
-            fastSkip: triggeredBySkip,
+            fastSkip: false,
           });
 
           if (rootOverlayRef.current) {
@@ -1034,7 +1006,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
           setCaptionPhase(cues.captionPhase);
         }
         if (cues.shouldTriggerExit) {
-          startExitSequence(false);
+          startExitSequence();
         }
       },
       [notifyPastOneSecondOnce, startExitSequence],
@@ -1084,7 +1056,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
 
           if (elapsedSec >= EXIT_TRIGGER_SEC) {
             fallbackClockRafRef.current = null;
-            startExitSequence(false);
+            startExitSequence();
             return;
           }
           fallbackClockRafRef.current = window.requestAnimationFrame(tickFallback);
@@ -1664,9 +1636,19 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
                   loop={false}
                   playsInline
                   onTimeUpdate={(e) => evaluatePlaybackMilestones(e.currentTarget.currentTime)}
+                  onError={() => {
+                    videoMissingRef.current = true;
+                    setVideoMissingFallback(true);
+                    if (
+                      phaseRef.current !== 'loading' &&
+                      !exitTriggeredRef.current
+                    ) {
+                      startExitSequence();
+                    }
+                  }}
                   onEnded={() => {
                     if (!exitTriggeredRef.current) {
-                      startExitSequence(false);
+                      startExitSequence();
                     } else if (visualExitCompleteRef.current || phaseRef.current === 'audioOnly') {
                       finalizeAndUnmountAll(!suppressBgMusicHandoffRef.current);
                     }
@@ -1890,23 +1872,6 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
                   <span className="relative z-10">Tap for Sound 🔊</span>
                 </button>
               )}
-
-              {/* Subtle "Skip Intro ->" Link fading in softly at 4.0s */}
-              <button
-                type="button"
-                data-testid="theatre-skip-btn"
-                onClick={() => startExitSequence(true)}
-                disabled={!showSkipLink || !isVisualInteractive}
-                aria-hidden={!showSkipLink}
-                tabIndex={showSkipLink ? 0 : -1}
-                className={`mt-0.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-[#8A4E79] transition-opacity duration-500 hover:text-[#3A1233] hover:underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] ${
-                  showSkipLink && isVisualInteractive
-                    ? 'pointer-events-auto opacity-85 hover:opacity-100 cursor-pointer'
-                    : 'pointer-events-none opacity-0'
-                }`}
-              >
-                Skip Intro &rarr;
-              </button>
             </div>
           )}
         </div>

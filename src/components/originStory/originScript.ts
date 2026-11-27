@@ -112,7 +112,7 @@ export type KissWalkStage = 'moonlight' | 'stepping' | 'leanIn' | 'kissing' | 'a
  * - Phase 2 (750ms -> 1850ms): 2.5 gentle walking steps closer together
  * - Phase 3 (1850ms -> 2400ms): Tender lean-in + neck-pivoted head tilts (audio swells at 2150ms)
  * - Phase 4 (2400ms -> 5900ms): 3.5s realistic kiss hold + rising hearts + 2 shooting stars
- * - Phase 5 (5900ms -> 6600ms+): Shy pull-back & glowing afterglow (audio ramps down at 5550ms)
+ * - Phase 5 (5900ms -> 6600ms+): Shy pull-back & glowing afterglow while full kiss audio finishes naturally
  */
 export const SCENE5_KISS_TIMING = {
   phase1MoonlightMs: 0,
@@ -123,7 +123,6 @@ export const SCENE5_KISS_TIMING = {
   audioSwellStartMs: 2150,
   phase4KissStartMs: 2400,
   phase4KissHoldMs: 3500,
-  audioFadeOutStartMs: 5550,
   phase5AfterglowStartMs: 5900,
   phase5PullBackDurationMs: 700,
   settleMs: 6600,
@@ -219,9 +218,11 @@ export const ORIGIN_AUDIO_CONFIG = {
   kissStartDelayMs: SCENE5_KISS_TIMING.phase4KissStartMs,
   kissHoldMs: SCENE5_KISS_TIMING.phase4KissHoldMs,
   audioSwellStartMs: SCENE5_KISS_TIMING.audioSwellStartMs,
-  audioFadeOutStartMs: SCENE5_KISS_TIMING.audioFadeOutStartMs,
+  playFullTrackToEnd: true,
+  fallbackSynthDurationMs: 5000,
   fadeInMs: 300,
-  fadeOutMs: 450,
+  interruptFadeOutMs: 150,
+  fadeOutMs: 150,
   maxVolume: 0.82,
 } as const;
 
