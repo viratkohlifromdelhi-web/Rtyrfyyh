@@ -76,7 +76,7 @@ export const ORIGIN_CAST = {
 } as const;
 
 export const ORIGIN_KISS_AUDIO_FILENAME =
-  'In_The_Night_No_Control_Song_Lyrics_Status_shorts_lyrics_128kbps_1791591_cut (1).mp3';
+  'In The Night No Control 🖤🔥  Song Lyrics Status #shorts_ #lyrics_.mp3';
 
 function getViteBaseUrl(): string {
   const env =
