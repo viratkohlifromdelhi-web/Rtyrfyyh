@@ -153,6 +153,7 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
   const [isHoldingBlow, setIsHoldingBlow] = useState(false);
   const [blowProgressPct, setBlowProgressPct] = useState(0);
 
+  const isMountedRef = useRef<boolean>(true);
   const timerRef = useRef<number | null>(null);
   const blowRafRef = useRef<number | null>(null);
   const blowStateRef = useRef<CakeBlowPhysicsState>(createInitialCakeBlowState());
@@ -253,7 +254,10 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
   }, [releaseMicHardware, resetFlameDomTransforms, stopBlowLoop]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
+      blowModeRef.current = 'idle';
       clearPendingTimer();
       stopBlowLoop();
       releaseMicHardware();
@@ -441,7 +445,7 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
       });
 
       // Guard if component reset/unmounted while permission prompt was open
-      if (blowModeRef.current !== 'mic_requesting') {
+      if (!isMountedRef.current || blowModeRef.current !== 'mic_requesting') {
         stream.getTracks().forEach((t) => t.stop());
         return;
       }
@@ -462,6 +466,15 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
         });
       }
 
+      // Guard again if unmounted or reset while micCtx.resume() was pending
+      if (!isMountedRef.current || blowModeRef.current !== 'mic_requesting') {
+        stream.getTracks().forEach((t) => t.stop());
+        void micCtx.close().catch(() => {
+          // silent
+        });
+        return;
+      }
+
       const source = micCtx.createMediaStreamSource(stream);
       const analyser = micCtx.createAnalyser();
       analyser.fftSize = 512;
@@ -480,7 +493,9 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
       startBlowPhysicsLoop();
     } catch {
       // Mic permission denied or unavailable -> seamless hold fallback
-      enterHoldFallbackMode(false);
+      if (isMountedRef.current) {
+        enterHoldFallbackMode(false);
+      }
     }
   };
 

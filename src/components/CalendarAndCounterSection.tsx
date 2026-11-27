@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { MessageCircle, X } from 'lucide-react';
 import {
   buildDecember2026Calendar,
@@ -11,6 +11,7 @@ import { haptics } from '../utils/haptics';
 import { emitModinoEvent } from '../utils/modinoBus';
 import { soundEngine } from '../utils/soundEngine';
 import { playUiSfx } from '../utils/uiSoundEngine';
+import { useInViewAnimation } from '../utils/useInViewAnimation';
 
 function CalendarArrowSvg({ className = 'h-3 w-3' }: { className?: string }) {
   return (
@@ -43,6 +44,8 @@ export function CalendarAndCounterSection({
   onBirthdayDateTap,
   paused = false,
 }: CalendarAndCounterSectionProps) {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const animationsActive = useInViewAnimation(sectionRef, { enabled: !paused });
   const [showBirthdayPopup, setShowBirthdayPopup] = useState(false);
   const [dateToast, setDateToast] = useState<{ day: number; message: string; id: number } | null>(
     null,
@@ -50,13 +53,13 @@ export function CalendarAndCounterSection({
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    if (paused) return;
+    if (paused || !animationsActive) return;
     setNow(new Date());
     const id = window.setInterval(() => {
       setNow(new Date());
     }, 1000);
     return () => window.clearInterval(id);
-  }, [paused]);
+  }, [paused, animationsActive]);
 
   const duration = computeFriendshipDuration(now);
   const countdown = computeBirthdayCountdown(now);
@@ -92,8 +95,12 @@ export function CalendarAndCounterSection({
 
   return (
     <section
+      ref={sectionRef}
       id="calendar"
-      className="cv-auto-section relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
+      data-animations-active={String(animationsActive)}
+      className={`cv-auto-section relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20 ${
+        animationsActive ? '' : 'anim-paused'
+      }`}
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
@@ -248,9 +255,9 @@ export function CalendarAndCounterSection({
                     type="button"
                     onClick={() => setDateToast(null)}
                     aria-label="Dismiss date note"
-                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#8C4D7F] hover:bg-[#FFE0EF] cursor-pointer"
+                    className="-mr-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#8C4D7F] hover:bg-[#FFE0EF] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
                   >
-                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                    <X className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
               )}
@@ -284,9 +291,9 @@ export function CalendarAndCounterSection({
                       data-testid="calendar-note-close"
                       onClick={() => setShowBirthdayPopup(false)}
                       aria-label="Close birthday date note"
-                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#8C5873] transition-colors hover:bg-[#FCE8F0] hover:text-[#3A1233] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
+                      className="-mr-1.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#8C5873] transition-colors hover:bg-[#FCE8F0] hover:text-[#3A1233] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
                     >
-                      <X className="h-3.5 w-3.5" aria-hidden="true" />
+                      <X className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </div>
 

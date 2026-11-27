@@ -87,6 +87,17 @@ export function MidnightLockOverlay({
     };
   }, [clearTimers]);
 
+  useEffect(() => {
+    if (!modalOpen) return;
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [modalOpen]);
+
   // Trigger live midnight celebration when countdown hits 00:00:00:00
   const triggerMidnightCelebration = useCallback(() => {
     if (unlockTriggeredRef.current) return;
@@ -303,7 +314,7 @@ export function MidnightLockOverlay({
       data-testid="midnight-lock-overlay"
       data-celebrating={String(isCelebrating)}
       data-final-five={String(countdown.isFinalFiveSeconds)}
-      className={`fixed inset-0 z-[10000] flex h-[100dvh] w-full items-center justify-center overflow-hidden bg-[#FFF6F9] px-4 transition-[opacity,transform] ease-out ${fadeDurationClass} ${
+      className={`fixed inset-0 z-[10000] flex min-h-[100dvh] w-full items-center justify-center overflow-y-auto bg-[#FFF6F9] px-4 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] transition-[opacity,transform] ease-out ${fadeDurationClass} ${
         isFadingOut
           ? exitMode === 'midnight'
             ? 'scale-[1.03] opacity-0 pointer-events-none'
@@ -447,7 +458,7 @@ export function MidnightLockOverlay({
           setErrorMsg(null);
           setModalOpen(true);
         }}
-        className="fixed right-4 bottom-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/50 text-base opacity-35 transition-opacity duration-200 hover:opacity-80 focus:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D94B7D] cursor-pointer"
+        className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/50 text-base opacity-35 transition-opacity duration-200 hover:opacity-80 focus:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D94B7D] cursor-pointer"
       >
         <span aria-hidden="true">🔑</span>
       </button>
@@ -471,7 +482,7 @@ export function MidnightLockOverlay({
               data-testid="midnight-bypass-modal-close"
               aria-label="Close keypad"
               onClick={() => setModalOpen(false)}
-              className="absolute top-3.5 right-3.5 flex h-7 w-7 items-center justify-center rounded-full bg-[#FCE7F0] text-[#7A4A63] transition-colors hover:bg-[#F8D4E4] hover:text-[#3A1233] cursor-pointer"
+              className="absolute top-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-[#FCE7F0] text-[#7A4A63] transition-colors hover:bg-[#F8D4E4] hover:text-[#3A1233] cursor-pointer"
             >
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -486,7 +497,7 @@ export function MidnightLockOverlay({
             <div className="relative mb-2">
               <input
                 type="text"
-                inputMode="numeric"
+                inputMode="none"
                 pattern="[0-9]*"
                 maxLength={4}
                 autoFocus

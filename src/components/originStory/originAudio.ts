@@ -1,12 +1,5 @@
 import { ORIGIN_AUDIO_CONFIG } from './originScript';
-
-type AudioContextCtor = typeof AudioContext;
-
-function getAudioContextCtor(): AudioContextCtor | null {
-  if (typeof window === 'undefined') return null;
-  const win = window as Window & { webkitAudioContext?: AudioContextCtor };
-  return window.AudioContext || win.webkitAudioContext || null;
-}
+import { soundEngine } from '../../utils/soundEngine';
 
 /**
  * Self-contained, crash-proof audio controller for The Origin Story Play.
@@ -76,17 +69,15 @@ export class OriginStoryAudioController {
   private ensureAudioContext(): AudioContext | null {
     if (this.disposed) return null;
     try {
-      if (!this.audioCtx) {
-        const Ctor = getAudioContextCtor();
-        if (!Ctor) return null;
-        this.audioCtx = new Ctor();
-      }
-      if (this.audioCtx.state === 'suspended') {
-        void this.audioCtx.resume().catch(() => {
+      const ctx = soundEngine.getAudioContext();
+      if (!ctx) return null;
+      this.audioCtx = ctx;
+      if (ctx.state === 'suspended') {
+        void ctx.resume().catch(() => {
           // Ignore autoplay restriction silently
         });
       }
-      return this.audioCtx;
+      return ctx;
     } catch {
       return null;
     }
@@ -616,15 +607,7 @@ export class OriginStoryAudioController {
       this.audioEl = null;
     }
 
-    if (this.audioCtx) {
-      try {
-        void this.audioCtx.close().catch(() => {
-          // ignore
-        });
-      } catch {
-        // ignore
-      }
-      this.audioCtx = null;
-    }
+    // Shared AudioContext is owned by soundEngine; detach local reference only
+    this.audioCtx = null;
   }
 }

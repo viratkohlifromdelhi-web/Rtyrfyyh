@@ -96,18 +96,44 @@ export function buildDecember2026Calendar(): CalendarCell[] {
 }
 
 /**
- * Computes a live birthday countdown strip message toward 03 December 2026.
+ * Extracts the calendar date (YYYY-MM-DD) in India Standard Time (Asia/Kolkata, UTC+05:30)
+ * as a UTC midnight timestamp so day diffs are timezone-independent worldwide.
+ */
+function getIstDayStartUtcMs(date: Date): number {
+  try {
+    const istDateStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+    const [y, m, d] = istDateStr.split('-').map(Number);
+    if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
+      return Date.UTC(y, m - 1, d);
+    }
+  } catch {
+    // Fallback to fixed +05:30 offset if Intl timezone data is unavailable
+  }
+  const istShifted = new Date(date.getTime() + 330 * 60 * 1000);
+  return Date.UTC(
+    istShifted.getUTCFullYear(),
+    istShifted.getUTCMonth(),
+    istShifted.getUTCDate(),
+  );
+}
+
+// 03 December 2026, 12:00 AM IST — Morgan's 17th birthday target
+export const BIRTHDAY_2026_IST_ISO = '2026-12-03T00:00:00+05:30';
+
+/**
+ * Computes a live birthday countdown strip message toward 03 December 2026 (IST).
  */
 export function computeBirthdayCountdown(
   now: Date,
-  birthdayDate: Date = new Date(2026, 11, 3, 0, 0, 0),
+  birthdayDate: Date = new Date(BIRTHDAY_2026_IST_ISO),
 ): BirthdayCountdown {
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const startOfBday = new Date(
-    birthdayDate.getFullYear(),
-    birthdayDate.getMonth(),
-    birthdayDate.getDate(),
-  ).getTime();
+  const startOfToday = getIstDayStartUtcMs(now);
+  const startOfBday = getIstDayStartUtcMs(birthdayDate);
 
   const dayDiff = Math.round((startOfBday - startOfToday) / 86400000);
 
@@ -178,8 +204,8 @@ export function getOrderedFriendList(
   return [others[0], anamika, ...others.slice(1)];
 }
 
-// 03 December 2009 — Anamika's birth timestamp
-export const ANAMIKA_BIRTH_ISO = '2009-12-03T00:00:00';
+// 03 December 2009, 12:00 AM IST — Anamika's birth timestamp
+export const ANAMIKA_BIRTH_ISO = '2009-12-03T00:00:00+05:30';
 export const LUNAR_SYNODIC_DAYS = 29.53;
 
 export interface LifeStats {
@@ -191,12 +217,12 @@ export interface LifeStats {
 }
 
 /**
- * Calculates live cumulative Time on Earth metrics from 03 December 2009 00:00:00
+ * Calculates live cumulative Time on Earth metrics from 03 December 2009 00:00:00 IST
  * up to `now`, including Full Moons witnessed (`Math.floor(totalDays / 29.53)`).
  */
 export function computeLifeStats(
   now: Date,
-  birthDate: Date = new Date(2009, 11, 3, 0, 0, 0),
+  birthDate: Date = new Date(ANAMIKA_BIRTH_ISO),
 ): LifeStats {
   const diffMs = Math.max(0, now.getTime() - birthDate.getTime());
   const totalSeconds = Math.floor(diffMs / 1000);

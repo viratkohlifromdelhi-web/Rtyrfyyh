@@ -48,6 +48,8 @@ import { playUiSfx } from '../utils/uiSoundEngine';
 import { useInViewAnimation } from '../utils/useInViewAnimation';
 import { InfinityStoneSvg } from './InfinityStoneSvg';
 
+import { isAuthorizedOwnerEmail } from '../utils/analyticsCore';
+
 type VaultPhase =
   | 'locked'
   | 'orbiting'
@@ -61,6 +63,7 @@ type VaultPhase =
 interface InfinityVaultSectionProps {
   onRevealConfetti?: (originX?: number, originY?: number) => void;
   onFirstClaimUnlock?: (summary: OneTimeSummaryGiftData) => void;
+  onCodeUpdated?: (newCode: string) => void;
   onVaultReset?: () => void;
   showFooterSummaryJump?: boolean;
   onOpenKeepsakeModal?: () => void;
@@ -71,6 +74,7 @@ const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'CLEAR', '0', 
 export function InfinityVaultSection({
   onRevealConfetti,
   onFirstClaimUnlock,
+  onCodeUpdated,
   onVaultReset,
   showFooterSummaryJump = false,
   onOpenKeepsakeModal,
@@ -134,11 +138,69 @@ export function InfinityVaultSection({
   const [ownerSaving, setOwnerSaving] = useState(false);
   const [ownerStatusMsg, setOwnerStatusMsg] = useState<string | null>(null);
   const [ownerStatusKind, setOwnerStatusKind] = useState<'idle' | 'success' | 'error'>('idle');
+  const [ownerAuthEmail, setOwnerAuthEmail] = useState<string | null>(null);
+  const [ownerAuthVerified, setOwnerAuthVerified] = useState(false);
+  const [ownerSigningIn, setOwnerSigningIn] = useState(false);
   const customRealCodeRef = useRef<string | null>(customRealCode);
 
   useEffect(() => {
     customRealCodeRef.current = customRealCode;
   }, [customRealCode]);
+
+  // Lazy-check Firebase Auth owner status strictly when 1507 Owner Editor opens
+  useEffect(() => {
+    if (!ownerEditorOpen) return;
+    let active = true;
+    let unsubscribe: (() => void) | null = null;
+
+    void Promise.all([import('../firebase'), import('firebase/auth')])
+      .then(([{ auth }, { onAuthStateChanged }]) => {
+        if (!active || !auth) return;
+        unsubscribe = onAuthStateChanged(auth, (user) => {
+          if (!active) return;
+          const email = user?.email ?? null;
+          setOwnerAuthEmail(email);
+          setOwnerAuthVerified(Boolean(user && user.emailVerified && isAuthorizedOwnerEmail(email)));
+        });
+      })
+      .catch(() => {
+        // Offline or auth unavailable; local save still works
+      });
+
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOwnerEditorOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [ownerEditorOpen]);
+
+  // Lock body scroll and bind Escape key while portaled 9876 reset modal is open
+  useEffect(() => {
+    if (!resetModalOpen) return;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setResetModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [resetModalOpen]);
 
   // Non-blockingly fetch live gift_vault real code config from Firestore on mount
   useEffect(() => {
@@ -483,6 +545,40 @@ export function InfinityVaultSection({
     setOwnerEditorOpen(true);
   }, []);
 
+  const handleOwnerGoogleSignIn = useCallback(async () => {
+    if (ownerSigningIn) return;
+    setOwnerSigningIn(true);
+    setOwnerStatusMsg(null);
+    try {
+      const [{ auth, googleProvider }, { signInWithPopup }] = await Promise.all([
+        import('../firebase'),
+        import('firebase/auth'),
+      ]);
+      if (!auth) {
+        setOwnerStatusKind('error');
+        setOwnerStatusMsg('Firebase Auth is unavailable right now');
+        return;
+      }
+      const cred = await signInWithPopup(auth, googleProvider);
+      const email = cred.user?.email ?? null;
+      const verified = Boolean(cred.user?.emailVerified && isAuthorizedOwnerEmail(email));
+      setOwnerAuthEmail(email);
+      setOwnerAuthVerified(verified);
+      if (verified) {
+        setOwnerStatusKind('success');
+        setOwnerStatusMsg('Owner verified · cloud sync ready');
+      } else {
+        setOwnerStatusKind('error');
+        setOwnerStatusMsg('Signed in account is not an authorized owner');
+      }
+    } catch {
+      setOwnerStatusKind('error');
+      setOwnerStatusMsg('Owner sign in was cancelled or blocked');
+    } finally {
+      setOwnerSigningIn(false);
+    }
+  }, [ownerSigningIn]);
+
   const handleSaveRealGiftCode = useCallback(async () => {
     if (ownerSaving) return;
     const clean = sanitizeVaultGiftCode(ownerDraftCode);
@@ -504,9 +600,12 @@ export function InfinityVaultSection({
       if (result.ok && result.code) {
         setCustomRealCode(result.code);
         setOwnerDraftCode(result.code);
+        onCodeUpdated?.(result.code);
         setOwnerStatusKind('success');
         setOwnerStatusMsg(
-          result.syncedToCloud ? 'Real code synced live' : 'Saved locally on this device',
+          result.syncedToCloud
+            ? 'Real code synced live across devices'
+            : 'Saved on this device only (sign in as owner above to sync live)',
         );
         try {
           haptics.success();
@@ -521,18 +620,25 @@ export function InfinityVaultSection({
     } finally {
       setOwnerSaving(false);
     }
-  }, [ownerDraftCode, ownerSaving]);
+  }, [onCodeUpdated, ownerDraftCode, ownerSaving]);
 
   const handleRestoreFakeGiftCode = useCallback(async () => {
     if (ownerSaving) return;
     setOwnerSaving(true);
     setOwnerStatusMsg(null);
     try {
-      await restoreFakeGiftVaultCode();
+      const result = await restoreFakeGiftVaultCode();
       setCustomRealCode(null);
       setOwnerDraftCode('');
+      if (claimRecord?.code) {
+        onCodeUpdated?.(claimRecord.code);
+      }
       setOwnerStatusKind('success');
-      setOwnerStatusMsg('Restored default 12 digit placeholder code');
+      setOwnerStatusMsg(
+        result.syncedToCloud
+          ? 'Restored default 12 digit placeholder code live'
+          : 'Restored locally (sign in as owner above to sync live)',
+      );
       try {
         haptics.tap();
         soundEngine.playBubbleClick(0.96);
@@ -542,7 +648,7 @@ export function InfinityVaultSection({
     } finally {
       setOwnerSaving(false);
     }
-  }, [ownerSaving]);
+  }, [claimRecord?.code, onCodeUpdated, ownerSaving]);
 
   // Evaluate 4-digit code on the main locked keypad
   const submitMainCode = useCallback(
@@ -1112,7 +1218,7 @@ export function InfinityVaultSection({
                       }
                       setOwnerEditorOpen(false);
                     }}
-                    className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#EED0DF] bg-[#FFF4F8] text-[#7A4A63] transition-colors hover:bg-[#FCE6F0] hover:text-[#3A1233]"
+                    className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#EED0DF] bg-[#FFF4F8] text-[#7A4A63] transition-colors hover:bg-[#FCE6F0] hover:text-[#3A1233]"
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
                   </button>
@@ -1123,7 +1229,26 @@ export function InfinityVaultSection({
                   card code synced live across devices.
                 </p>
 
-                <div className="mt-3.5 rounded-2xl border border-[#F2D8E4] bg-[#FFF6FA] px-3.5 py-2.5 text-xs">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#F0D5E2] bg-[#FFF8FB] px-3.5 py-2 text-[11.5px]">
+                  <span className="font-medium text-[#5E2E57]">
+                    {ownerAuthVerified
+                      ? `Cloud sync ready (${ownerAuthEmail})`
+                      : 'Sign in as owner to sync live to Firestore'}
+                  </span>
+                  {!ownerAuthVerified && (
+                    <button
+                      type="button"
+                      data-testid="vault-owner-signin-btn"
+                      disabled={ownerSigningIn}
+                      onClick={() => void handleOwnerGoogleSignIn()}
+                      className="inline-flex min-h-[34px] cursor-pointer items-center justify-center rounded-full border border-[#D94B7D]/35 bg-[#FCE7F0] px-3 py-1 text-[11px] font-semibold text-[#B52B5A] transition-colors hover:bg-[#FAD6E6] disabled:opacity-60"
+                    >
+                      {ownerSigningIn ? 'Signing in...' : 'Owner Google Sign In'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-3 rounded-2xl border border-[#F2D8E4] bg-[#FFF6FA] px-3.5 py-2.5 text-xs">
                   <span className="font-semibold text-[#3A1233]">Current status: </span>
                   <span data-testid="vault-owner-active-status" className="text-[#7A4A63]">
                     {customRealCode
@@ -1329,7 +1454,7 @@ export function InfinityVaultSection({
                 <div className="relative z-10 mt-5 mb-2">
                   <input
                     type="text"
-                    inputMode="numeric"
+                    inputMode="none"
                     pattern="[0-9]*"
                     maxLength={4}
                     autoComplete="one-time-code"
@@ -1658,18 +1783,6 @@ export function InfinityVaultSection({
                       'inset 0 1px 0 rgba(255, 242, 218, 0.14), 0 24px 52px -20px rgba(0, 0, 0, 0.78)',
                   }}
                 >
-                  {/* Subtle fine paper-grain noise texture */}
-                  <svg
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.032]"
-                  >
-                    <rect
-                      width="100%"
-                      height="100%"
-                      filter={`url(#vault-grain-${grainFilterId})`}
-                    />
-                  </svg>
-
                   {/* Slow restrained diagonal champagne-gold foil sheen every 5s */}
                   <div
                     aria-hidden="true"
@@ -1850,7 +1963,7 @@ export function InfinityVaultSection({
               }}
               aria-label="Open vault passcode key"
               title="Vault key"
-              className="absolute right-4 top-4 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-[#E6C690]/25 bg-transparent text-[#E6C690] opacity-30 transition-all duration-200 hover:border-[#E6C690]/60 hover:opacity-90 cursor-pointer"
+              className="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-[#E6C690]/25 bg-transparent text-[#E6C690] opacity-30 transition-all duration-200 hover:border-[#E6C690]/60 hover:opacity-90 cursor-pointer"
             >
               <KeyRound className="h-3.5 w-3.5" strokeWidth={1.7} aria-hidden="true" />
             </button>
@@ -1884,7 +1997,7 @@ export function InfinityVaultSection({
                 data-testid="vault-reset-modal-close"
                 aria-label="Close vault key modal"
                 onClick={() => setResetModalOpen(false)}
-                className="absolute right-3.5 top-3.5 flex h-7 w-7 items-center justify-center rounded-full text-[#D7B57E]/75 transition-colors hover:bg-white/[0.06] hover:text-[#FAF3EA] cursor-pointer"
+                className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-[#D7B57E]/75 transition-colors hover:bg-white/[0.06] hover:text-[#FAF3EA] cursor-pointer"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -1901,7 +2014,7 @@ export function InfinityVaultSection({
               <div className="relative mb-2">
                 <input
                   type="text"
-                  inputMode="numeric"
+                  inputMode="none"
                   pattern="[0-9]*"
                   maxLength={4}
                   autoFocus

@@ -1,11 +1,9 @@
+import { soundEngine } from './soundEngine';
+
 /**
- * Hybrid Public-GitHub Open-Source UI SFX + Zero-Latency Procedural Web Audio Synthesizer.
- *
- * Layer 1: Lazy-loads tiny MIT/CC0 public GitHub open-source UI sounds via jsDelivr CDN
- *          ONLY after the first user interaction inside requestIdleCallback (1500ms timeout).
- * Layer 2: Instant procedural Web Audio API fallback synthesizer guarantees 0ms latency,
- *          100% offline/4G reliability, soft capped gains (0.05-0.14), and ZERO interference
- *          with `Milky - Just The Way You Are (Official Audio).mp3`.
+ * Zero-Latency Procedural Web Audio Pastel UI SFX Engine.
+ * Shares the singleton `soundEngine` AudioContext & global SFX mute state
+ * so there is strictly one Web Audio context across the app and zero external CDN fetches.
  */
 
 export type UiSfxName =
@@ -41,14 +39,12 @@ export const GITHUB_SFX_MANIFEST: Partial<Record<UiSfxName, string>> = {
   wheel_tick: 'https://cdn.jsdelivr.net/gh/IonDen/ion.sound@master/sounds/snap.mp3',
 };
 
-const decodedBufferCache = new Map<UiSfxName, AudioBuffer>();
 const muteListeners = new Set<(muted: boolean) => void>();
 
-let sharedAudioCtx: AudioContext | null = null;
-let preloadScheduled = false;
 let lastWheelTickMs = -Infinity;
 let userGestureUnlocked = false;
 let gestureListenersAttached = false;
+let syncingFromSoundEngine = false;
 
 function hasUserActivation(): boolean {
   if (userGestureUnlocked) return true;
@@ -95,6 +91,19 @@ function readInitialMuted(): boolean {
 }
 
 let sfxMuted = readInitialMuted();
+// Initialize global soundEngine enabled flag from persisted mute preference
+if (sfxMuted && soundEngine.isEnabled()) {
+  soundEngine.setEnabled(false);
+}
+
+// Keep Modino/UI SFX mute synced when user toggles SFX from TopBar or anywhere else
+soundEngine.subscribe((enabled) => {
+  const nextMuted = !enabled;
+  if (sfxMuted === nextMuted) return;
+  syncingFromSoundEngine = true;
+  setUiSfxMuted(nextMuted);
+  syncingFromSoundEngine = false;
+});
 
 export function isUiSfxMuted(): boolean {
   return sfxMuted;
@@ -102,6 +111,9 @@ export function isUiSfxMuted(): boolean {
 
 export function setUiSfxMuted(nextMuted: boolean): boolean {
   sfxMuted = Boolean(nextMuted);
+  if (!syncingFromSoundEngine) {
+    soundEngine.setEnabled(!sfxMuted);
+  }
   try {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(MODINO_SFX_STORAGE_KEY, String(sfxMuted));
@@ -134,109 +146,25 @@ function getOrCreateAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (!hasUserActivation()) return null;
   try {
-    const AudioCtxCtor =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtxCtor) return null;
-    if (!sharedAudioCtx) {
-      sharedAudioCtx = new AudioCtxCtor();
-    }
-    if (sharedAudioCtx.state === 'suspended') {
-      void sharedAudioCtx.resume().catch(() => {
+    const ctx = soundEngine.getAudioContext();
+    if (!ctx) return null;
+    if (ctx.state === 'suspended') {
+      void ctx.resume().catch(() => {
         // autoplay policy will unlock on next gesture
       });
     }
-    return sharedAudioCtx;
+    return ctx;
   } catch {
     return null;
   }
 }
 
-async function fetchWithTimeout(url: string, timeoutMs = 1500): Promise<Response> {
-  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
-    return fetch(url, { signal: AbortSignal.timeout(timeoutMs), mode: 'cors' });
-  }
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { signal: controller.signal, mode: 'cors' });
-  } finally {
-    window.clearTimeout(timer);
-  }
-}
-
 /**
- * Lazily fetches & decodes public GitHub open-source UI sounds inside idle time
- * strictly AFTER the first user interaction so boot & intro video stay 0ms blocked.
+ * Retained for compatibility; procedural Web Audio synthesis handles all cues at 0ms
+ * with zero third-party CDN network overhead.
  */
 export function scheduleGithubSfxPreload(): void {
-  if (preloadScheduled || typeof window === 'undefined' || typeof fetch === 'undefined') {
-    return;
-  }
-  preloadScheduled = true;
-
-  const entries = Object.entries(GITHUB_SFX_MANIFEST) as Array<[UiSfxName, string]>;
-  let cursor = 0;
-
-  const loadNext = () => {
-    if (cursor >= entries.length) return;
-    const [cue, url] = entries[cursor];
-    cursor += 1;
-
-    const ctx = getOrCreateAudioContext();
-    if (!ctx || decodedBufferCache.has(cue)) {
-      scheduleStep();
-      return;
-    }
-
-    void fetchWithTimeout(url, 1500)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.arrayBuffer();
-      })
-      .then((arr) => ctx.decodeAudioData(arr))
-      .then((buffer) => {
-        // Keep only crisp short UI cues (< 1.5s) so nothing feels sluggish
-        if (buffer && buffer.duration > 0 && buffer.duration <= 1.5) {
-          decodedBufferCache.set(cue, buffer);
-        }
-      })
-      .catch(() => {
-        // Silently fall back to Layer 2 procedural synthesizer
-      })
-      .finally(() => {
-        scheduleStep();
-      });
-  };
-
-  const scheduleStep = () => {
-    if (cursor >= entries.length) return;
-    const win = window as Window & {
-      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-    };
-    if (typeof win.requestIdleCallback === 'function') {
-      win.requestIdleCallback(() => loadNext(), { timeout: 2000 });
-    } else {
-      window.setTimeout(loadNext, 220);
-    }
-  };
-
-  scheduleStep();
-}
-
-function playDecodedBuffer(ctx: AudioContext, buffer: AudioBuffer, volume: number): boolean {
-  try {
-    const source = ctx.createBufferSource();
-    const gain = ctx.createGain();
-    source.buffer = buffer;
-    gain.gain.setValueAtTime(Math.min(0.14, Math.max(0.02, volume)), ctx.currentTime);
-    source.connect(gain);
-    gain.connect(ctx.destination);
-    source.start(ctx.currentTime);
-    return true;
-  } catch {
-    return false;
-  }
+  // Intentional zero-network no-op
 }
 
 /**
@@ -507,19 +435,6 @@ export function playUiSfx(name: UiSfxName): boolean {
   try {
     const ctx = getOrCreateAudioContext();
     if (!ctx) return false;
-
-    scheduleGithubSfxPreload();
-
-    // Sleep sigh and wake chirp stay ultra-delicate procedural cues for exact pastel character tone
-    if (name !== 'sleep_sigh' && name !== 'wake_chirp') {
-      const cached = decodedBufferCache.get(name);
-      if (cached) {
-        const gainLevel = name === 'wheel_tick' ? 0.09 : 0.12;
-        if (playDecodedBuffer(ctx, cached, gainLevel)) {
-          return true;
-        }
-      }
-    }
 
     synthesizePastelSfx(ctx, name);
     return true;

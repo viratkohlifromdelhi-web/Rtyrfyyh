@@ -79,6 +79,8 @@ test('keepsake poster constants match 1080x1920 9:16 story specs, palette, and z
   assert.equal(KEEPSAKE_COLORS.stampCream, '#F5EFE0');
   assert.equal(KEEPSAKE_COLORS.inkForest, '#233322');
 
+  assert.equal(KEEPSAKE_COPY.punchline1, 'REMEMBER ONE THING,');
+
   for (const [key, value] of Object.entries(KEEPSAKE_COPY)) {
     assert.equal(
       /[—–-]/.test(value),

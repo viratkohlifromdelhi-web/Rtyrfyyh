@@ -173,7 +173,7 @@ export function KeepsakePreviewModal({ onClose }: KeepsakePreviewModalProps) {
             data-testid="keepsake-modal-close"
             onClick={handleClose}
             aria-label="Close keepsake poster preview"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#EBC6D8] bg-[#FFFDF8] text-[#6B3B64] transition-all duration-150 hover:bg-[#FFEBF3] hover:text-[#3A1233] active:scale-95 cursor-pointer"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#EBC6D8] bg-[#FFFDF8] text-[#6B3B64] transition-all duration-150 hover:bg-[#FFEBF3] hover:text-[#3A1233] active:scale-95 cursor-pointer"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -216,7 +216,7 @@ export function KeepsakePreviewModal({ onClose }: KeepsakePreviewModalProps) {
         </div>
 
         {/* Footer CTA Bar */}
-        <div className="border-t border-[#F3DCE7] bg-[#FFFDF8] px-5 pt-3.5 pb-4 text-center">
+        <div className="border-t border-[#F3DCE7] bg-[#FFFDF8] px-5 pt-3.5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] text-center">
           <button
             type="button"
             data-testid="keepsake-download-btn"

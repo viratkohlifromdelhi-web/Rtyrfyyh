@@ -25,6 +25,7 @@ export function LifeStatsSection({ paused = false }: LifeStatsSectionProps) {
   const animationsActive = useInViewAnimation(sectionRef, { enabled: !paused });
   const [stats, setStats] = useState(() => computeLifeStats(new Date(), BIRTH_DATE));
   const [activeTile, setActiveTile] = useState<string | null>(null);
+  const bounceTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (paused || !animationsActive) return;
@@ -35,12 +36,25 @@ export function LifeStatsSection({ paused = false }: LifeStatsSectionProps) {
     return () => window.clearInterval(id);
   }, [animationsActive, paused]);
 
+  useEffect(() => {
+    return () => {
+      if (bounceTimerRef.current !== null) {
+        window.clearTimeout(bounceTimerRef.current);
+        bounceTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const handleTileBounce = (id: string) => {
     haptics.tap();
     soundEngine.playBubbleClick(1.05);
     setActiveTile(id);
-    window.setTimeout(() => {
+    if (bounceTimerRef.current !== null) {
+      window.clearTimeout(bounceTimerRef.current);
+    }
+    bounceTimerRef.current = window.setTimeout(() => {
       setActiveTile((curr) => (curr === id ? null : curr));
+      bounceTimerRef.current = null;
     }, 240);
   };
 
@@ -160,33 +174,33 @@ export function LifeStatsSection({ paused = false }: LifeStatsSectionProps) {
             </p>
           </button>
 
-          {/* 3. Live Seconds Alive (live ticking with glowing pulse dot) */}
+          {/* 3. Live Seconds Alive (luminous pastel rose-blush card with live pulse dot) */}
           <button
             type="button"
             onClick={() => handleTileBounce('seconds')}
-            className={`group flex flex-col justify-between rounded-3xl border border-[#F2C3DA] bg-gradient-to-br from-[#3B1535] to-[#521D4A] p-5 text-left text-[#FFFDF8] shadow-[0_18px_40px_-20px_rgba(59,21,53,0.45)] transition-all duration-200 hover:-translate-y-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFE898] sm:p-6 ${
+            className={`group flex flex-col justify-between rounded-3xl border border-[#F1B7D4] bg-gradient-to-br from-[#FFFDF9] via-[#FFF0F6] to-[#F7EEFF] p-5 text-left text-[#3A1233] shadow-[0_14px_34px_-20px_rgba(194,55,126,0.22)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_18px_38px_-16px_rgba(194,55,126,0.28)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2377E] sm:p-6 ${
               activeTile === 'seconds' ? 'scale-[0.97]' : 'scale-100'
             }`}
           >
             <div className="flex items-center justify-between gap-3">
-              <span className="inline-flex items-center gap-2 text-xs font-bold tracking-normal [letter-spacing:0px] [word-spacing:normal] text-[#FFE898]">
+              <span className="inline-flex items-center gap-2 text-xs font-bold tracking-normal [letter-spacing:0px] [word-spacing:normal] text-[#C2377E]">
                 <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF8FC2] opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#FF5CA8] shadow-[0_0_8px_#FF5CA8]" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F472B6] opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#D94B7D]" />
                 </span>
                 Live Seconds Alive
               </span>
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFFDF8]/12 text-[#FFE898] transition-transform duration-200 group-hover:scale-110">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFE4F0] text-[#C2377E] transition-transform duration-200 group-hover:scale-110">
                 <Sparkles className="h-4.5 w-4.5" aria-hidden="true" />
               </span>
             </div>
             <div
               data-testid="life-total-seconds"
-              className="font-display mt-3 text-3xl font-bold tracking-tight text-[#FFFDF8] tabular-nums sm:text-4xl"
+              className="font-display mt-3 text-3xl font-bold tracking-tight text-[#3A1233] tabular-nums sm:text-4xl"
             >
               {formatCommaNumber(stats.totalSeconds)}
             </div>
-            <p className="mt-2 text-[15px] leading-relaxed tracking-normal [letter-spacing:0px] [word-spacing:normal] text-[#FFE4F0]">
+            <p className="mt-2 text-[15px] leading-relaxed tracking-normal [letter-spacing:0px] [word-spacing:normal] text-[#5E2E57]">
               Seconds and still my greatest HG
             </p>
           </button>

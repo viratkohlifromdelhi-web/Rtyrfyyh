@@ -259,9 +259,26 @@ export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFo
     isFooterWellInViewRef.current = false;
 
     let observer: IntersectionObserver | null = null;
+    let scrollListenerAttached = false;
+
+    const detachAutoPlayWatchers = () => {
+      if (scrollListenerAttached) {
+        window.removeEventListener('scroll', handleScroll);
+        scrollListenerAttached = false;
+      }
+      if (scrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = null;
+      }
+      observer?.disconnect();
+      observer = null;
+    };
 
     const tryTriggerAutoPlay = () => {
-      if (hasAutoPlayedRef.current) return;
+      if (hasAutoPlayedRef.current) {
+        detachAutoPlayWatchers();
+        return;
+      }
       const rect = footerEl.getBoundingClientRect();
       const viewportHeight = window.innerHeight || 0;
       const isFooterVisibleAtAll = rect.top < viewportHeight && rect.bottom > 0;
@@ -282,9 +299,28 @@ export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFo
         })
       ) {
         hasAutoPlayedRef.current = true;
-        observer?.disconnect();
+        detachAutoPlayWatchers();
         playChoreography();
       }
+    };
+
+    const handleScroll = () => {
+      if (hasAutoPlayedRef.current) {
+        detachAutoPlayWatchers();
+        return;
+      }
+      if (scrollRafRef.current !== null) return;
+      scrollRafRef.current = window.requestAnimationFrame(() => {
+        scrollRafRef.current = null;
+        const currentY = window.scrollY;
+        scrollDirectionRef.current = computeScrollAdvanceDirection(
+          currentY,
+          lastScrollYRef.current,
+          scrollDirectionRef.current,
+        );
+        lastScrollYRef.current = currentY;
+        tryTriggerAutoPlay();
+      });
     };
 
     observer = new IntersectionObserver(
@@ -303,30 +339,13 @@ export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFo
 
     observer.observe(footerEl);
 
-    const handleScroll = () => {
-      if (scrollRafRef.current !== null) return;
-      scrollRafRef.current = window.requestAnimationFrame(() => {
-        scrollRafRef.current = null;
-        const currentY = window.scrollY;
-        scrollDirectionRef.current = computeScrollAdvanceDirection(
-          currentY,
-          lastScrollYRef.current,
-          scrollDirectionRef.current,
-        );
-        lastScrollYRef.current = currentY;
-        tryTriggerAutoPlay();
-      });
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    if (!hasAutoPlayedRef.current) {
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      scrollListenerAttached = true;
+    }
 
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (scrollRafRef.current !== null) {
-        window.cancelAnimationFrame(scrollRafRef.current);
-        scrollRafRef.current = null;
-      }
-      observer?.disconnect();
+      detachAutoPlayWatchers();
       stopAnimationLoop();
     };
   }, [applyPoseToDom, isSiteRevealed, playChoreography, stopAnimationLoop]);

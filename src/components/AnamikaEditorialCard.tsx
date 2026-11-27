@@ -549,14 +549,14 @@ export function AnamikaEditorialCard({ onLightboxChange }: AnamikaEditorialCardP
                     onClick={handleOpenZoom}
                     onPointerDown={(e) => e.stopPropagation()}
                     aria-label="Open full screen uncropped photograph of Anamika"
-                    className="absolute top-2.5 right-2.5 z-20 flex h-8 w-8 cursor-zoom-in items-center justify-center rounded-full border border-[#3A1233]/15 text-[#3A1233] shadow-[0_4px_12px_-4px_rgba(58,18,51,0.22)] transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
+                    className="absolute top-2 right-2 z-20 flex h-10 w-10 cursor-zoom-in items-center justify-center rounded-full border border-[#3A1233]/15 text-[#3A1233] shadow-[0_4px_12px_-4px_rgba(58,18,51,0.22)] transition-transform duration-150 hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
                     style={{
                       backgroundColor: 'rgba(255, 246, 249, 0.72)',
                       backdropFilter: 'blur(6px)',
                       WebkitBackdropFilter: 'blur(6px)',
                     }}
                   >
-                    <ZoomExpandIconSvg className="h-[15px] w-[15px]" />
+                    <ZoomExpandIconSvg className="h-[16px] w-[16px]" />
                   </button>
                 )}
               </div>

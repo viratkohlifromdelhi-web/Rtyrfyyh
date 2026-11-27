@@ -261,7 +261,6 @@ export function InfinityStoneSvg({
   const bodyGradId = `body-${stone.id}-${uid}`;
   const plasmaGradId = `plasma-${stone.id}-${uid}`;
   const clipId = `clip-${stone.id}-${uid}`;
-  const rimBlurId = `rimblur-${stone.id}-${uid}`;
 
   const geo = CRYSTAL_GEOMETRIES[stone.id];
 
@@ -283,11 +282,6 @@ export function InfinityStoneSvg({
           <stop offset="74%" stopColor={stone.bodyEnd} stopOpacity="0.08" />
           <stop offset="100%" stopColor={stone.bodyEnd} stopOpacity="0" />
         </radialGradient>
-
-        {/* Layer 2: Soft tight halo filter */}
-        <filter id={rimBlurId} x="-25%" y="-25%" width="150%" height="150%">
-          <feGaussianBlur stdDeviation="2.6" />
-        </filter>
 
         {/* Layer 3: Deep 3D off-center radial crystal body */}
         <radialGradient id={bodyGradId} cx="42%" cy="38%" r="58%" fx="38%" fy="34%">
@@ -314,15 +308,23 @@ export function InfinityStoneSvg({
       {/* 1. Atmospheric Outer Bloom */}
       <circle cx="50" cy="50" r="47" fill={`url(#${bloomId})`} opacity="0.78" />
 
-      {/* 2. Tight Intense Core Halo hugging the crystal perimeter */}
+      {/* 2. Tight Intense Core Halo hugging the crystal perimeter (filter-free layered strokes for 60fps orbit) */}
       <path
         d={geo.silhouette}
         fill={stone.aura}
-        fillOpacity="0.24"
+        fillOpacity="0.16"
         stroke={stone.aura}
-        strokeWidth="3.2"
-        strokeOpacity="0.72"
-        filter={`url(#${rimBlurId})`}
+        strokeWidth="6.5"
+        strokeOpacity="0.22"
+        strokeLinejoin="round"
+      />
+      <path
+        d={geo.silhouette}
+        fill="none"
+        stroke={stone.aura}
+        strokeWidth="2.8"
+        strokeOpacity="0.56"
+        strokeLinejoin="round"
       />
 
       {/* 3. Deep 3D Crystal Body */}

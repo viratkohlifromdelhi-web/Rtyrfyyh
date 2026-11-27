@@ -477,10 +477,10 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
     clearScheduledTimers();
     setIsExiting(true);
 
-    window.setTimeout(() => {
+    schedule(() => {
       onComplete();
     }, 450);
-  }, [clearScheduledTimers, onComplete]);
+  }, [clearScheduledTimers, onComplete, schedule]);
 
   const handleSkipStory = useCallback(() => {
     if (exitingRef.current) return;
@@ -590,7 +590,7 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
       data-scene-number={currentScene.sceneNumber}
       data-kiss-beat={isStarryScene ? kissBeat : undefined}
       data-scene-settled={sceneSettled ? 'true' : 'false'}
-      className={`fixed inset-0 z-[95] flex flex-col justify-between overflow-hidden transition-all duration-[450ms] ease-out ${
+      className={`fixed inset-0 z-[9500] flex h-[100dvh] flex-col justify-between overflow-hidden transition-all duration-[450ms] ease-out ${
         isExiting ? 'scale-[1.03] opacity-0 pointer-events-none' : 'scale-100 opacity-100'
       }`}
       style={{
@@ -636,7 +636,7 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
       )}
 
       {/* Top Chrome: Mute toggle, Stepped Chapter Progress, Skip Story */}
-      <header className="relative z-30 mx-auto flex w-full max-w-[520px] items-center justify-between gap-2 px-4 pt-4 sm:px-6 sm:pt-5">
+      <header className="relative z-30 mx-auto flex w-full max-w-[520px] shrink-0 items-center justify-between gap-2 px-4 pt-[max(12px,env(safe-area-inset-top))] sm:px-6 sm:pt-5">
         <button
           type="button"
           onClick={handleToggleMute}
@@ -706,9 +706,9 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
       </header>
 
       {/* Main Illustrated Storybook Cinema Stage */}
-      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-[480px] flex-1 items-center justify-center px-4 py-2">
+      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-[480px] flex-1 items-center justify-center px-4 py-1.5 sm:py-2">
         <div
-          className={`relative flex h-full max-h-[415px] w-full flex-col items-center justify-end overflow-hidden rounded-[28px] border transition-all duration-700 sm:max-h-[465px] ${
+          className={`relative flex h-full max-h-[min(415px,54dvh)] w-full flex-col items-center justify-end overflow-hidden rounded-[28px] border transition-all duration-700 sm:max-h-[min(465px,58dvh)] ${
             isRomanticPeak
               ? 'border-[#F9B5D2]/55 shadow-[0_22px_58px_rgba(244,114,182,0.38)]'
               : isStarryScene
@@ -764,8 +764,8 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
                 </span>
 
                 <h1
-                  className="origin-story-headline-shimmer mt-3 font-serif text-[1.85rem] leading-tight font-bold tracking-tight sm:text-[2.2rem]"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                  className="origin-story-headline-shimmer font-display mt-3 text-[1.85rem] leading-tight font-bold tracking-tight sm:text-[2.2rem]"
+                  style={{ fontFamily: "'Fraunces', Georgia, serif" }}
                 >
                   {currentScene.title}
                 </h1>
@@ -1074,8 +1074,8 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
                     A Legend Arrives
                   </span>
                   <h2
-                    className="origin-story-headline-shimmer mt-1 font-serif text-xl font-bold tracking-[0.06em] sm:text-2xl"
-                    style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                    className="origin-story-headline-shimmer font-display mt-1 text-xl font-bold tracking-[0.06em] sm:text-2xl"
+                    style={{ fontFamily: "'Fraunces', Georgia, serif" }}
                   >
                     {currentScene.stampTitle}
                   </h2>
@@ -1343,8 +1343,8 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
                   </span>
                   <h2
                     data-testid="origin-finale-headline"
-                    className="origin-story-headline-shimmer mt-2 font-serif text-xl leading-snug font-bold sm:text-2xl"
-                    style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                    className="origin-story-headline-shimmer font-display mt-2 text-xl leading-snug font-bold sm:text-2xl"
+                    style={{ fontFamily: "'Fraunces', Georgia, serif" }}
                   >
                     {finaleCopy.headline}
                   </h2>
@@ -1363,11 +1363,11 @@ export default function OriginStoryPlay({ onComplete, onSkip }: OriginStoryPlayP
       </main>
 
       {/* Bottom Editorial Storybook Subtitle Card + Interactive Navigation Controls */}
-      <footer className="relative z-30 mx-auto w-full max-w-[480px] px-4 pt-1 pb-5 sm:pb-6">
+      <footer className="relative z-30 mx-auto w-full max-w-[480px] shrink-0 px-4 pt-1 pb-[max(14px,env(safe-area-inset-bottom))] sm:pb-6">
         <div
           key={`caption_${currentScene.id}_${isFinaleReveal ? 'finale' : scene9SecondaryActive ? 's2' : 's1'}`}
           data-testid="origin-caption-box"
-          className="origin-story-caption-in px-4 py-3.5 text-center"
+          className="origin-story-caption-in px-4 py-2.5 text-center sm:py-3.5"
           style={{
             background: 'rgba(255, 253, 250, 0.88)',
             backdropFilter: 'blur(12px)',

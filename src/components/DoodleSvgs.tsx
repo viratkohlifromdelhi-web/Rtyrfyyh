@@ -1,4 +1,4 @@
-import type { SVGProps } from 'react';
+import { useId, type SVGProps } from 'react';
 
 export function SparkleStarSvg({
   className = 'w-6 h-6',
@@ -66,22 +66,22 @@ export function PolaroidCameraDoodle({ className = 'w-24 h-24' }: { className?: 
       <path d="M22 24L24.5 31L31.5 33.5L24.5 36L22 43L19.5 36L12.5 33.5L19.5 31L22 24Z" fill="#E669A5" />
       <path d="M120 22L122 28L128 30L122 32L120 38L118 32L112 30L118 28L120 22Z" fill="#9A7CE8" />
       {/* Camera body */}
-      <rect x="24" y="42" width="92" height="66" rx="16" fill="#FFFDF8" stroke="#3B1535" strokeWidth="3" />
+      <rect x="24" y="42" width="92" height="66" rx="16" fill="#FFFDF8" stroke="#9B4A70" strokeWidth="1.9" />
       {/* Pastel pink top band */}
       <path d="M25.5 58C25.5 49.5 32.5 43.5 40 43.5H100C107.5 43.5 114.5 49.5 114.5 58V63H25.5V58Z" fill="#FFE4F0" />
       {/* Viewfinder & flash */}
-      <rect x="38" y="34" width="22" height="9" rx="4" fill="#FFE898" stroke="#3B1535" strokeWidth="2.6" />
-      <circle cx="98" cy="54" r="5" fill="#EBE3FF" stroke="#3B1535" strokeWidth="2.2" />
+      <rect x="38" y="34" width="22" height="9" rx="4" fill="#FFE898" stroke="#9B4A70" strokeWidth="1.8" />
+      <circle cx="98" cy="54" r="5" fill="#EBE3FF" stroke="#9B4A70" strokeWidth="1.7" />
       {/* Lens */}
-      <circle cx="70" cy="77" r="20" fill="#EBE3FF" stroke="#3B1535" strokeWidth="3" />
-      <circle cx="70" cy="77" r="11" fill="#FFE4F0" stroke="#3B1535" strokeWidth="2.4" />
+      <circle cx="70" cy="77" r="20" fill="#EBE3FF" stroke="#9B4A70" strokeWidth="2" />
+      <circle cx="70" cy="77" r="11" fill="#FFE4F0" stroke="#9B4A70" strokeWidth="1.7" />
       <circle cx="66" cy="73" r="3" fill="#FFFDF8" />
       {/* Little cute ribbon bow on top right */}
       <path
         d="M99 41C92 34 86 38 89 43C92 46 97 43 99 41ZM99 41C106 34 112 38 109 43C106 46 101 43 99 41Z"
         fill="#FF9FCA"
-        stroke="#3B1535"
-        strokeWidth="2"
+        stroke="#9B4A70"
+        strokeWidth="1.6"
         strokeLinejoin="round"
       />
     </svg>
@@ -97,24 +97,24 @@ export function RibbonCrownDoodle({ className = 'w-32 h-32' }: { className?: str
       <path
         d="M42 106L32 58L66 80L90 42L114 80L148 58L138 106H42Z"
         fill="#FFE898"
-        stroke="#3B1535"
-        strokeWidth="3"
+        stroke="#9B4A70"
+        strokeWidth="2"
         strokeLinejoin="round"
       />
-      <rect x="40" y="106" width="100" height="16" rx="6" fill="#FFB5D8" stroke="#3B1535" strokeWidth="2.8" />
-      <circle cx="32" cy="53" r="5.5" fill="#FFFDF8" stroke="#3B1535" strokeWidth="2.4" />
-      <circle cx="90" cy="36" r="6.5" fill="#FF8FC2" stroke="#3B1535" strokeWidth="2.4" />
-      <circle cx="148" cy="53" r="5.5" fill="#FFFDF8" stroke="#3B1535" strokeWidth="2.4" />
+      <rect x="40" y="106" width="100" height="16" rx="6" fill="#FFB5D8" stroke="#9B4A70" strokeWidth="1.9" />
+      <circle cx="32" cy="53" r="5.5" fill="#FFFDF8" stroke="#9B4A70" strokeWidth="1.7" />
+      <circle cx="90" cy="36" r="6.5" fill="#FF8FC2" stroke="#9B4A70" strokeWidth="1.7" />
+      <circle cx="148" cy="53" r="5.5" fill="#FFFDF8" stroke="#9B4A70" strokeWidth="1.7" />
       {/* Coquette Ribbon Bow below crown */}
       <path
         d="M90 124C74 114 60 122 65 133C70 142 84 134 90 124ZM90 124C106 114 120 122 115 133C110 142 96 134 90 124Z"
         fill="#D6C2FF"
-        stroke="#3B1535"
-        strokeWidth="2.6"
+        stroke="#9B4A70"
+        strokeWidth="1.8"
         strokeLinejoin="round"
       />
-      <path d="M84 129L74 148M96 129L106 148" stroke="#3B1535" strokeWidth="2.6" strokeLinecap="round" />
-      <circle cx="90" cy="126" r="5" fill="#FFE898" stroke="#3B1535" strokeWidth="2.4" />
+      <path d="M84 129L74 148M96 129L106 148" stroke="#9B4A70" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="90" cy="126" r="5" fill="#FFE898" stroke="#9B4A70" strokeWidth="1.7" />
       {/* Sparkle */}
       <path d="M144 26L146.5 33L153.5 35.5L146.5 38L144 45L141.5 38L134.5 35.5L141.5 33L144 26Z" fill="#E04D92" />
     </svg>
@@ -128,17 +128,17 @@ export function RulerSparkleDoodle({ className = 'w-32 h-32' }: { className?: st
       <circle cx="90" cy="84" r="56" fill="#FFFDF8" fillOpacity="0.72" />
       {/* Tilted cute pastel ruler */}
       <g transform="rotate(-14 90 84)">
-        <rect x="64" y="24" width="52" height="120" rx="12" fill="#FFE898" stroke="#3B1535" strokeWidth="3" />
+        <rect x="64" y="24" width="52" height="120" rx="12" fill="#FFE898" stroke="#9B4A70" strokeWidth="2" />
         {/* Tick marks */}
-        <line x1="65" y1="42" x2="86" y2="42" stroke="#3B1535" strokeWidth="2.6" strokeLinecap="round" />
-        <line x1="65" y1="56" x2="78" y2="56" stroke="#3B1535" strokeWidth="2.4" strokeLinecap="round" />
-        <line x1="65" y1="70" x2="86" y2="70" stroke="#3B1535" strokeWidth="2.6" strokeLinecap="round" />
-        <line x1="65" y1="84" x2="78" y2="84" stroke="#3B1535" strokeWidth="2.4" strokeLinecap="round" />
-        <line x1="65" y1="98" x2="86" y2="98" stroke="#3B1535" strokeWidth="2.6" strokeLinecap="round" />
-        <line x1="65" y1="112" x2="78" y2="112" stroke="#3B1535" strokeWidth="2.4" strokeLinecap="round" />
-        <line x1="65" y1="126" x2="86" y2="126" stroke="#3B1535" strokeWidth="2.6" strokeLinecap="round" />
+        <line x1="65" y1="42" x2="86" y2="42" stroke="#9B4A70" strokeWidth="1.9" strokeLinecap="round" />
+        <line x1="65" y1="56" x2="78" y2="56" stroke="#9B4A70" strokeWidth="1.7" strokeLinecap="round" />
+        <line x1="65" y1="70" x2="86" y2="70" stroke="#9B4A70" strokeWidth="1.9" strokeLinecap="round" />
+        <line x1="65" y1="84" x2="78" y2="84" stroke="#9B4A70" strokeWidth="1.7" strokeLinecap="round" />
+        <line x1="65" y1="98" x2="86" y2="98" stroke="#9B4A70" strokeWidth="1.9" strokeLinecap="round" />
+        <line x1="65" y1="112" x2="78" y2="112" stroke="#9B4A70" strokeWidth="1.7" strokeLinecap="round" />
+        <line x1="65" y1="126" x2="86" y2="126" stroke="#9B4A70" strokeWidth="1.9" strokeLinecap="round" />
         {/* Cute tiny star sticker on ruler */}
-        <circle cx="100" cy="118" r="8" fill="#FFE4F0" stroke="#3B1535" strokeWidth="2" />
+        <circle cx="100" cy="118" r="8" fill="#FFE4F0" stroke="#9B4A70" strokeWidth="1.6" />
       </g>
       {/* Sparkles popping around */}
       <path d="M36 48L39.5 58L49.5 61.5L39.5 65L36 75L32.5 65L22.5 61.5L32.5 58L36 48Z" fill="#E04D92" />
@@ -191,25 +191,25 @@ export function TrophyDoodle({ className = 'w-32 h-32' }: { className?: string }
     <svg viewBox="0 0 180 160" fill="none" aria-hidden="true" className={className}>
       <circle cx="90" cy="82" r="56" fill="#FFFDF8" fillOpacity="0.72" />
       {/* Handles */}
-      <path d="M56 54C36 54 34 86 58 90" stroke="#3B1535" strokeWidth="3.2" strokeLinecap="round" />
-      <path d="M124 54C144 54 146 86 122 90" stroke="#3B1535" strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M56 54C36 54 34 86 58 90" stroke="#9B4A70" strokeWidth="2.1" strokeLinecap="round" />
+      <path d="M124 54C144 54 146 86 122 90" stroke="#9B4A70" strokeWidth="2.1" strokeLinecap="round" />
       {/* Cup */}
       <path
         d="M54 42H126V74C126 95 110 110 90 110C70 110 54 95 54 74V42Z"
         fill="#FFE898"
-        stroke="#3B1535"
-        strokeWidth="3"
+        stroke="#9B4A70"
+        strokeWidth="2"
         strokeLinejoin="round"
       />
       {/* Stem & Pedestal */}
-      <rect x="82" y="110" width="16" height="18" fill="#F4C753" stroke="#3B1535" strokeWidth="2.8" />
-      <rect x="60" y="128" width="60" height="14" rx="5" fill="#FFB5D8" stroke="#3B1535" strokeWidth="2.8" />
+      <rect x="82" y="110" width="16" height="18" fill="#F4C753" stroke="#9B4A70" strokeWidth="1.9" />
+      <rect x="60" y="128" width="60" height="14" rx="5" fill="#FFB5D8" stroke="#9B4A70" strokeWidth="1.9" />
       {/* #1 Star inside cup */}
       <path
         d="M90 56L94.5 66.5L106 67.5L97 75L100 86.5L90 80.5L80 86.5L83 75L74 67.5L85.5 66.5L90 56Z"
         fill="#FFFDF8"
-        stroke="#3B1535"
-        strokeWidth="2.2"
+        stroke="#9B4A70"
+        strokeWidth="1.6"
         strokeLinejoin="round"
       />
       {/* Sparkles */}
@@ -221,18 +221,26 @@ export function TrophyDoodle({ className = 'w-32 h-32' }: { className?: string }
 
 /* Section 6: Soft Illustrated Pastel Gift Box SVG (Matches Bakery Cake — Zero Thick Black Strokes) */
 export function WrappedGiftBoxSvg({ className = 'w-44 h-44' }: { className?: string }) {
+  const uid = useId().replace(/:/g, '');
+  const shadowId = `giftGroundShadow-${uid}`;
+  const baseId = `giftBoxBase-${uid}`;
+  const lidId = `giftLidFill-${uid}`;
+  const ribbonGoldId = `giftRibbonGold-${uid}`;
+  const ribbonLilacId = `giftRibbonLilac-${uid}`;
+  const bowLoopId = `giftBowLoop-${uid}`;
+  const bowKnotId = `giftBowKnot-${uid}`;
   return (
     <svg viewBox="0 0 220 210" fill="none" aria-hidden="true" className={className}>
       <defs>
         {/* Warm grounded contact shadow */}
-        <radialGradient id="giftGroundShadow" cx="50%" cy="50%" r="50%">
+        <radialGradient id={shadowId} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#6B3258" stopOpacity="0.2" />
           <stop offset="65%" stopColor="#6B3258" stopOpacity="0.08" />
           <stop offset="100%" stopColor="#6B3258" stopOpacity="0" />
         </radialGradient>
 
         {/* Plush blush-pink box base shading */}
-        <linearGradient id="giftBoxBase" x1="0" y1="0" x2="1" y2="0.15">
+        <linearGradient id={baseId} x1="0" y1="0" x2="1" y2="0.15">
           <stop offset="0%" stopColor="#FAD0E2" />
           <stop offset="26%" stopColor="#FFEBF3" />
           <stop offset="68%" stopColor="#FFE1EE" />
@@ -240,7 +248,7 @@ export function WrappedGiftBoxSvg({ className = 'w-44 h-44' }: { className?: str
         </linearGradient>
 
         {/* Plush pastel lid shading */}
-        <linearGradient id="giftLidFill" x1="0" y1="0" x2="1" y2="0.2">
+        <linearGradient id={lidId} x1="0" y1="0" x2="1" y2="0.2">
           <stop offset="0%" stopColor="#F8C8DD" />
           <stop offset="28%" stopColor="#FFF2F7" />
           <stop offset="72%" stopColor="#FDE5F0" />
@@ -248,7 +256,7 @@ export function WrappedGiftBoxSvg({ className = 'w-44 h-44' }: { className?: str
         </linearGradient>
 
         {/* Satin cream-gold vertical ribbon */}
-        <linearGradient id="giftRibbonGold" x1="0" y1="0" x2="1" y2="0">
+        <linearGradient id={ribbonGoldId} x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor="#F0CE89" />
           <stop offset="32%" stopColor="#FFF6DC" />
           <stop offset="68%" stopColor="#FAE6B5" />
@@ -256,21 +264,21 @@ export function WrappedGiftBoxSvg({ className = 'w-44 h-44' }: { className?: str
         </linearGradient>
 
         {/* Soft lilac satin accent ribbon */}
-        <linearGradient id="giftRibbonLilac" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={ribbonLilacId} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#F2E7FF" />
           <stop offset="55%" stopColor="#DEC8FA" />
           <stop offset="100%" stopColor="#C9AEEB" />
         </linearGradient>
 
         {/* Soft layered pastel bow loop gradient */}
-        <linearGradient id="giftBowLoop" x1="0" y1="0" x2="0.8" y2="1">
+        <linearGradient id={bowLoopId} x1="0" y1="0" x2="0.8" y2="1">
           <stop offset="0%" stopColor="#FFF8E2" />
           <stop offset="52%" stopColor="#F9DF9F" />
           <stop offset="100%" stopColor="#E9C074" />
         </linearGradient>
 
         {/* Warm blush-rose center bow knot */}
-        <radialGradient id="giftBowKnot" cx="35%" cy="30%" r="70%">
+        <radialGradient id={bowKnotId} cx="35%" cy="30%" r="70%">
           <stop offset="0%" stopColor="#FFD9E8" />
           <stop offset="58%" stopColor="#F39CC0" />
           <stop offset="100%" stopColor="#DB729E" />
@@ -278,10 +286,10 @@ export function WrappedGiftBoxSvg({ className = 'w-44 h-44' }: { className?: str
       </defs>
 
       {/* Soft Grounded Shadow Ellipse */}
-      <ellipse cx="110" cy="190" rx="76" ry="11" fill="url(#giftGroundShadow)" />
+      <ellipse cx="110" cy="190" rx="76" ry="11" fill={`url(#${shadowId})`} />
 
       {/* Gift Box Base */}
-      <rect x="44" y="88" width="132" height="98" rx="16" fill="url(#giftBoxBase)" />
+      <rect x="44" y="88" width="132" height="98" rx="16" fill={`url(#${baseId})`} />
 
       {/* Soft underside shading along bottom curve */}
       <path
@@ -302,15 +310,15 @@ export function WrappedGiftBoxSvg({ className = 'w-44 h-44' }: { className?: str
       <circle cx="156" cy="142" r="2.6" fill="#DEC8FA" fillOpacity="0.75" />
 
       {/* Vertical Cream-Gold & Lilac Satin Ribbon on Box */}
-      <rect x="94" y="88" width="32" height="98" fill="url(#giftRibbonLilac)" fillOpacity="0.7" />
-      <rect x="97.5" y="88" width="25" height="98" fill="url(#giftRibbonGold)" />
+      <rect x="94" y="88" width="32" height="98" fill={`url(#${ribbonLilacId})`} fillOpacity="0.7" />
+      <rect x="97.5" y="88" width="25" height="98" fill={`url(#${ribbonGoldId})`} />
       <rect x="103" y="92" width="4.5" height="90" rx="2.2" fill="#FFFFFF" fillOpacity="0.45" />
 
       {/* Soft Cast Shadow of Lid Overhang onto Box Base */}
       <rect x="44" y="91" width="132" height="10" fill="#B55B86" fillOpacity="0.16" />
 
       {/* Plush Pastel Gift Lid */}
-      <rect x="34" y="60" width="152" height="34" rx="13" fill="url(#giftLidFill)" />
+      <rect x="34" y="60" width="152" height="34" rx="13" fill={`url(#${lidId})`} />
       {/* Lid top specular rim highlight */}
       <path
         d="M48 66H172"
@@ -327,8 +335,8 @@ export function WrappedGiftBoxSvg({ className = 'w-44 h-44' }: { className?: str
       />
 
       {/* Lid Satin Ribbon Center Band */}
-      <rect x="92.5" y="60" width="35" height="34" rx="3" fill="url(#giftRibbonLilac)" fillOpacity="0.72" />
-      <rect x="96.5" y="60" width="27" height="34" rx="2" fill="url(#giftRibbonGold)" />
+      <rect x="92.5" y="60" width="35" height="34" rx="3" fill={`url(#${ribbonLilacId})`} fillOpacity="0.72" />
+      <rect x="96.5" y="60" width="27" height="34" rx="2" fill={`url(#${ribbonGoldId})`} />
       <rect x="102.5" y="63" width="4.5" height="28" rx="2.2" fill="#FFFFFF" fillOpacity="0.5" />
 
       {/* Soft Cast Shadow Beneath Bow */}
@@ -337,17 +345,17 @@ export function WrappedGiftBoxSvg({ className = 'w-44 h-44' }: { className?: str
       {/* Soft Lilac Satin Bow Tails Tucked Behind Loops */}
       <path
         d="M104 59C90 67 78 74 71 81C77 83 84 81 91 77C98 72 103 66 108 61Z"
-        fill="url(#giftRibbonLilac)"
+        fill={`url(#${ribbonLilacId})`}
       />
       <path
         d="M116 59C130 67 142 74 149 81C143 83 136 81 129 77C122 72 117 66 112 61Z"
-        fill="url(#giftRibbonLilac)"
+        fill={`url(#${ribbonLilacId})`}
       />
 
       {/* Plush Layered Left & Right Satin Bow Loops */}
       <path
         d="M109 59C84 26 52 34 59 54C64 68 92 64 109 59Z"
-        fill="url(#giftBowLoop)"
+        fill={`url(#${bowLoopId})`}
       />
       <path
         d="M105 58C88 42 70 44 73 53C76 60 91 59 105 58Z"
@@ -364,7 +372,7 @@ export function WrappedGiftBoxSvg({ className = 'w-44 h-44' }: { className?: str
 
       <path
         d="M111 59C136 26 168 34 161 54C156 68 128 64 111 59Z"
-        fill="url(#giftBowLoop)"
+        fill={`url(#${bowLoopId})`}
       />
       <path
         d="M115 58C132 42 150 44 147 53C144 60 129 59 115 58Z"
@@ -380,7 +388,7 @@ export function WrappedGiftBoxSvg({ className = 'w-44 h-44' }: { className?: str
       />
 
       {/* Plump Rose-Blush Center Knot */}
-      <rect x="98.5" y="47.5" width="23" height="21" rx="9.5" fill="url(#giftBowKnot)" />
+      <rect x="98.5" y="47.5" width="23" height="21" rx="9.5" fill={`url(#${bowKnotId})`} />
       <ellipse cx="106.5" cy="53.5" rx="4.5" ry="2.2" fill="#FFFFFF" fillOpacity="0.52" />
     </svg>
   );
@@ -443,23 +451,23 @@ export function CertificateRibbonSvg({ className = 'w-32 h-20' }: { className?: 
       <path
         d="M74 52L46 86L66 80L78 90L88 54"
         fill="#FFB5D8"
-        stroke="#3B1535"
-        strokeWidth="2.8"
+        stroke="#9B4A70"
+        strokeWidth="1.9"
         strokeLinejoin="round"
       />
       <path
         d="M106 52L134 86L114 80L102 90L92 54"
         fill="#FFB5D8"
-        stroke="#3B1535"
-        strokeWidth="2.8"
+        stroke="#9B4A70"
+        strokeWidth="1.9"
         strokeLinejoin="round"
       />
       {/* Left bow loop */}
       <path
         d="M90 46C66 18 28 22 32 48C36 68 70 60 90 46Z"
         fill="#FFE4F0"
-        stroke="#3B1535"
-        strokeWidth="3"
+        stroke="#9B4A70"
+        strokeWidth="2"
         strokeLinejoin="round"
       />
       <path
@@ -470,8 +478,8 @@ export function CertificateRibbonSvg({ className = 'w-32 h-20' }: { className?: 
       <path
         d="M90 46C114 18 152 22 148 48C144 68 110 60 90 46Z"
         fill="#FFE4F0"
-        stroke="#3B1535"
-        strokeWidth="3"
+        stroke="#9B4A70"
+        strokeWidth="2"
         strokeLinejoin="round"
       />
       <path
@@ -486,8 +494,8 @@ export function CertificateRibbonSvg({ className = 'w-32 h-20' }: { className?: 
         height="22"
         rx="9"
         fill="#FFE898"
-        stroke="#3B1535"
-        strokeWidth="3"
+        stroke="#9B4A70"
+        strokeWidth="2"
       />
       {/* Flanking sparkles */}
       <path d="M18 22L20.5 29L27.5 31.5L20.5 34L18 41L15.5 34L8.5 31.5L15.5 29L18 22Z" fill="#E04D92" />
@@ -498,15 +506,18 @@ export function CertificateRibbonSvg({ className = 'w-32 h-20' }: { className?: 
 
 /* Official Adoption Certificate: Glossy Pink Wax Seal Stamp SVG */
 export function WaxSealStampSvg({ className = 'w-32 h-32' }: { className?: string }) {
+  const uid = useId().replace(/:/g, '');
+  const waxGlowId = `waxGlow-${uid}`;
+  const waxInnerId = `waxInner-${uid}`;
   return (
     <svg viewBox="0 0 160 160" fill="none" aria-hidden="true" className={className}>
       <defs>
-        <radialGradient id="waxGlow" cx="35%" cy="30%" r="70%">
+        <radialGradient id={waxGlowId} cx="35%" cy="30%" r="70%">
           <stop offset="0%" stopColor="#FF9AD0" />
           <stop offset="52%" stopColor="#E04390" />
           <stop offset="100%" stopColor="#A81F66" />
         </radialGradient>
-        <radialGradient id="waxInner" cx="38%" cy="32%" r="68%">
+        <radialGradient id={waxInnerId} cx="38%" cy="32%" r="68%">
           <stop offset="0%" stopColor="#F56AB1" />
           <stop offset="100%" stopColor="#B82470" />
         </radialGradient>
@@ -515,7 +526,7 @@ export function WaxSealStampSvg({ className = 'w-32 h-32' }: { className?: strin
       {/* Organic melted wax outer silhouette */}
       <path
         d="M80 10C93 9 102 17 114 21C126 25 138 33 142 46C146 58 152 68 150 82C148 95 144 108 136 119C127 130 116 141 102 145C88 149 74 152 60 147C46 142 32 135 23 122C14 109 10 95 11 80C12 65 15 51 24 39C33 27 45 18 59 14C67 11 73 10 80 10Z"
-        fill="url(#waxGlow)"
+        fill={`url(#${waxGlowId})`}
         stroke="#7C144A"
         strokeWidth="2.5"
       />
@@ -524,7 +535,7 @@ export function WaxSealStampSvg({ className = 'w-32 h-32' }: { className?: strin
         cx="80"
         cy="80"
         r="53"
-        fill="url(#waxInner)"
+        fill={`url(#${waxInnerId})`}
         stroke="#FFC5E3"
         strokeWidth="2.5"
         strokeOpacity="0.7"
@@ -594,8 +605,8 @@ export function CoffeeChatDoodleSvg({ className = 'w-16 h-16' }: { className?: s
       <path
         d="M58 14H94C99 14 103 18 103 23V41C103 46 99 50 94 50H74L64 58V50H58C53 50 49 46 49 41V23C49 18 53 14 58 14Z"
         fill="#EBE3FF"
-        stroke="#3B1535"
-        strokeWidth="2.8"
+        stroke="#9B4A70"
+        strokeWidth="1.9"
         strokeLinejoin="round"
       />
       <circle cx="67" cy="32" r="3" fill="#C2377E" />
@@ -605,20 +616,20 @@ export function CoffeeChatDoodleSvg({ className = 'w-16 h-16' }: { className?: s
       <path
         d="M16 42H54V68C54 78 46 86 35 86C24 86 16 78 16 68V42Z"
         fill="#FFE4F0"
-        stroke="#3B1535"
-        strokeWidth="2.8"
+        stroke="#9B4A70"
+        strokeWidth="1.9"
         strokeLinejoin="round"
       />
       <path
         d="M54 48H60C65 48 68 52 68 57C68 62 65 66 60 66H54"
-        stroke="#3B1535"
-        strokeWidth="2.8"
+        stroke="#9B4A70"
+        strokeWidth="1.9"
         strokeLinecap="round"
       />
       {/* Coffee sleeve heart & steam */}
-      <rect x="20" y="54" width="30" height="16" rx="6" fill="#FFE898" stroke="#3B1535" strokeWidth="2.2" />
-      <path d="M27 34C27 29 31 28 31 23" stroke="#C2377E" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M38 34C38 29 42 28 42 23" stroke="#9A7CE8" strokeWidth="2.4" strokeLinecap="round" />
+      <rect x="20" y="54" width="30" height="16" rx="6" fill="#FFE898" stroke="#9B4A70" strokeWidth="1.6" />
+      <path d="M27 34C27 29 31 28 31 23" stroke="#C2377E" strokeWidth="2.1" strokeLinecap="round" />
+      <path d="M38 34C38 29 42 28 42 23" stroke="#9A7CE8" strokeWidth="2.1" strokeLinecap="round" />
     </svg>
   );
 }
@@ -631,26 +642,26 @@ export function CupcakeTreatDoodleSvg({ className = 'w-16 h-16' }: { className?:
       <path
         d="M28 54H84L76 84C75 87 72 88 69 88H43C40 88 37 87 36 84L28 54Z"
         fill="#FFE898"
-        stroke="#3B1535"
-        strokeWidth="2.8"
+        stroke="#9B4A70"
+        strokeWidth="1.9"
         strokeLinejoin="round"
       />
-      <path d="M43 55L46 87M56 55V87M69 55L66 87" stroke="#3B1535" strokeWidth="2" strokeOpacity="0.45" />
+      <path d="M43 55L46 87M56 55V87M69 55L66 87" stroke="#9B4A70" strokeWidth="1.6" strokeOpacity="0.45" />
       {/* Swirly pastel pink frosting */}
       <path
         d="M24 54C22 44 30 37 38 37C41 26 51 20 56 20C61 20 71 26 74 37C82 37 90 44 88 54H24Z"
         fill="#FFB5D8"
-        stroke="#3B1535"
-        strokeWidth="2.8"
+        stroke="#9B4A70"
+        strokeWidth="1.9"
         strokeLinejoin="round"
       />
       {/* Sprinkles */}
-      <line x1="42" y1="42" x2="48" y2="46" stroke="#3B1535" strokeWidth="2.4" strokeLinecap="round" />
-      <line x1="65" y1="40" x2="71" y2="44" stroke="#9A7CE8" strokeWidth="2.6" strokeLinecap="round" />
-      <line x1="53" y1="35" x2="58" y2="39" stroke="#FFFDF8" strokeWidth="2.6" strokeLinecap="round" />
+      <line x1="42" y1="42" x2="48" y2="46" stroke="#9B4A70" strokeWidth="2" strokeLinecap="round" />
+      <line x1="65" y1="40" x2="71" y2="44" stroke="#9A7CE8" strokeWidth="2.2" strokeLinecap="round" />
+      <line x1="53" y1="35" x2="58" y2="39" stroke="#FFFDF8" strokeWidth="2.2" strokeLinecap="round" />
       {/* Cherry on top */}
-      <circle cx="56" cy="18" r="7.5" fill="#E04D92" stroke="#3B1535" strokeWidth="2.5" />
-      <path d="M59 12C63 7 69 7 72 10" stroke="#3B1535" strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx="56" cy="18" r="7.5" fill="#E04D92" stroke="#9B4A70" strokeWidth="1.8" />
+      <path d="M59 12C63 7 69 7 72 10" stroke="#9B4A70" strokeWidth="1.8" strokeLinecap="round" />
       {/* Sparkles */}
       <path d="M94 22L96 28L102 30L96 32L94 38L92 32L86 30L92 28L94 22Z" fill="#E04D92" />
       <path d="M18 26L19.5 31L24.5 32.5L19.5 34L18 39L16.5 34L11.5 32.5L16.5 31L18 26Z" fill="#9A7CE8" />
@@ -666,14 +677,14 @@ export function CrownSparkleDoodleSvg({ className = 'w-16 h-16' }: { className?:
         <path
           d="M22 68L16 32L40 48L56 22L72 48L96 32L90 68H22Z"
           fill="#FFE898"
-          stroke="#3B1535"
-          strokeWidth="3"
+          stroke="#9B4A70"
+          strokeWidth="2"
           strokeLinejoin="round"
         />
-        <rect x="20" y="68" width="72" height="12" rx="5" fill="#FFB5D8" stroke="#3B1535" strokeWidth="2.8" />
-        <circle cx="16" cy="27" r="4.5" fill="#EBE3FF" stroke="#3B1535" strokeWidth="2.2" />
-        <circle cx="56" cy="16" r="5.5" fill="#FF8FC2" stroke="#3B1535" strokeWidth="2.2" />
-        <circle cx="96" cy="27" r="4.5" fill="#EBE3FF" stroke="#3B1535" strokeWidth="2.2" />
+        <rect x="20" y="68" width="72" height="12" rx="5" fill="#FFB5D8" stroke="#9B4A70" strokeWidth="1.9" />
+        <circle cx="16" cy="27" r="4.5" fill="#EBE3FF" stroke="#9B4A70" strokeWidth="1.6" />
+        <circle cx="56" cy="16" r="5.5" fill="#FF8FC2" stroke="#9B4A70" strokeWidth="1.6" />
+        <circle cx="96" cy="27" r="4.5" fill="#EBE3FF" stroke="#9B4A70" strokeWidth="1.6" />
       </g>
       <path d="M98 54L100 60L106 62L100 64L98 70L96 64L90 62L96 60L98 54Z" fill="#E04D92" />
       <path d="M14 58L15.5 63L20.5 64.5L15.5 66L14 71L12.5 66L7.5 64.5L12.5 63L14 58Z" fill="#9A7CE8" />
@@ -685,26 +696,26 @@ export function CrownSparkleDoodleSvg({ className = 'w-16 h-16' }: { className?:
 export function HourglassDoodleSvg({ className = 'w-14 h-14' }: { className?: string }) {
   return (
     <svg viewBox="0 0 88 88" fill="none" aria-hidden="true" className={className}>
-      <rect x="20" y="10" width="48" height="8" rx="4" fill="#FFB5D8" stroke="#3B1535" strokeWidth="2.6" />
-      <rect x="20" y="70" width="48" height="8" rx="4" fill="#FFB5D8" stroke="#3B1535" strokeWidth="2.6" />
+      <rect x="20" y="10" width="48" height="8" rx="4" fill="#FFB5D8" stroke="#9B4A70" strokeWidth="1.9" />
+      <rect x="20" y="70" width="48" height="8" rx="4" fill="#FFB5D8" stroke="#9B4A70" strokeWidth="1.9" />
       <path
         d="M26 18C26 32 39 38 44 44C49 38 62 32 62 18H26Z"
         fill="#FFFDF8"
-        stroke="#3B1535"
-        strokeWidth="2.6"
+        stroke="#9B4A70"
+        strokeWidth="1.9"
         strokeLinejoin="round"
       />
       <path
         d="M26 70C26 56 39 50 44 44C49 50 62 56 62 70H26Z"
         fill="#FFFDF8"
-        stroke="#3B1535"
-        strokeWidth="2.6"
+        stroke="#9B4A70"
+        strokeWidth="1.9"
         strokeLinejoin="round"
       />
       {/* Golden butter sand */}
       <path d="M33 26H55C53 33 47 38 44 41C41 38 35 33 33 26Z" fill="#FFE898" />
       <path d="M31 68C34 59 40 55 44 53C48 55 54 59 57 68H31Z" fill="#FFE898" />
-      <line x1="44" y1="44" x2="44" y2="54" stroke="#F4B936" strokeWidth="2.4" strokeLinecap="round" strokeDasharray="2 3" />
+      <line x1="44" y1="44" x2="44" y2="54" stroke="#F4B936" strokeWidth="2.2" strokeLinecap="round" strokeDasharray="2 3" />
       <path d="M74 26L76 31L81 33L76 35L74 40L72 35L67 33L72 31L74 26Z" fill="#E04D92" />
     </svg>
   );
@@ -714,7 +725,7 @@ export function HourglassDoodleSvg({ className = 'w-14 h-14' }: { className?: st
 export function MoonPhaseDoodleSvg({ className = 'w-10 h-10' }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" fill="none" aria-hidden="true" className={className}>
-      <circle cx="32" cy="32" r="20" fill="#FFE898" stroke="#3B1535" strokeWidth="2.6" />
+      <circle cx="32" cy="32" r="20" fill="#FFE898" stroke="#B67C32" strokeWidth="1.8" />
       <circle cx="25" cy="26" r="4" fill="#F4C753" fillOpacity="0.65" />
       <circle cx="39" cy="37" r="5" fill="#F4C753" fillOpacity="0.55" />
       <circle cx="37" cy="23" r="2.5" fill="#F4C753" fillOpacity="0.65" />
@@ -839,8 +850,8 @@ export function PartyTreatDoodleSvg({ className = 'w-16 h-16' }: { className?: s
       <path
         d="M66 36H94L90 80C89.6 83.4 86.8 86 83.4 86H76.6C73.2 86 70.4 83.4 70 80L66 36Z"
         fill="#FFE4F0"
-        stroke="#3B1535"
-        strokeWidth="2.8"
+        stroke="#9B4A70"
+        strokeWidth="1.9"
         strokeLinejoin="round"
       />
       <path d="M68 50H92" stroke="#FF8FC2" strokeWidth="5" />
@@ -848,11 +859,11 @@ export function PartyTreatDoodleSvg({ className = 'w-16 h-16' }: { className?: s
       <path
         d="M80 36L84 18L94 14"
         stroke="#9A7CE8"
-        strokeWidth="3.2"
+        strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <rect x="63" y="31" width="34" height="7" rx="3.5" fill="#EBE3FF" stroke="#3B1535" strokeWidth="2.6" />
+      <rect x="63" y="31" width="34" height="7" rx="3.5" fill="#EBE3FF" stroke="#9B4A70" strokeWidth="1.8" />
 
       {/* Big cheesy pizza slice (front left) */}
       <g transform="rotate(-10 46 58)">
@@ -860,22 +871,22 @@ export function PartyTreatDoodleSvg({ className = 'w-16 h-16' }: { className?: s
         <path
           d="M18 38C30 28 54 28 68 38L64 46C52 38 32 38 22 46L18 38Z"
           fill="#F4B956"
-          stroke="#3B1535"
-          strokeWidth="2.8"
+          stroke="#9B4A70"
+          strokeWidth="1.9"
           strokeLinejoin="round"
         />
         {/* Cheesy triangle */}
         <path
           d="M22 45C32 38 52 38 64 45L43 88L22 45Z"
           fill="#FFE898"
-          stroke="#3B1535"
-          strokeWidth="2.8"
+          stroke="#9B4A70"
+          strokeWidth="1.9"
           strokeLinejoin="round"
         />
         {/* Toppings */}
-        <circle cx="38" cy="52" r="4.5" fill="#E04D92" stroke="#3B1535" strokeWidth="1.8" />
-        <circle cx="51" cy="57" r="4.2" fill="#E04D92" stroke="#3B1535" strokeWidth="1.8" />
-        <circle cx="43" cy="70" r="4" fill="#E04D92" stroke="#3B1535" strokeWidth="1.8" />
+        <circle cx="38" cy="52" r="4.5" fill="#E04D92" stroke="#9B4A70" strokeWidth="1.4" />
+        <circle cx="51" cy="57" r="4.2" fill="#E04D92" stroke="#9B4A70" strokeWidth="1.4" />
+        <circle cx="43" cy="70" r="4" fill="#E04D92" stroke="#9B4A70" strokeWidth="1.4" />
         <circle cx="34" cy="61" r="2.2" fill="#4CAF7D" />
         <circle cx="49" cy="48" r="2.2" fill="#4CAF7D" />
       </g>

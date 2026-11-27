@@ -105,6 +105,7 @@ interface BackstorySectionProps {
 }
 
 export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProps = {}) {
+  const sectionRef = useRef<HTMLElement | null>(null);
   const anchorRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const stickyRefs = useRef<(HTMLDivElement | null)[]>([]);
   const sheetScaleRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -155,17 +156,49 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
       rafId = window.requestAnimationFrame(updateStackDepth);
     };
 
-    updateStackDepth();
-    window.addEventListener('scroll', scheduleUpdate, { passive: true });
-    window.addEventListener('resize', scheduleUpdate, { passive: true });
-
-    return () => {
+    let listenersAttached = false;
+    const attachListeners = () => {
+      if (listenersAttached) return;
+      listenersAttached = true;
+      updateStackDepth();
+      window.addEventListener('scroll', scheduleUpdate, { passive: true });
+      window.addEventListener('resize', scheduleUpdate, { passive: true });
+    };
+    const detachListeners = () => {
+      if (!listenersAttached) return;
+      listenersAttached = false;
       window.removeEventListener('scroll', scheduleUpdate);
       window.removeEventListener('resize', scheduleUpdate);
       if (rafId !== null) {
         window.cancelAnimationFrame(rafId);
         rafId = null;
       }
+    };
+
+    updateStackDepth();
+
+    let visibilityObserver: IntersectionObserver | null = null;
+    const sectionEl = sectionRef.current;
+    if (sectionEl && typeof IntersectionObserver !== 'undefined') {
+      visibilityObserver = new IntersectionObserver(
+        (entries) => {
+          const isNearViewport = entries.some((entry) => entry.isIntersecting);
+          if (isNearViewport) {
+            attachListeners();
+          } else {
+            detachListeners();
+          }
+        },
+        { rootMargin: '250px 0px' },
+      );
+      visibilityObserver.observe(sectionEl);
+    } else {
+      attachListeners();
+    }
+
+    return () => {
+      visibilityObserver?.disconnect();
+      detachListeners();
       if (cancelScrollRef.current) {
         cancelScrollRef.current();
         cancelScrollRef.current = null;
@@ -254,6 +287,7 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
 
   return (
     <section
+      ref={sectionRef}
       id="backstory"
       data-testid="backstory-section"
       className="relative z-[2] scroll-mt-16 overflow-x-clip bg-transparent px-4 py-14 sm:px-6 sm:py-18 lg:px-8"

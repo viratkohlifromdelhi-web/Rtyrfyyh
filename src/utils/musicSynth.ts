@@ -111,6 +111,7 @@ export class BirthdayMusicPlayer {
   private unlockListenerAttached = false;
   private visibilityListenerAttached = false;
   private audioPreloadUpgraded = false;
+  private playSessionToken = 0;
   private listeners = new Set<MusicListener>();
 
   public subscribe(listener: MusicListener): () => void {
@@ -501,6 +502,7 @@ export class BirthdayMusicPlayer {
   private async playInternal(fadeMs: number, isAutoplayAttempt: boolean): Promise<boolean> {
     const el = this.ensureAudioEl();
     if (!el) return false;
+    const sessionToken = ++this.playSessionToken;
     if (el.preload !== 'auto') {
       el.preload = 'auto';
       this.audioPreloadUpgraded = true;
@@ -560,7 +562,7 @@ export class BirthdayMusicPlayer {
     try {
       await playPromise;
       // Guard against a manual pause or Replay Intro arriving while play() was resolving
-      if (this.userPaused) {
+      if (this.userPaused || sessionToken !== this.playSessionToken) {
         el.pause();
         this.isPlaying = false;
         this.emit();
@@ -570,6 +572,13 @@ export class BirthdayMusicPlayer {
       // Now that playback is unlocked, attach WeakMap-guarded Web Audio routing ONLY if ctx is running
       await ctxResumePromise;
       await this.tryEnsureWebAudioRouting(el);
+
+      if (this.userPaused || sessionToken !== this.playSessionToken) {
+        el.pause();
+        this.isPlaying = false;
+        this.emit();
+        return false;
+      }
 
       this.isPlaying = true;
       this.showMusicHint = false;
@@ -612,6 +621,7 @@ export class BirthdayMusicPlayer {
    * pauses the <audio>, and sets userPaused = true so autoplay listeners never override it.
    */
   public pauseManual(fadeMs = MANUAL_PAUSE_FADE_MS): void {
+    this.playSessionToken += 1;
     this.userPaused = true;
     this.awaitingUnlock = false;
     this.showMusicHint = false;
@@ -637,6 +647,7 @@ export class BirthdayMusicPlayer {
    * pauses it, resets currentTime = 0, and resets button/manual-pause state cleanly.
    */
   public resetForReplayIntro(fadeMs = REPLAY_FADE_OUT_MS): void {
+    this.playSessionToken += 1;
     this.userPaused = false;
     this.awaitingUnlock = false;
     this.showMusicHint = false;

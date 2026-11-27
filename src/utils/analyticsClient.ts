@@ -75,10 +75,12 @@ let sessionStartMs = 0;
 let sessionDocCreated = false;
 let maxScrollPct = 0;
 let localInteractionCount = 0;
+let pendingInteractionDelta = 0;
 const firedScrollMilestones = new Set<number>();
 const pendingEvents: QueuedEvent[] = [];
 let heartbeatIntervalId: number | null = null;
 let scrollThrottleTimerId: number | null = null;
+let interactionFlushTimerId: number | null = null;
 
 function generateSafeId(prefix: string): string {
   try {
@@ -366,8 +368,14 @@ async function fetchSilentGeoLookup(): Promise<{
   return null;
 }
 
-async function flushHeartbeat(includeInteractionIncrement = false): Promise<void> {
+async function flushHeartbeat(): Promise<void> {
   if (!db || !sessionId || !sessionDocCreated || isOwnerAnalyticsIgnored()) return;
+  const deltaToFlush = pendingInteractionDelta;
+  pendingInteractionDelta = 0;
+  if (interactionFlushTimerId !== null) {
+    window.clearTimeout(interactionFlushTimerId);
+    interactionFlushTimerId = null;
+  }
   try {
     const nowMs = Math.max(Date.now(), sessionStartMs);
     const durationSeconds = sanitizeInt((nowMs - sessionStartMs) / 1000, 0, 604800, 0);
@@ -376,16 +384,27 @@ async function flushHeartbeat(includeInteractionIncrement = false): Promise<void
       durationSeconds,
       maxScrollPct: sanitizeInt(maxScrollPct, 0, 100, 0),
     };
-    if (includeInteractionIncrement) {
-      payload.totalInteractions = increment(1);
+    if (deltaToFlush > 0) {
+      payload.totalInteractions = increment(deltaToFlush);
     }
     const visitRef = doc(db, 'site_visits', sessionId);
     await updateDoc(visitRef, payload);
   } catch (error) {
+    pendingInteractionDelta += deltaToFlush;
     handleFirestoreError(error, OperationType.UPDATE, `site_visits/${sessionId}`, {
       silent: true,
     });
   }
+}
+
+function scheduleBatchedInteractionFlush(): void {
+  if (interactionFlushTimerId !== null) return;
+  interactionFlushTimerId = window.setTimeout(() => {
+    interactionFlushTimerId = null;
+    if (pendingInteractionDelta > 0) {
+      void flushHeartbeat();
+    }
+  }, 4000);
 }
 
 async function writeSingleEvent(ev: QueuedEvent): Promise<void> {
@@ -402,7 +421,8 @@ async function writeSingleEvent(ev: QueuedEvent): Promise<void> {
       details: ev.details,
     });
     localInteractionCount += 1;
-    await flushHeartbeat(true);
+    pendingInteractionDelta += 1;
+    scheduleBatchedInteractionFlush();
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, eventsPath, { silent: true });
   }
@@ -413,6 +433,9 @@ async function flushPendingEvents(): Promise<void> {
   const batch = pendingEvents.splice(0, pendingEvents.length);
   for (const ev of batch) {
     await writeSingleEvent(ev);
+  }
+  if (pendingInteractionDelta > 0) {
+    await flushHeartbeat();
   }
 }
 
@@ -452,7 +475,7 @@ function attachSessionListeners(): void {
             maxScrollPct,
             totalInteractions: localInteractionCount,
           });
-          void flushHeartbeat(false);
+          void flushHeartbeat();
         } else if (document.visibilityState === 'visible') {
           trackAnalyticsEvent('tab_returned', 'Returned to Tab', {
             maxScrollPct,
@@ -464,7 +487,7 @@ function attachSessionListeners(): void {
     });
 
     window.addEventListener('pagehide', () => {
-      void flushHeartbeat(false);
+      void flushHeartbeat();
     });
 
     let lastOrientation: OrientationKind = getCurrentOrientation();
@@ -491,7 +514,7 @@ function attachSessionListeners(): void {
     heartbeatIntervalId = window.setInterval(() => {
       try {
         if (document.visibilityState === 'visible') {
-          void flushHeartbeat(false);
+          void flushHeartbeat();
         }
       } catch {
         // silent
@@ -716,5 +739,9 @@ export function stopAnalyticsClientHeartbeatForTesting(): void {
   if (heartbeatIntervalId !== null) {
     window.clearInterval(heartbeatIntervalId);
     heartbeatIntervalId = null;
+  }
+  if (interactionFlushTimerId !== null) {
+    window.clearTimeout(interactionFlushTimerId);
+    interactionFlushTimerId = null;
   }
 }

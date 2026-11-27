@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { SparkleStarSvg } from './DoodleSvgs';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
@@ -82,11 +82,21 @@ function buildOutcomeParticles(slice: WheelSlice, spinId: number): EmojiBurstPar
 }
 
 export function SpinWheelSection() {
+  const uid = useId().replace(/:/g, '');
+  const flapperBerryId = `flapperBerry-${uid}`;
+  const goldPinId = `goldPin-${uid}`;
+  const roseGoldRimId = `roseGoldRim-${uid}`;
+  const metallicPegId = `metallicPeg-${uid}`;
+
   const sectionRef = useRef<HTMLElement | null>(null);
   const animationsActive = useInViewAnimation(sectionRef);
   const wheelDiscRef = useRef<SVGGElement | null>(null);
   const wheelGlowRef = useRef<HTMLDivElement | null>(null);
   const flapperRef = useRef<HTMLDivElement | null>(null);
+  const bulbShadowRefs = useRef<(SVGCircleElement | null)[]>([]);
+  const bulbHaloRefs = useRef<(SVGCircleElement | null)[]>([]);
+  const bulbCircleRefs = useRef<(SVGCircleElement | null)[]>([]);
+  const bulbPhaseRef = useRef<number>(0);
   const audioRef = useRef<WheelAudioEngine | null>(null);
 
   const rafIdRef = useRef<number | null>(null);
@@ -97,7 +107,6 @@ export function SpinWheelSection() {
 
   const [isSpinning, setIsSpinning] = useState(false);
   const [bulbMode, setBulbMode] = useState<'idle' | 'spinning' | 'landed'>('idle');
-  const [bulbPhase, setBulbPhase] = useState(0);
   const [hubPressed, setHubPressed] = useState(false);
   const [spinsTried, setSpinsTried] = useState(0);
   const [landedResult, setLandedResult] = useState<{
@@ -152,13 +161,58 @@ export function SpinWheelSection() {
     };
   }, []);
 
-  // Animate the 20 chasing fairy/carnival bulbs across idle, spinning, and landed states (paused offscreen)
+  // Animate the 20 chasing fairy/carnival bulbs via direct DOM refs (0 React re-renders, paused offscreen)
   useEffect(() => {
+    const applyBulbPhaseToDom = (mode: 'idle' | 'spinning' | 'landed', phase: number) => {
+      for (let idx = 0; idx < BULB_COUNT; idx++) {
+        let fill = '#FFF4F9';
+        let glow = false;
+        let r = 3.1;
+
+        if (mode === 'spinning') {
+          const dist = (idx - phase + BULB_COUNT) % BULB_COUNT;
+          const isBright = dist % 4 === 0 || dist % 4 === 1;
+          fill = isBright ? '#FFFDF8' : '#F3A8C8';
+          glow = isBright;
+          r = isBright ? 4.3 : 3.2;
+        } else if (mode === 'landed') {
+          const isEven = (idx + phase) % 2 === 0;
+          fill = isEven ? '#FFE898' : '#FFFDF8';
+          glow = isEven;
+          r = isEven ? 4.4 : 3.4;
+        } else {
+          const isLit = (idx + phase) % 3 === 0;
+          fill = isLit ? '#FFE898' : '#FFF4F9';
+          glow = isLit;
+          r = isLit ? 3.9 : 3.1;
+        }
+
+        const shadowEl = bulbShadowRefs.current[idx];
+        if (shadowEl) {
+          shadowEl.setAttribute('r', (r + 1.1).toFixed(1));
+        }
+        const haloEl = bulbHaloRefs.current[idx];
+        if (haloEl) {
+          haloEl.setAttribute('r', (r + 3.2).toFixed(1));
+          haloEl.setAttribute('fill', fill);
+          haloEl.setAttribute('fill-opacity', glow ? '0.45' : '0');
+        }
+        const circleEl = bulbCircleRefs.current[idx];
+        if (circleEl) {
+          circleEl.setAttribute('r', r.toFixed(1));
+          circleEl.setAttribute('fill', fill);
+        }
+      }
+    };
+
+    applyBulbPhaseToDom(bulbMode, bulbPhaseRef.current);
     if (!animationsActive && !isSpinning) return;
+
     const intervalMs =
       bulbMode === 'spinning' ? 75 : bulbMode === 'landed' ? 165 : 480;
     const id = window.setInterval(() => {
-      setBulbPhase((prev) => (prev + 1) % BULB_COUNT);
+      bulbPhaseRef.current = (bulbPhaseRef.current + 1) % BULB_COUNT;
+      applyBulbPhaseToDom(bulbMode, bulbPhaseRef.current);
     }, intervalMs);
     return () => window.clearInterval(id);
   }, [animationsActive, bulbMode, isSpinning]);
@@ -303,33 +357,6 @@ export function SpinWheelSection() {
     rafIdRef.current = window.requestAnimationFrame(tick);
   }, [isSpinning]);
 
-  const getBulbStyle = (idx: number) => {
-    if (bulbMode === 'spinning') {
-      const dist = (idx - bulbPhase + BULB_COUNT) % BULB_COUNT;
-      const isBright = dist % 4 === 0 || dist % 4 === 1;
-      return {
-        fill: isBright ? '#FFFDF8' : '#F3A8C8',
-        glow: isBright,
-        r: isBright ? 4.3 : 3.2,
-      };
-    }
-    if (bulbMode === 'landed') {
-      const isEven = (idx + bulbPhase) % 2 === 0;
-      return {
-        fill: isEven ? '#FFE898' : '#FFFDF8',
-        glow: isEven,
-        r: isEven ? 4.4 : 3.4,
-      };
-    }
-    // Idle slow sparkle chase
-    const isLit = (idx + bulbPhase) % 3 === 0;
-    return {
-      fill: isLit ? '#FFE898' : '#FFF4F9',
-      glow: isLit,
-      r: isLit ? 3.9 : 3.1,
-    };
-  };
-
   return (
     <section
       ref={sectionRef}
@@ -390,12 +417,12 @@ export function SpinWheelSection() {
                 className="h-full w-full drop-shadow-[0_6px_10px_rgba(59,21,53,0.38)]"
               >
                 <defs>
-                  <linearGradient id="flapperBerry" x1="10" y1="6" x2="34" y2="52" gradientUnits="userSpaceOnUse">
+                  <linearGradient id={flapperBerryId} x1="10" y1="6" x2="34" y2="52" gradientUnits="userSpaceOnUse">
                     <stop offset="0%" stopColor="#7C276B" />
                     <stop offset="48%" stopColor="#4A1742" />
                     <stop offset="100%" stopColor="#2C0D28" />
                   </linearGradient>
-                  <radialGradient id="goldPin" cx="35%" cy="32%" r="68%">
+                  <radialGradient id={goldPinId} cx="35%" cy="32%" r="68%">
                     <stop offset="0%" stopColor="#FFFDF4" />
                     <stop offset="45%" stopColor="#FFE082" />
                     <stop offset="100%" stopColor="#B87A2B" />
@@ -404,7 +431,7 @@ export function SpinWheelSection() {
                 {/* Teardrop / carnival flapper body */}
                 <path
                   d="M22 4C14.8 4 9.5 9.6 10.2 16.7C11 24.8 18.8 44.2 21.1 50.6C21.4 51.5 22.6 51.5 22.9 50.6C25.2 44.2 33 24.8 33.8 16.7C34.5 9.6 29.2 4 22 4Z"
-                  fill="url(#flapperBerry)"
+                  fill={`url(#${flapperBerryId})`}
                   stroke="#FFE898"
                   strokeWidth="2.2"
                 />
@@ -417,7 +444,7 @@ export function SpinWheelSection() {
                   strokeLinecap="round"
                 />
                 {/* Gold pivot pin */}
-                <circle cx="22" cy="14" r="5.5" fill="url(#goldPin)" stroke="#3B1535" strokeWidth="1.2" />
+                <circle cx="22" cy="14" r="5.5" fill={`url(#${goldPinId})`} stroke="#3B1535" strokeWidth="1.2" />
                 <circle cx="20.4" cy="12.4" r="1.4" fill="#FFFFFF" fillOpacity="0.85" />
               </svg>
             </div>
@@ -432,7 +459,7 @@ export function SpinWheelSection() {
               >
                 <defs>
                   {/* Glossy pastel rose-gold outer rim gradient */}
-                  <linearGradient id="roseGoldRim" x1="20" y1="20" x2="340" y2="340" gradientUnits="userSpaceOnUse">
+                  <linearGradient id={roseGoldRimId} x1="20" y1="20" x2="340" y2="340" gradientUnits="userSpaceOnUse">
                     <stop offset="0%" stopColor="#FAD2E2" />
                     <stop offset="28%" stopColor="#E598B9" />
                     <stop offset="52%" stopColor="#FFEBF3" />
@@ -441,20 +468,11 @@ export function SpinWheelSection() {
                   </linearGradient>
 
                   {/* Shiny metallic peg gradient */}
-                  <radialGradient id="metallicPeg" cx="35%" cy="30%" r="70%">
+                  <radialGradient id={metallicPegId} cx="35%" cy="30%" r="70%">
                     <stop offset="0%" stopColor="#FFFFFF" />
                     <stop offset="45%" stopColor="#FFE8A8" />
                     <stop offset="100%" stopColor="#B47244" />
                   </radialGradient>
-
-                  {/* Bulb soft halo */}
-                  <filter id="bulbGlow" x="-80%" y="-80%" width="260%" height="260%">
-                    <feGaussianBlur stdDeviation="2.4" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
                 </defs>
 
                 {/* Glossy Pastel Rose-Gold Outer Rim */}
@@ -462,7 +480,7 @@ export function SpinWheelSection() {
                   cx={WHEEL_CX}
                   cy={WHEEL_CY}
                   r={174}
-                  fill="url(#roseGoldRim)"
+                  fill={`url(#${roseGoldRimId})`}
                   stroke="#B85D88"
                   strokeWidth="2.5"
                 />
@@ -476,29 +494,41 @@ export function SpinWheelSection() {
                   strokeWidth="1.5"
                 />
 
-                {/* 20 Chasing Fairy / Carnival Bulbs */}
+                {/* 20 Chasing Fairy / Carnival Bulbs (DOM-ref animated, filter-free soft halo) */}
                 <g data-testid="wheel-bulbs">
-                  {bulbCoords.map((pos, idx) => {
-                    const style = getBulbStyle(idx);
-                    return (
-                      <g key={`bulb-${idx}`}>
-                        <circle
-                          cx={pos.x}
-                          cy={pos.y}
-                          r={style.r + 1.1}
-                          fill="#3B1535"
-                          fillOpacity="0.22"
-                        />
-                        <circle
-                          cx={pos.x}
-                          cy={pos.y}
-                          r={style.r}
-                          fill={style.fill}
-                          filter={style.glow ? 'url(#bulbGlow)' : undefined}
-                        />
-                      </g>
-                    );
-                  })}
+                  {bulbCoords.map((pos, idx) => (
+                    <g key={`bulb-${idx}`}>
+                      <circle
+                        ref={(el) => {
+                          bulbShadowRefs.current[idx] = el;
+                        }}
+                        cx={pos.x}
+                        cy={pos.y}
+                        r={4.2}
+                        fill="#3B1535"
+                        fillOpacity="0.22"
+                      />
+                      <circle
+                        ref={(el) => {
+                          bulbHaloRefs.current[idx] = el;
+                        }}
+                        cx={pos.x}
+                        cy={pos.y}
+                        r={6.3}
+                        fill="#FFE898"
+                        fillOpacity="0"
+                      />
+                      <circle
+                        ref={(el) => {
+                          bulbCircleRefs.current[idx] = el;
+                        }}
+                        cx={pos.x}
+                        cy={pos.y}
+                        r={3.1}
+                        fill="#FFF4F9"
+                      />
+                    </g>
+                  ))}
                 </g>
 
                 {/* Inner rim bevel ring */}
@@ -565,7 +595,7 @@ export function SpinWheelSection() {
                         cx={pos.x}
                         cy={pos.y}
                         r={4.5}
-                        fill="url(#metallicPeg)"
+                        fill={`url(#${metallicPegId})`}
                         stroke="#8C4A6B"
                         strokeWidth="0.9"
                       />

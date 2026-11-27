@@ -7,10 +7,14 @@ import {
 } from 'firebase/auth';
 import {
   collection,
+  deleteDoc,
+  doc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
+  writeBatch,
   type Unsubscribe,
 } from 'firebase/firestore';
 import {
@@ -30,6 +34,7 @@ import {
   ShieldCheck,
   Smartphone,
   Tablet,
+  Trash2,
   Wifi,
   X,
 } from 'lucide-react';
@@ -201,11 +206,15 @@ function SessionTimeline({ sessionId }: { sessionId: string }) {
 function SessionCard({
   visit,
   expanded,
+  deleting,
   onToggleExpand,
+  onDeleteSession,
 }: {
   visit: SiteVisitRecord;
   expanded: boolean;
+  deleting: boolean;
   onToggleExpand: () => void;
+  onDeleteSession: (sessionId: string) => void;
 }) {
   const isReturning = visit.visitNumber > 1;
   const DeviceIcon =
@@ -380,7 +389,22 @@ function SessionCard({
         </div>
       </button>
 
-      {expanded && <SessionTimeline sessionId={visit.sessionId} />}
+      {expanded && (
+        <>
+          <div className="flex items-center justify-end border-t border-white/8 bg-[#120D16] px-4 py-2 sm:px-5">
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => onDeleteSession(visit.sessionId)}
+              className="inline-flex min-h-[34px] cursor-pointer items-center gap-1.5 rounded-full border border-rose-400/30 bg-rose-500/10 px-3 py-1 text-[11px] font-semibold text-rose-200 transition-colors hover:bg-rose-500/20 disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{deleting ? 'Deleting...' : 'Delete Session & Events'}</span>
+            </button>
+          </div>
+          <SessionTimeline sessionId={visit.sessionId} />
+        </>
+      )}
     </article>
   );
 }
@@ -405,23 +429,35 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
   const [loadingVisits, setLoadingVisits] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
 
   const resetPinTimerRef = useRef<number | null>(null);
+  const copiedDomainTimerRef = useRef<number | null>(null);
 
-  // Lock background scroll while dashboard overlay is open
+  // Lock background scroll & bind Escape key while dashboard overlay is open
   useEffect(() => {
     const prevHtml = document.documentElement.style.overflow;
     const prevBody = document.body.style.overflow;
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
     return () => {
+      window.removeEventListener('keydown', onKeyDown);
       document.documentElement.style.overflow = prevHtml;
       document.body.style.overflow = prevBody;
       if (resetPinTimerRef.current !== null) {
         window.clearTimeout(resetPinTimerRef.current);
       }
+      if (copiedDomainTimerRef.current !== null) {
+        window.clearTimeout(copiedDomainTimerRef.current);
+      }
     };
-  }, []);
+  }, [onClose]);
 
   // Track Firebase Auth state
   useEffect(() => {
@@ -620,9 +656,41 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
     if (!unauthorizedHost || typeof navigator === 'undefined' || !navigator.clipboard) return;
     void navigator.clipboard.writeText(unauthorizedHost).then(() => {
       setCopiedDomain(true);
-      window.setTimeout(() => setCopiedDomain(false), 2000);
+      if (copiedDomainTimerRef.current !== null) {
+        window.clearTimeout(copiedDomainTimerRef.current);
+      }
+      copiedDomainTimerRef.current = window.setTimeout(() => {
+        setCopiedDomain(false);
+        copiedDomainTimerRef.current = null;
+      }, 2000);
     });
   }, [unauthorizedHost]);
+
+  const handleDeleteSession = useCallback(async (sessionId: string) => {
+    if (!db || deletingSessionId) return;
+    setDeletingSessionId(sessionId);
+    setFeedError(null);
+    try {
+      const eventsSnap = await getDocs(collection(db, 'site_visits', sessionId, 'events'));
+      if (!eventsSnap.empty) {
+        const docs = eventsSnap.docs;
+        for (let i = 0; i < docs.length; i += 400) {
+          const batch = writeBatch(db);
+          for (const d of docs.slice(i, i + 400)) {
+            batch.delete(d.ref);
+          }
+          await batch.commit();
+        }
+      }
+      await deleteDoc(doc(db, 'site_visits', sessionId));
+      setExpandedSessionId((curr) => (curr === sessionId ? null : curr));
+    } catch (error) {
+      const info = buildFirestoreErrorInfo(error, OperationType.DELETE, `site_visits/${sessionId}`);
+      setFeedError(info.error);
+    } finally {
+      setDeletingSessionId(null);
+    }
+  }, [deletingSessionId]);
 
   const handleSwitchAccount = useCallback(async () => {
     if (!auth) return;
@@ -713,7 +781,7 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
             <div className="relative mt-5 mb-2 w-full">
               <input
                 type="text"
-                inputMode="numeric"
+                inputMode="none"
                 pattern="[0-9]*"
                 maxLength={4}
                 autoFocus
@@ -1016,11 +1084,13 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
                     key={visit.sessionId}
                     visit={visit}
                     expanded={expandedSessionId === visit.sessionId}
+                    deleting={deletingSessionId === visit.sessionId}
                     onToggleExpand={() =>
                       setExpandedSessionId((curr) =>
                         curr === visit.sessionId ? null : visit.sessionId,
                       )
                     }
+                    onDeleteSession={(id) => void handleDeleteSession(id)}
                   />
                 ))}
               </div>

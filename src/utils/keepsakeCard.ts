@@ -27,7 +27,7 @@ export const KEEPSAKE_COPY = {
   weekday: 'THURSDAY',
   dayNumber: '03',
   nickname: 'BAUNI',
-  punchline1: 'REMEBER ONE THING,',
+  punchline1: 'REMEMBER ONE THING,',
   punchline2: 'BAUNI HI BHAGWAAN HAI !!',
   keepsakeFooter: '17TH EDITION · VAULT PASS ₹250 · CREATED BY ADINOMIDE',
 } as const;

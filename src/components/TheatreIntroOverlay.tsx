@@ -1333,7 +1333,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
         className={
           isAudioOnly
             ? 'pointer-events-none fixed top-0 left-0 h-[1px] w-[1px] overflow-hidden bg-transparent opacity-0'
-            : `fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden px-4 py-6 select-none ${
+            : `fixed inset-0 z-[9999] flex min-h-[100dvh] flex-col items-center justify-center overflow-y-auto px-4 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] select-none ${
                 pointerEventsDisabled ? 'pointer-events-none' : ''
               }`
         }
@@ -1491,22 +1491,22 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
                 {!isAudioOnly && videoMissingFallback && (
                   <div
                     data-testid="theatre-fallback-stage"
-                    className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-[#3A1233] via-[#591C4D] to-[#9E2A5B] px-11 text-center text-[#FFFDFB] sm:px-14"
+                    className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-[#FFF4F8] via-[#FDE6F0] to-[#F4ECFF] px-11 text-center text-[#3A1233] sm:px-14"
                   >
-                    <span className="rounded-full border border-[#FFE6F0]/30 bg-[#FFFDFB]/10 px-3 py-0.5 text-[10px] font-bold tracking-widest text-[#FFF3C4] uppercase">
+                    <span className="rounded-full border border-[#ECC0D2] bg-white/80 px-3 py-0.5 text-[10px] font-bold tracking-widest text-[#C43D6E] uppercase">
                       Now Showing · 03 Dec 2026
                     </span>
-                    <p className="font-display mt-2.5 text-lg font-semibold text-[#FFFDFB] sm:mt-3 sm:text-2xl">
+                    <p className="font-display mt-2.5 text-lg font-semibold text-[#3A1233] sm:mt-3 sm:text-2xl">
                       Morgan Turns 17 🎀✨
                     </p>
-                    <p className="mt-1 max-w-[230px] text-[11px] leading-snug text-[#FFE6F0]/85 sm:mt-1.5 sm:max-w-xs sm:text-sm">
+                    <p className="mt-1 max-w-[230px] text-[11px] leading-snug text-[#6B3B64] sm:mt-1.5 sm:max-w-xs sm:text-sm">
                       Your birthday surprise is right behind these curtains.
                     </p>
-                    <div className="mt-3.5 h-1.5 w-32 overflow-hidden rounded-full bg-[#FFFDFB]/20 sm:mt-4 sm:w-36">
+                    <div className="mt-3.5 h-1.5 w-32 overflow-hidden rounded-full bg-[#F3CEDE] sm:mt-4 sm:w-36">
                       <div
                         ref={fallbackBarRef}
                         style={{ transform: 'scaleX(0)', transformOrigin: 'left center' }}
-                        className="h-full w-full rounded-full bg-gradient-to-r from-[#FFE6F0] to-[#FFF3C4] will-change-transform"
+                        className="h-full w-full rounded-full bg-gradient-to-r from-[#D94B7D] to-[#E6B85C] will-change-transform"
                       />
                     </div>
                   </div>

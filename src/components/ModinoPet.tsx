@@ -52,7 +52,7 @@ const SECTION_OBSERVER_MAP: ReadonlyArray<{
 }> = [
   { id: 'backstory', category: 'backstory' },
   { id: 'case-file', category: 'backstory' },
-  { id: 'spin-wheel', category: 'spin' },
+  { id: 'wheel', category: 'spin' },
   { id: 'gift', category: 'interaction_hype' },
   { id: 'make-a-wish', category: 'cute' },
   { id: 'little-coop', category: 'last_playback' },
@@ -673,7 +673,7 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
   // Collapsed ear-peek tab on right edge for clean card screenshots
   if (isTucked) {
     return (
-      <div className="pointer-events-none fixed right-0 bottom-[74px] z-[36]">
+      <div className="pointer-events-none fixed right-0 bottom-[calc(74px+env(safe-area-inset-bottom,0px))] z-[36]">
         <button
           type="button"
           data-testid="modino-peek-tab"
@@ -698,7 +698,7 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
       data-testid="modino-pet-dock"
       data-mood={mood}
       data-sleep-state={mood === 'sleepy_zzz' ? 'sleeping' : 'awake'}
-      className="pointer-events-none fixed right-[12px] bottom-[66px] z-[36] flex flex-col items-end"
+      className="pointer-events-none fixed right-[12px] bottom-[calc(66px+env(safe-area-inset-bottom,0px))] z-[36] flex flex-col items-end"
     >
       {/* Crisp Pastel Speech Bubble anchored above-left of Modino */}
       {bubbleText && (
@@ -779,8 +779,8 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
           <ModinoAvatarSvg mood={mood} tapRippleKey={tapRippleKey} paused={!isActive} />
         </button>
 
-        {/* Layer 9: Tiny Modino Name Pill + Discreet 22px Mute & Collapse Controls */}
-        <div className="-mt-1 flex items-center gap-1">
+        {/* Layer 9: Tiny Modino Name Pill + Accessible 36px-Hit-Area Mute & Collapse Controls */}
+        <div className="-mt-2 flex items-center">
           <button
             type="button"
             data-testid="modino-sfx-mute-btn"
@@ -788,18 +788,20 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
             aria-pressed={sfxMuted}
             aria-label={sfxMuted ? 'Unmute Modino sound effects' : 'Mute Modino sound effects'}
             title={sfxMuted ? 'Unmute UI SFX' : 'Mute UI SFX'}
-            className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-[rgba(217,75,125,0.22)] bg-[rgba(255,253,250,0.92)] text-[#7A4A63] shadow-xs transition-colors hover:border-[#D94B7D] hover:text-[#3A1233] active:scale-95 cursor-pointer"
+            className="group flex h-9 w-9 items-center justify-center rounded-full cursor-pointer focus-visible:outline-2 focus-visible:outline-[#D94B7D]"
           >
-            {sfxMuted ? (
-              <VolumeX className="h-3 w-3" aria-hidden="true" />
-            ) : (
-              <Volume2 className="h-3 w-3 text-[#C93B6B]" aria-hidden="true" />
-            )}
+            <span className="flex h-[24px] w-[24px] items-center justify-center rounded-full border border-[rgba(217,75,125,0.24)] bg-[rgba(255,253,250,0.95)] text-[#7A4A63] shadow-xs transition-colors group-hover:border-[#D94B7D] group-hover:text-[#3A1233] group-active:scale-95">
+              {sfxMuted ? (
+                <VolumeX className="h-3 w-3" aria-hidden="true" />
+              ) : (
+                <Volume2 className="h-3 w-3 text-[#C93B6B]" aria-hidden="true" />
+              )}
+            </span>
           </button>
 
           <span
             data-testid="modino-name-pill"
-            className="inline-flex items-center rounded-full border border-[rgba(217,75,125,0.22)] bg-[rgba(255,253,250,0.92)] px-2 py-[2px] text-[9.5px] leading-none font-bold tracking-tight text-[#3A1233] shadow-xs select-none"
+            className="-mx-1 inline-flex items-center rounded-full border border-[rgba(217,75,125,0.22)] bg-[rgba(255,253,250,0.92)] px-2 py-[3px] text-[9.5px] leading-none font-bold tracking-tight text-[#3A1233] shadow-xs select-none"
           >
             Modino
           </span>
@@ -810,9 +812,11 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
             onClick={handleTuck}
             aria-label="Hide Modino to side edge"
             title="Hide Modino"
-            className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-[rgba(217,75,125,0.22)] bg-[rgba(255,253,250,0.92)] text-[#7A4A63] shadow-xs transition-colors hover:border-[#D94B7D] hover:text-[#3A1233] active:scale-95 cursor-pointer"
+            className="group flex h-9 w-9 items-center justify-center rounded-full cursor-pointer focus-visible:outline-2 focus-visible:outline-[#D94B7D]"
           >
-            <X className="h-3 w-3" aria-hidden="true" />
+            <span className="flex h-[24px] w-[24px] items-center justify-center rounded-full border border-[rgba(217,75,125,0.24)] bg-[rgba(255,253,250,0.95)] text-[#7A4A63] shadow-xs transition-colors group-hover:border-[#D94B7D] group-hover:text-[#3A1233] group-active:scale-95">
+              <X className="h-3 w-3" aria-hidden="true" />
+            </span>
           </button>
         </div>
       </div>

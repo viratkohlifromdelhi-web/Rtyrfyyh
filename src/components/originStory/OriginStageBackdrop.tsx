@@ -97,7 +97,7 @@ export function OriginStageBackdrop({
       {/* 1A. Scenes 1–3: Luminous Warm Ivory & Soft Champagne Sunrise */}
       <div
         className={`absolute inset-0 transition-opacity duration-[900ms] ease-out ${
-          isSunrise ? 'opacity-100' : 'opacity-0'
+          isSunrise ? 'opacity-100' : 'opacity-0 anim-paused'
         }`}
         style={{
           background:
@@ -126,7 +126,7 @@ export function OriginStageBackdrop({
       {/* 1B. Scenes 4 & 6: Radiant Golden Morning Meadow + Volumetric Sunbeams + Pastel Hills */}
       <div
         className={`absolute inset-0 transition-opacity duration-[900ms] ease-out ${
-          isMeadow ? 'opacity-100' : 'opacity-0'
+          isMeadow ? 'opacity-100' : 'opacity-0 anim-paused'
         }`}
         style={{
           background:
@@ -177,7 +177,7 @@ export function OriginStageBackdrop({
       {/* 1C. Scene 5: One Starry Night Kiss Velvet-Twilight Sky (synced to 5s audio beats) */}
       <div
         className={`absolute inset-0 transition-opacity duration-[550ms] ease-out ${
-          isStarry ? 'opacity-100' : 'opacity-0'
+          isStarry ? 'opacity-100' : 'opacity-0 anim-paused'
         }`}
         style={{
           background:
@@ -312,7 +312,7 @@ export function OriginStageBackdrop({
       {/* 1D. Scenes 7–9 (& Scene 10 Beat 1): Pastel Celebration Dawn + Studio Ruler Grid */}
       <div
         className={`absolute inset-0 transition-opacity duration-[900ms] ease-out ${
-          isDawn ? 'opacity-100' : 'opacity-0'
+          isDawn ? 'opacity-100' : 'opacity-0 anim-paused'
         }`}
         style={{
           background:
@@ -343,7 +343,7 @@ export function OriginStageBackdrop({
       {/* 1E. Scene 10 Grand Finale: Champagne-Gold & Rose-Petal Gala Sky with Rotating Light Rays */}
       <div
         className={`absolute inset-0 transition-opacity duration-[900ms] ease-out ${
-          isGala ? 'opacity-100' : 'opacity-0'
+          isGala ? 'opacity-100' : 'opacity-0 anim-paused'
         }`}
         style={{
           background:

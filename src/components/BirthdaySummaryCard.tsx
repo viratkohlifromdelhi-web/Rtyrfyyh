@@ -4,6 +4,8 @@ import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import {
   INFINITY_STONES,
+  formatVaultGiftCodeDisplay,
+  getRawCopyableVaultCode,
   getStoneById,
   type OneTimeSummaryGiftData,
 } from '../utils/infinityVault';
@@ -46,28 +48,28 @@ export function BirthdaySummaryCard({ data, onOpenKeepsakeModal }: BirthdaySumma
       }, 2000);
     };
 
+    const rawCopyValue = getRawCopyableVaultCode(data.code);
+    const fallbackCopy = () => {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = rawCopyValue;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+        markCopied();
+      } catch {
+        markCopied();
+      }
+    };
+
     if (navigator.clipboard?.writeText) {
-      void navigator.clipboard
-        .writeText(data.code)
-        .then(markCopied)
-        .catch(() => {
-          try {
-            const ta = document.createElement('textarea');
-            ta.value = data.code;
-            ta.setAttribute('readonly', '');
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            ta.remove();
-            markCopied();
-          } catch {
-            markCopied();
-          }
-        });
+      void navigator.clipboard.writeText(rawCopyValue).then(markCopied).catch(fallbackCopy);
     } else {
-      markCopied();
+      fallbackCopy();
     }
   }, [data.code]);
 
@@ -76,7 +78,7 @@ export function BirthdaySummaryCard({ data, onOpenKeepsakeModal }: BirthdaySumma
       ? getStoneById(data.stoneId)
       : (INFINITY_STONES.find((s) => s.name === data.stoneName) ?? INFINITY_STONES[2]);
 
-  const formattedCode = data.code.replace(/ - /g, '  ·  ');
+  const formattedCode = formatVaultGiftCodeDisplay(data.code);
 
   return (
     <div

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
@@ -52,6 +52,9 @@ const OUTER_CARD_SPARKLES = [
 ];
 
 function RoseGoldPaperclipSvg({ className }: { className?: string }) {
+  const uid = useId().replace(/:/g, '');
+  const gradId = `roseGoldClipGrad-${uid}`;
+  const shadowId = `roseGoldClipShadow-${uid}`;
   return (
     <svg
       viewBox="0 0 36 74"
@@ -61,19 +64,19 @@ function RoseGoldPaperclipSvg({ className }: { className?: string }) {
       className={className}
     >
       <defs>
-        <linearGradient id="roseGoldClipGrad" x1="4" y1="2" x2="32" y2="70" gradientUnits="userSpaceOnUse">
+        <linearGradient id={gradId} x1="4" y1="2" x2="32" y2="70" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#F6CFD7" />
           <stop offset="52%" stopColor="#D98D9F" />
           <stop offset="100%" stopColor="#B86A7D" />
         </linearGradient>
-        <filter id="roseGoldClipShadow" x="-25%" y="-15%" width="150%" height="135%">
+        <filter id={shadowId} x="-25%" y="-15%" width="150%" height="135%">
           <feDropShadow dx="0" dy="3" stdDeviation="2.2" floodColor="#3A1233" floodOpacity="0.22" />
         </filter>
       </defs>
-      <g filter="url(#roseGoldClipShadow)">
+      <g filter={`url(#${shadowId})`}>
         <path
           d="M11 22V53C11 60.18 16.6 66 23.5 66C30.4 66 36 60.18 36 53V15.5C36 9.15 30.85 4 24.5 4C18.15 4 13 9.15 13 15.5V48.5C13 52.64 16.36 56 20.5 56C24.64 56 28 52.64 28 48.5V19"
-          stroke="url(#roseGoldClipGrad)"
+          stroke={`url(#${gradId})`}
           strokeWidth="3.6"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -96,6 +99,9 @@ function RoseGoldPaperclipSvg({ className }: { className?: string }) {
  * Curved thumb-notch front pocket cardstock surface with bright 1px top highlight.
  */
 function FrontPocketCardstockSvg() {
+  const uid = useId().replace(/:/g, '');
+  const flapGradId = `pocketFlapGrad-${uid}`;
+  const shadeGradId = `pocketInnerTopShade-${uid}`;
   return (
     <svg
       viewBox="0 0 370 256"
@@ -106,11 +112,11 @@ function FrontPocketCardstockSvg() {
       className="pointer-events-none absolute inset-0 h-full w-full"
     >
       <defs>
-        <linearGradient id="pocketFlapGrad" x1="185" y1="0" x2="185" y2="256" gradientUnits="userSpaceOnUse">
+        <linearGradient id={flapGradId} x1="185" y1="0" x2="185" y2="256" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#FDE8F0" />
           <stop offset="100%" stopColor="#F7D3E1" />
         </linearGradient>
-        <linearGradient id="pocketInnerTopShade" x1="185" y1="0" x2="185" y2="30" gradientUnits="userSpaceOnUse">
+        <linearGradient id={shadeGradId} x1="185" y1="0" x2="185" y2="30" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#3A1233" stopOpacity="0.06" />
           <stop offset="100%" stopColor="#3A1233" stopOpacity="0" />
         </linearGradient>
@@ -119,7 +125,7 @@ function FrontPocketCardstockSvg() {
       {/* Main pocket shape with smooth curved thumb-notch at top center */}
       <path
         d="M 18 1 H 134 C 145 1 151 5 156 11 C 163 20 173 25 185 25 C 197 25 207 20 214 11 C 219 5 225 1 236 1 H 352 C 361.4 1 369 8.6 369 18 V 238 C 369 247.4 361.4 255 352 255 H 18 C 8.6 255 1 247.4 1 238 V 18 C 1 8.6 8.6 1 18 1 Z"
-        fill="url(#pocketFlapGrad)"
+        fill={`url(#${flapGradId})`}
         stroke="rgba(217, 75, 125, 0.24)"
         strokeWidth="1.2"
       />
@@ -127,7 +133,7 @@ function FrontPocketCardstockSvg() {
       {/* Subtle inner pocket depth glaze */}
       <path
         d="M 18 2 H 134 C 145 2 151 6 156 12 C 163 21 173 26 185 26 C 197 26 207 21 214 12 C 219 6 225 2 236 2 H 352 C 361 2 368 9 368 18 V 44 H 2 V 18 C 2 9 9 2 18 2 Z"
-        fill="url(#pocketInnerTopShade)"
+        fill={`url(#${shadeGradId})`}
       />
 
       {/* Soft 1px bright top highlight along the pocket lip & thumb notch */}
@@ -163,7 +169,7 @@ export function CaseFileSection({ onLightboxChange }: CaseFileSectionProps = {})
   const sparkleTimerRef = useRef<number | null>(null);
   const duckRestoreTimerRef = useRef<number | null>(null);
 
-  // Live "Days Since First Text" counter computed from FIRST_TEXT_DATE ('2026-07-22')
+  // Live "Days Since First Text" counter computed from FIRST_TEXT_DATE ('2026-07-21')
   const [daysSince, setDaysSince] = useState<number>(() =>
     computeDaysSinceFirstText(FIRST_TEXT_DATE, new Date()),
   );

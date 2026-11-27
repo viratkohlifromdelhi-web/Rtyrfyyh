@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import {
   FIVE_TWO_INCHES,
   ORIGIN_SVG_GROUND_Y,
@@ -159,6 +159,13 @@ export interface ShivjeeCharacterProps extends CharacterClassProps {
 }
 
 export function ShivjeeCharacter({ mood = 'calm', className = '' }: ShivjeeCharacterProps) {
+  const uid = useId().replace(/:/g, '');
+  const skinId = `${uid}_shivjee_skin`;
+  const hairId = `${uid}_shivjee_hair`;
+  const kurtaId = `${uid}_shivjee_kurta`;
+  const vestId = `${uid}_shivjee_vest`;
+  const pantsId = `${uid}_shivjee_pants`;
+  const shoeId = `${uid}_shivjee_shoe`;
   const isKiss = mood === 'blushKiss';
   const isHappy = mood === 'happyTogether' || mood === 'proudDad';
   const isAmazed = mood === 'amazed';
@@ -174,31 +181,31 @@ export function ShivjeeCharacter({ mood = 'calm', className = '' }: ShivjeeChara
       className={`block select-none overflow-visible ${className}`}
     >
       <defs>
-        <linearGradient id="shivjee_skin" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={skinId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FCE0CC" />
           <stop offset="70%" stopColor="#F5CCB0" />
           <stop offset="100%" stopColor="#EBB897" />
         </linearGradient>
-        <linearGradient id="shivjee_hair" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={hairId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#412438" />
           <stop offset="55%" stopColor="#2B1525" />
           <stop offset="100%" stopColor="#1E0D1A" />
         </linearGradient>
-        <linearGradient id="shivjee_kurta" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={kurtaId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FFFBF3" />
           <stop offset="65%" stopColor="#F8ECDA" />
           <stop offset="100%" stopColor="#EED9BC" />
         </linearGradient>
-        <linearGradient id="shivjee_vest" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={vestId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#77968E" />
           <stop offset="55%" stopColor="#5D7B74" />
           <stop offset="100%" stopColor="#49645E" />
         </linearGradient>
-        <linearGradient id="shivjee_pants" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={pantsId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#ECE1CE" />
           <stop offset="100%" stopColor="#D3C2A8" />
         </linearGradient>
-        <linearGradient id="shivjee_shoe" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={shoeId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#865A48" />
           <stop offset="100%" stopColor="#5E3B2E" />
         </linearGradient>
@@ -208,16 +215,16 @@ export function ShivjeeCharacter({ mood = 'calm', className = '' }: ShivjeeChara
 
       {/* Legs & tailored cream trousers */}
       <g>
-        <rect x="61" y="156" width="16" height="54" rx="7.5" fill="url(#shivjee_pants)" />
-        <rect x="83" y="156" width="16" height="54" rx="7.5" fill="url(#shivjee_pants)" />
+        <rect x="61" y="156" width="16" height="54" rx="7.5" fill={`url(#${pantsId})`} />
+        <rect x="83" y="156" width="16" height="54" rx="7.5" fill={`url(#${pantsId})`} />
         {/* Warm brown loafers */}
         <path
           d="M 58 209 C 58 205 64 204 71 204 C 77 204 79 207 79 213 C 79 218 75 220 67 220 C 60 220 58 216 58 209 Z"
-          fill="url(#shivjee_shoe)"
+          fill={`url(#${shoeId})`}
         />
         <path
           d="M 81 213 C 81 207 83 204 89 204 C 96 204 102 205 102 209 C 102 216 100 220 93 220 C 85 220 81 218 81 213 Z"
-          fill="url(#shivjee_shoe)"
+          fill={`url(#${shoeId})`}
         />
         <ellipse cx="67" cy="208" rx="4.5" ry="1.6" fill="#FFFFFF" opacity="0.2" />
         <ellipse cx="93" cy="208" rx="4.5" ry="1.6" fill="#FFFFFF" opacity="0.2" />
@@ -232,13 +239,13 @@ export function ShivjeeCharacter({ mood = 'calm', className = '' }: ShivjeeChara
               ? 'M 55 104 C 42 114 38 128 45 140 C 49 145 55 143 57 137 C 58 129 60 120 62 112 Z'
               : 'M 55 104 C 46 116 44 134 48 148 C 50 153 56 153 58 148 C 60 136 60 122 62 111 Z'
           }
-          fill="url(#shivjee_kurta)"
+          fill={`url(#${kurtaId})`}
         />
         <circle
           cx={mood === 'proudDad' || isAmazed ? 49 : 53}
           cy={mood === 'proudDad' || isAmazed ? 142 : 151}
           r="5.6"
-          fill="url(#shivjee_skin)"
+          fill={`url(#${skinId})`}
         />
 
         {/* Right arm */}
@@ -250,13 +257,13 @@ export function ShivjeeCharacter({ mood = 'calm', className = '' }: ShivjeeChara
                 ? 'M 105 104 C 118 114 122 128 115 140 C 111 145 105 143 103 137 C 102 129 100 120 98 112 Z'
                 : 'M 105 104 C 114 116 116 134 112 148 C 110 153 104 153 102 148 C 100 136 100 122 98 111 Z'
           }
-          fill="url(#shivjee_kurta)"
+          fill={`url(#${kurtaId})`}
         />
         <circle
           cx={isKiss ? 106 : mood === 'proudDad' || isAmazed ? 111 : 107}
           cy={isKiss ? 140 : mood === 'proudDad' || isAmazed ? 142 : 151}
           r="5.6"
-          fill="url(#shivjee_skin)"
+          fill={`url(#${skinId})`}
         />
       </g>
 
@@ -265,12 +272,12 @@ export function ShivjeeCharacter({ mood = 'calm', className = '' }: ShivjeeChara
         {/* Lower kurta hem */}
         <path
           d="M 55 101 C 55 96 63 93 80 93 C 97 93 105 96 105 101 L 107 166 C 107 170 96 173 80 173 C 64 173 53 170 53 166 Z"
-          fill="url(#shivjee_kurta)"
+          fill={`url(#${kurtaId})`}
         />
         {/* Sage-teal Nehru vest */}
         <path
           d="M 56 101 C 57 96 66 93 80 93 C 94 93 103 96 104 101 L 103 153 C 103 156 93 158 80 158 C 67 158 57 156 57 153 Z"
-          fill="url(#shivjee_vest)"
+          fill={`url(#${vestId})`}
         />
         {/* Crisp ivory Mandarin collar peek */}
         <path
@@ -297,24 +304,24 @@ export function ShivjeeCharacter({ mood = 'calm', className = '' }: ShivjeeChara
 
       {/* Neck & Head */}
       <g>
-        <rect x="74" y="83" width="12" height="13" rx="5.5" fill="url(#shivjee_skin)" />
+        <rect x="74" y="83" width="12" height="13" rx="5.5" fill={`url(#${skinId})`} />
         {/* Soft neck shadow */}
         <path d="M 74 86 Q 80 91 86 86 L 86 83 L 74 83 Z" fill="rgba(180, 112, 82, 0.22)" />
 
         {/* Ears */}
-        <ellipse cx="55.5" cy="65" rx="4.2" ry="5.5" fill="url(#shivjee_skin)" />
-        <ellipse cx="104.5" cy="65" rx="4.2" ry="5.5" fill="url(#shivjee_skin)" />
+        <ellipse cx="55.5" cy="65" rx="4.2" ry="5.5" fill={`url(#${skinId})`} />
+        <ellipse cx="104.5" cy="65" rx="4.2" ry="5.5" fill={`url(#${skinId})`} />
 
         {/* Rounded warm anime-chibi face */}
         <path
           d="M 56 59 C 56 42 66 34 80 34 C 94 34 104 42 104 59 C 104 76 94 87 80 87 C 66 87 56 76 56 59 Z"
-          fill="url(#shivjee_skin)"
+          fill={`url(#${skinId})`}
         />
 
         {/* Softly layered dark espresso-plum hair */}
         <path
           d="M 54 57 C 53 38 64 26 80 26 C 96 26 107 38 106 57 C 105 51 102 45 97 43 C 92 48 83 49 74 46 C 67 44 60 48 56 57 Z"
-          fill="url(#shivjee_hair)"
+          fill={`url(#${hairId})`}
         />
         {/* Side swoop lock */}
         <path
@@ -416,6 +423,13 @@ export function ArchanaCharacter({
   pregnancyMonth = 0,
   className = '',
 }: ArchanaCharacterProps) {
+  const uid = useId().replace(/:/g, '');
+  const skinId = `${uid}_archana_skin`;
+  const hairId = `${uid}_archana_hair`;
+  const sareeId = `${uid}_archana_saree`;
+  const blouseId = `${uid}_archana_blouse`;
+  const zariId = `${uid}_archana_zari`;
+  const glowId = `${uid}_archana_glow`;
   const clampedMonth = Math.max(0, Math.min(9, pregnancyMonth));
   const pregT = clampedMonth / 9;
   const bellyBulge = pregT * 17.5;
@@ -434,31 +448,31 @@ export function ArchanaCharacter({
       className={`block select-none overflow-visible ${className}`}
     >
       <defs>
-        <linearGradient id="archana_skin" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={skinId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FDE2CE" />
           <stop offset="72%" stopColor="#F5CCB0" />
           <stop offset="100%" stopColor="#EAB898" />
         </linearGradient>
-        <linearGradient id="archana_hair" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={hairId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#3F2136" />
           <stop offset="55%" stopColor="#2A1324" />
           <stop offset="100%" stopColor="#1D0C19" />
         </linearGradient>
-        <linearGradient id="archana_saree" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={sareeId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#FDE2ED" />
           <stop offset="50%" stopColor="#F4B6D0" />
           <stop offset="100%" stopColor="#E390B4" />
         </linearGradient>
-        <linearGradient id="archana_blouse" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={blouseId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#E787AE" />
           <stop offset="100%" stopColor="#CE6592" />
         </linearGradient>
-        <linearGradient id="archana_zari" x1="0%" y1="0%" x2="100%" y2="0%">
+        <linearGradient id={zariId} x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#F7DC98" />
           <stop offset="50%" stopColor="#E6B85C" />
           <stop offset="100%" stopColor="#F5D78E" />
         </linearGradient>
-        <radialGradient id="archana_glow" cx="50%" cy="50%" r="50%">
+        <radialGradient id={glowId} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#FFF0C2" stopOpacity="0.62" />
           <stop offset="100%" stopColor="#FAD0E0" stopOpacity="0" />
         </radialGradient>
@@ -471,7 +485,7 @@ export function ArchanaCharacter({
           cy="152"
           rx={32 + pregT * 14}
           ry={34 + pregT * 10}
-          fill="url(#archana_glow)"
+          fill={`url(#${glowId})`}
           opacity={0.35 + pregT * 0.55}
         />
       )}
@@ -480,13 +494,13 @@ export function ArchanaCharacter({
 
       {/* Back flowing hair + neat low side bun with tiny champagne-gold pearl pin */}
       <g>
-        <circle cx="101" cy="86" r="11" fill="url(#archana_hair)" />
+        <circle cx="101" cy="86" r="11" fill={`url(#${hairId})`} />
         <circle cx="98" cy="79" r="2.2" fill="#F7D994" />
         <circle cx="103" cy="81" r="2" fill="#FFF4D1" />
         <circle cx="106" cy="85" r="1.8" fill="#F7D994" />
         <path
           d="M 57 73 C 54 92 56 108 61 116 L 99 116 C 103 107 104 92 103 73 Z"
-          fill="url(#archana_hair)"
+          fill={`url(#${hairId})`}
         />
       </g>
 
@@ -503,11 +517,11 @@ export function ArchanaCharacter({
         {/* Blouse torso */}
         <path
           d="M 61 109 C 62 102 70 100 80 100 C 90 100 98 102 99 109 L 97 132 L 63 132 Z"
-          fill="url(#archana_blouse)"
+          fill={`url(#${blouseId})`}
         />
         {/* Left & right short blush sleeves */}
-        <ellipse cx="59" cy="113" rx="6.8" ry="8.2" transform="rotate(16 59 113)" fill="url(#archana_blouse)" />
-        <ellipse cx="101" cy="113" rx="6.8" ry="8.2" transform="rotate(-16 101 113)" fill="url(#archana_blouse)" />
+        <ellipse cx="59" cy="113" rx="6.8" ry="8.2" transform="rotate(16 59 113)" fill={`url(#${blouseId})`} />
+        <ellipse cx="101" cy="113" rx="6.8" ry="8.2" transform="rotate(-16 101 113)" fill={`url(#${blouseId})`} />
 
         {/* Flowing saree skirt with smooth curved maternity contour */}
         <path
@@ -515,7 +529,7 @@ export function ArchanaCharacter({
               C ${58 - bellyBulge} ${145 + pregT * 2} ${55 - bellyBulge * 0.95} ${168} ${56 - bellyBulge * 0.2} 214
               Q 80 219 105 214
               C 105 182 103 152 97 130 Z`}
-          fill="url(#archana_saree)"
+          fill={`url(#${sareeId})`}
         />
 
         {/* Soft pleated drape folds */}
@@ -546,13 +560,13 @@ export function ArchanaCharacter({
         {/* Diagonal blush pallu drape with champagne-gold zari border */}
         <path
           d={`M 61 105 L 74 103 C 86 120 ${96 - bellyBulge * 0.12} 142 103 166 L 91 171 C 82 148 ${71 - bellyBulge * 0.32} 130 61 105 Z`}
-          fill="url(#archana_saree)"
+          fill={`url(#${sareeId})`}
         />
         {/* Zari gold diagonal border */}
         <path
           d={`M 62 106 C 72 128 ${83 - bellyBulge * 0.2} 148 92 170`}
           fill="none"
-          stroke="url(#archana_zari)"
+          stroke={`url(#${zariId})`}
           strokeWidth="2.6"
           strokeLinecap="round"
         />
@@ -560,7 +574,7 @@ export function ArchanaCharacter({
         <path
           d={`M ${56 - bellyBulge * 0.18} 211 Q 80 216 105 211`}
           fill="none"
-          stroke="url(#archana_zari)"
+          stroke={`url(#${zariId})`}
           strokeWidth="3.2"
           strokeLinecap="round"
         />
@@ -575,7 +589,7 @@ export function ArchanaCharacter({
               ? 'M 58 117 C 50 128 50 140 57 148 C 60 151 64 149 64 144 C 62 136 62 127 63 119 Z'
               : 'M 58 117 C 52 130 51 144 55 155 C 57 159 62 158 63 154 C 62 143 62 131 63 120 Z'
           }
-          fill="url(#archana_skin)"
+          fill={`url(#${skinId})`}
         />
         {/* Gold bangle left */}
         <ellipse cx="59" cy={isKiss ? 145 : 152} rx="3.4" ry="1.3" fill="#E6B85C" />
@@ -587,7 +601,7 @@ export function ArchanaCharacter({
               ? `M 101 117 C 107 132 102 149 ${76 - bellyBulge * 0.48} 156 C ${71 - bellyBulge * 0.48} 157 ${69 - bellyBulge * 0.48} 152 ${74 - bellyBulge * 0.48} 149 C 93 144 98 133 96 119 Z`
               : 'M 101 117 C 107 130 108 144 104 155 C 102 159 97 158 96 154 C 97 143 97 131 96 120 Z'
           }
-          fill="url(#archana_skin)"
+          fill={`url(#${skinId})`}
         />
         <ellipse
           cx={pregT > 0.05 ? 77 - bellyBulge * 0.45 : 100}
@@ -600,7 +614,7 @@ export function ArchanaCharacter({
 
       {/* Neck & Head */}
       <g>
-        <rect x="74.5" y="92" width="11" height="12" rx="5" fill="url(#archana_skin)" />
+        <rect x="74.5" y="92" width="11" height="12" rx="5" fill={`url(#${skinId})`} />
         {/* Delicate gold necklace */}
         <path
           d="M 71 102 Q 80 108 89 102"
@@ -620,13 +634,13 @@ export function ArchanaCharacter({
         {/* Soft oval face */}
         <path
           d="M 58 69 C 58 53 67 45 80 45 C 93 45 102 53 102 69 C 102 85 93 95 80 95 C 67 95 58 85 58 69 Z"
-          fill="url(#archana_skin)"
+          fill={`url(#${skinId})`}
         />
 
         {/* Center-parted flowing dark hair framing face */}
         <path
           d="M 55 72 C 54 50 65 38 80 38 C 95 38 106 50 105 72 C 102 62 96 54 81 51 C 79 51 79 51 79 51 C 64 54 58 62 55 72 Z"
-          fill="url(#archana_hair)"
+          fill={`url(#${hairId})`}
         />
         {/* Soft glossy hair sheen arcs */}
         <path
@@ -704,6 +718,10 @@ export function ArchanaCharacter({
    ========================================================================== */
 
 export function AnamikaNewborn({ className = '' }: CharacterClassProps) {
+  const uid = useId().replace(/:/g, '');
+  const swaddleId = `${uid}_newborn_swaddle`;
+  const skinId = `${uid}_newborn_skin`;
+  const haloId = `${uid}_newborn_halo`;
   return (
     <svg
       viewBox="0 0 160 230"
@@ -711,23 +729,23 @@ export function AnamikaNewborn({ className = '' }: CharacterClassProps) {
       className={`block select-none overflow-visible ${className}`}
     >
       <defs>
-        <linearGradient id="newborn_swaddle" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={swaddleId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#FFF9E8" />
           <stop offset="55%" stopColor="#FDE7F0" />
           <stop offset="100%" stopColor="#F9CBE0" />
         </linearGradient>
-        <linearGradient id="newborn_skin" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={skinId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FFE9DA" />
           <stop offset="100%" stopColor="#F8D0B9" />
         </linearGradient>
-        <radialGradient id="newborn_halo" cx="50%" cy="50%" r="50%">
+        <radialGradient id={haloId} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#FFF2C6" stopOpacity="0.85" />
           <stop offset="100%" stopColor="#FCE0EB" stopOpacity="0" />
         </radialGradient>
       </defs>
 
       {/* Soft golden aura behind cradle */}
-      <circle cx="80" cy="186" r="44" fill="url(#newborn_halo)" />
+      <circle cx="80" cy="186" r="44" fill={`url(#${haloId})`} />
       <CharacterShadow rx={30} cy={220} />
 
       {/* Soft cloud-rose cradle cushion grounded at y = 220 */}
@@ -747,7 +765,7 @@ export function AnamikaNewborn({ className = '' }: CharacterClassProps) {
       <g>
         <path
           d="M 54 196 C 53 177 63 166 80 166 C 97 166 107 177 106 196 C 105 210 95 216 80 216 C 65 216 55 210 54 196 Z"
-          fill="url(#newborn_swaddle)"
+          fill={`url(#${swaddleId})`}
         />
         {/* Cozy diagonal blanket fold */}
         <path
@@ -779,7 +797,7 @@ export function AnamikaNewborn({ className = '' }: CharacterClassProps) {
         </g>
 
         {/* Adorable round baby head */}
-        <circle cx="80" cy="176" r="17.5" fill="url(#newborn_skin)" />
+        <circle cx="80" cy="176" r="17.5" fill={`url(#${skinId})`} />
         {/* Sweet baby forehead curl */}
         <path
           d="M 79 158.5 C 74 159 73 165 78 166.5 C 82 167.5 85 164 82.5 161.8"
@@ -836,6 +854,10 @@ export interface AnamikaToddlerProps extends CharacterClassProps {
 }
 
 export function AnamikaToddler({ age, className = '' }: AnamikaToddlerProps) {
+  const uid = useId().replace(/:/g, '');
+  const skinId = `${uid}_toddler_skin`;
+  const hairId = `${uid}_toddler_hair`;
+  const frockId = `${uid}_toddler_frock`;
   const clampedAge = Math.max(1, Math.min(3, Math.round(age)));
   const step = SCENE_8_GROWTH_STEPS.find((s) => s.age === clampedAge) ?? SCENE_8_GROWTH_STEPS[1];
   const crownY = inchesToSvgCrownY(step.inches);
@@ -859,15 +881,15 @@ export function AnamikaToddler({ age, className = '' }: AnamikaToddlerProps) {
       className={`block select-none overflow-visible ${className}`}
     >
       <defs>
-        <linearGradient id="toddler_skin" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={skinId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FFE7D6" />
           <stop offset="100%" stopColor="#F5CBB1" />
         </linearGradient>
-        <linearGradient id="toddler_hair" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={hairId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#3E2036" />
           <stop offset="100%" stopColor="#220E1D" />
         </linearGradient>
-        <linearGradient id="toddler_frock" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={frockId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FFE8DF" />
           <stop offset="55%" stopColor="#FBC6DC" />
           <stop offset="100%" stopColor="#F2A4C5" />
@@ -878,8 +900,8 @@ export function AnamikaToddler({ age, className = '' }: AnamikaToddlerProps) {
 
       {/* Cute twin mini-pigtails with champagne-gold bows */}
       <g>
-        <circle cx={80 - headRx - 5} cy={headCy - 4} r={7.5 + clampedAge * 0.4} fill="url(#toddler_hair)" />
-        <circle cx={80 + headRx + 5} cy={headCy - 4} r={7.5 + clampedAge * 0.4} fill="url(#toddler_hair)" />
+        <circle cx={80 - headRx - 5} cy={headCy - 4} r={7.5 + clampedAge * 0.4} fill={`url(#${hairId})`} />
+        <circle cx={80 + headRx + 5} cy={headCy - 4} r={7.5 + clampedAge * 0.4} fill={`url(#${hairId})`} />
         {/* Champagne-gold mini bows */}
         <g transform={`translate(${80 - headRx - 1} ${headCy - 9}) rotate(-18)`}>
           <ellipse cx="-3.6" cy="0" rx="3.4" ry="2.2" fill="#F7D994" />
@@ -901,7 +923,7 @@ export function AnamikaToddler({ age, className = '' }: AnamikaToddlerProps) {
           width="9.5"
           height={shoeTopY - frockBottomY + 8}
           rx="4.6"
-          fill="url(#toddler_skin)"
+          fill={`url(#${skinId})`}
         />
         <rect
           x="83.5"
@@ -909,7 +931,7 @@ export function AnamikaToddler({ age, className = '' }: AnamikaToddlerProps) {
           width="9.5"
           height={shoeTopY - frockBottomY + 8}
           rx="4.6"
-          fill="url(#toddler_skin)"
+          fill={`url(#${skinId})`}
         />
         {/* Cute rosy knees */}
         <ellipse cx="71.8" cy={kneeY} rx="3.2" ry="1.8" fill="#F198B9" opacity="0.45" />
@@ -939,19 +961,19 @@ export function AnamikaToddler({ age, className = '' }: AnamikaToddlerProps) {
         <path
           d={`M 64 ${neckY + 7} Q 49 ${neckY + 8 + waveLift} 48 ${neckY + 18 + waveLift}`}
           fill="none"
-          stroke="url(#toddler_skin)"
+          stroke={`url(#${skinId})`}
           strokeWidth="7.6"
           strokeLinecap="round"
         />
         <path
           d={`M 96 ${neckY + 7} Q 111 ${neckY + 5 - waveLift} 112 ${neckY + 15 - waveLift}`}
           fill="none"
-          stroke="url(#toddler_skin)"
+          stroke={`url(#${skinId})`}
           strokeWidth="7.6"
           strokeLinecap="round"
         />
-        <circle cx="48" cy={neckY + 18 + waveLift} r="4.2" fill="url(#toddler_skin)" />
-        <circle cx="112" cy={neckY + 15 - waveLift} r="4.2" fill="url(#toddler_skin)" />
+        <circle cx="48" cy={neckY + 18 + waveLift} r="4.2" fill={`url(#${skinId})`} />
+        <circle cx="112" cy={neckY + 15 - waveLift} r="4.2" fill={`url(#${skinId})`} />
       </g>
 
       {/* Ruffled pastel peach-blush baby frock */}
@@ -961,7 +983,7 @@ export function AnamikaToddler({ age, className = '' }: AnamikaToddlerProps) {
               Q 80 ${neckY - 1} 94 ${neckY + 2}
               L ${102 + clampedAge * 1.4} ${frockBottomY}
               Q 80 ${frockBottomY + 7} ${58 - clampedAge * 1.4} ${frockBottomY} Z`}
-          fill="url(#toddler_frock)"
+          fill={`url(#${frockId})`}
         />
         {/* Cute ivory Peter Pan collar */}
         <path
@@ -980,7 +1002,7 @@ export function AnamikaToddler({ age, className = '' }: AnamikaToddlerProps) {
 
       {/* Toddler Head */}
       <g>
-        <ellipse cx="80" cy={headCy} rx={headRx} ry={headRy} fill="url(#toddler_skin)" />
+        <ellipse cx="80" cy={headCy} rx={headRx} ry={headRy} fill={`url(#${skinId})`} />
         {/* Soft rounded bangs */}
         <path
           d={`M ${80 - headRx - 0.5} ${headCy - 2}
@@ -988,7 +1010,7 @@ export function AnamikaToddler({ age, className = '' }: AnamikaToddlerProps) {
               C ${80 + 9} ${crownY} ${80 + headRx + 1} ${crownY + 1} ${80 + headRx + 0.5} ${headCy - 2}
               C ${80 + headRx - 5} ${headCy - 9} ${80 + 7} ${headCy - 10} 80 ${headCy - 8}
               C ${80 - 7} ${headCy - 10} ${80 - headRx + 5} ${headCy - 9} ${80 - headRx - 0.5} ${headCy - 2} Z`}
-          fill="url(#toddler_hair)"
+          fill={`url(#${hairId})`}
         />
         {/* Hair shine arc */}
         <path
@@ -1047,6 +1069,11 @@ export interface AnamikaGrowingGirlProps extends CharacterClassProps {
 }
 
 export function AnamikaGrowingGirl({ age, className = '' }: AnamikaGrowingGirlProps) {
+  const uid = useId().replace(/:/g, '');
+  const skinId = `${uid}_girl_skin`;
+  const hairId = `${uid}_girl_hair`;
+  const dressId = `${uid}_girl_dress`;
+  const sashId = `${uid}_girl_sash`;
   const clampedAge = Math.max(4, Math.min(13, Math.round(age)));
   const step = SCENE_9_GROWTH_STEPS.find((s) => s.age === clampedAge) ?? SCENE_9_GROWTH_STEPS[0];
   const progress01 = (clampedAge - 4) / 9; // 0 at age 4 -> 1 at age 13
@@ -1075,21 +1102,21 @@ export function AnamikaGrowingGirl({ age, className = '' }: AnamikaGrowingGirlPr
       className={`block select-none overflow-visible ${className}`}
     >
       <defs>
-        <linearGradient id="girl_skin" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={skinId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FFE7D6" />
           <stop offset="100%" stopColor="#F4C9AE" />
         </linearGradient>
-        <linearGradient id="girl_hair" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={hairId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#3E2036" />
           <stop offset="60%" stopColor="#281223" />
           <stop offset="100%" stopColor="#1D0B18" />
         </linearGradient>
-        <linearGradient id="girl_dress" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={dressId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FFFBF6" />
           <stop offset="48%" stopColor="#FDE4EE" />
           <stop offset="100%" stopColor="#F4B7D0" />
         </linearGradient>
-        <linearGradient id="girl_sash" x1="0%" y1="0%" x2="100%" y2="0%">
+        <linearGradient id={sashId} x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#E97FA8" />
           <stop offset="100%" stopColor="#D94B7D" />
         </linearGradient>
@@ -1103,7 +1130,7 @@ export function AnamikaGrowingGirl({ age, className = '' }: AnamikaGrowingGirlPr
             C ${80 - headRx - 4} ${shoulderY + 8} ${80 - headRx - 5 - progress01 * 3} ${hairBottomY - 12} ${80 - 18 - progress01 * 4} ${hairBottomY}
             Q 80 ${hairBottomY + 7} ${80 + 18 + progress01 * 4} ${hairBottomY}
             C ${80 + headRx + 5 + progress01 * 3} ${hairBottomY - 12} ${80 + headRx + 4} ${shoulderY + 8} ${80 + headRx + 1} ${headCy - 2} Z`}
-        fill="url(#girl_hair)"
+        fill={`url(#${hairId})`}
       />
 
       {/* Proportionally elongating legs, neat white socks & pastel ribbon shoes */}
@@ -1114,7 +1141,7 @@ export function AnamikaGrowingGirl({ age, className = '' }: AnamikaGrowingGirlPr
           width="9"
           height={shoeTopY - hemY + 9}
           rx="4.4"
-          fill="url(#girl_skin)"
+          fill={`url(#${skinId})`}
         />
         <rect
           x="82.5"
@@ -1122,7 +1149,7 @@ export function AnamikaGrowingGirl({ age, className = '' }: AnamikaGrowingGirlPr
           width="9"
           height={shoeTopY - hemY + 9}
           rx="4.4"
-          fill="url(#girl_skin)"
+          fill={`url(#${skinId})`}
         />
         {/* Neat white socks */}
         <rect x="68.2" y={shoeTopY - 8} width="9.6" height="11" rx="3" fill="#FFFDFB" />
@@ -1139,19 +1166,19 @@ export function AnamikaGrowingGirl({ age, className = '' }: AnamikaGrowingGirlPr
         <path
           d={`M 65 ${shoulderY + 4} Q 54 ${(shoulderY + armEndY) / 2} 57 ${armEndY}`}
           fill="none"
-          stroke="url(#girl_skin)"
+          stroke={`url(#${skinId})`}
           strokeWidth="6.8"
           strokeLinecap="round"
         />
         <path
           d={`M 95 ${shoulderY + 4} Q 106 ${(shoulderY + armEndY) / 2} 103 ${armEndY}`}
           fill="none"
-          stroke="url(#girl_skin)"
+          stroke={`url(#${skinId})`}
           strokeWidth="6.8"
           strokeLinecap="round"
         />
-        <circle cx="57" cy={armEndY} r="3.8" fill="url(#girl_skin)" />
-        <circle cx="103" cy={armEndY} r="3.8" fill="url(#girl_skin)" />
+        <circle cx="57" cy={armEndY} r="3.8" fill={`url(#${skinId})`} />
+        <circle cx="103" cy={armEndY} r="3.8" fill={`url(#${skinId})`} />
       </g>
 
       {/* Pastel ivory-and-rose dress/tunic with blush ribbon waist sash & gold hem trim */}
@@ -1168,10 +1195,10 @@ export function AnamikaGrowingGirl({ age, className = '' }: AnamikaGrowingGirlPr
               L ${103 + progress01 * 3} ${hemY}
               Q 80 ${hemY + 6} ${57 - progress01 * 3} ${hemY}
               L 67 ${waistY} Z`}
-          fill="url(#girl_dress)"
+          fill={`url(#${dressId})`}
         />
         {/* Delicate rose waist sash */}
-        <rect x="66.5" y={waistY - 2} width="27" height="4.4" rx="2.2" fill="url(#girl_sash)" />
+        <rect x="66.5" y={waistY - 2} width="27" height="4.4" rx="2.2" fill={`url(#${sashId})`} />
         {/* Champagne-gold hem border */}
         <path
           d={`M ${58 - progress01 * 2.5} ${hemY - 2} Q 80 ${hemY + 3.5} ${102 + progress01 * 2.5} ${hemY - 2}`}
@@ -1184,8 +1211,8 @@ export function AnamikaGrowingGirl({ age, className = '' }: AnamikaGrowingGirlPr
 
       {/* Neck & Balanced Head */}
       <g>
-        <rect x="75.5" y={neckTopY} width="9" height="10" rx="4.2" fill="url(#girl_skin)" />
-        <ellipse cx="80" cy={headCy} rx={headRx} ry={headRy} fill="url(#girl_skin)" />
+        <rect x="75.5" y={neckTopY} width="9" height="10" rx="4.2" fill={`url(#${skinId})`} />
+        <ellipse cx="80" cy={headCy} rx={headRx} ry={headRy} fill={`url(#${skinId})`} />
 
         {/* Soft center-parted hair bangs */}
         <path
@@ -1194,7 +1221,7 @@ export function AnamikaGrowingGirl({ age, className = '' }: AnamikaGrowingGirlPr
               C ${80 + 9} ${crownY - 1} ${80 + headRx + 1} ${crownY} ${80 + headRx + 0.8} ${headCy - 1}
               C ${80 + headRx - 4} ${headCy - 10} ${80 + 8} ${headCy - 11} 80 ${headCy - 9}
               C ${80 - 8} ${headCy - 11} ${80 - headRx + 4} ${headCy - 10} ${80 - headRx - 0.8} ${headCy - 1} Z`}
-          fill="url(#girl_hair)"
+          fill={`url(#${hairId})`}
         />
         {/* Glossy hair highlight ribbons */}
         <path
@@ -1269,6 +1296,13 @@ export function AnamikaTeen({
   showQuestionSparkle = false,
   className = '',
 }: AnamikaTeenProps) {
+  const uid = useId().replace(/:/g, '');
+  const skinId = `${uid}_teen_skin`;
+  const hairId = `${uid}_teen_hair`;
+  const kurtiId = `${uid}_teen_kurti`;
+  const dupattaId = `${uid}_teen_dupatta`;
+  const pantsId = `${uid}_teen_pants`;
+  const crownId = `${uid}_teen_crown`;
   // Exact 5'2" crown Y = 46.2 on unified 230-unit coordinate frame
   const crownY = inchesToSvgCrownY(FIVE_TWO_INCHES);
   const headCy = crownY + 23.2; // 69.4
@@ -1339,7 +1373,7 @@ export function AnamikaTeen({
         <ellipse cx="80" cy={crownY - 16} rx="23" ry="13" fill="rgba(247, 217, 148, 0.38)" />
         <path
           d={`M 65 ${crownY - 7} L 68 ${crownY - 21} L 74.5 ${crownY - 14} L 80 ${crownY - 25} L 85.5 ${crownY - 14} L 92 ${crownY - 21} L 95 ${crownY - 7} Z`}
-          fill="url(#teen_crown)"
+          fill={`url(#${crownId})`}
         />
         <circle cx="80" cy={crownY - 25} r="2.2" fill="#D94B7D" />
         <circle cx="68" cy={crownY - 21} r="1.7" fill="#FFFDF9" />
@@ -1366,30 +1400,30 @@ export function AnamikaTeen({
       className={`block select-none overflow-visible ${className}`}
     >
       <defs>
-        <linearGradient id="teen_skin" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={skinId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FFE6D5" />
           <stop offset="72%" stopColor="#F5CCB0" />
           <stop offset="100%" stopColor="#EAB898" />
         </linearGradient>
-        <linearGradient id="teen_hair" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={hairId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#3E2036" />
           <stop offset="55%" stopColor="#271122" />
           <stop offset="100%" stopColor="#1B0A17" />
         </linearGradient>
-        <linearGradient id="teen_kurti" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={kurtiId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FFFBF6" />
           <stop offset="52%" stopColor="#FCE2EC" />
           <stop offset="100%" stopColor="#F2B4CE" />
         </linearGradient>
-        <linearGradient id="teen_dupatta" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={dupattaId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#F8C8DD" stopOpacity="0.9" />
           <stop offset="100%" stopColor="#E58DB2" stopOpacity="0.86" />
         </linearGradient>
-        <linearGradient id="teen_pants" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={pantsId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FFF7F2" />
           <stop offset="100%" stopColor="#F3DDE6" />
         </linearGradient>
-        <linearGradient id="teen_crown" x1="0%" y1="0%" x2="0%" y2="100%">
+        <linearGradient id={crownId} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FFF0BA" />
           <stop offset="55%" stopColor="#F3C969" />
           <stop offset="100%" stopColor="#DDA543" />
@@ -1408,15 +1442,15 @@ export function AnamikaTeen({
             C 50 94 49 132 54 166
             Q 80 176 106 166
             C 111 132 110 94 105 68 Z`}
-        fill="url(#teen_hair)"
+        fill={`url(#${hairId})`}
         className="origin-story-hair-sway"
         style={{ transformOrigin: '80px 72px' }}
       />
 
       {/* Neat fitted trousers & pastel festive juttis grounded cleanly at y = 220 */}
       <g>
-        <rect x="66.5" y="168" width="11" height="45" rx="5.2" fill="url(#teen_pants)" />
-        <rect x="82.5" y="168" width="11" height="45" rx="5.2" fill="url(#teen_pants)" />
+        <rect x="66.5" y="168" width="11" height="45" rx="5.2" fill={`url(#${pantsId})`} />
+        <rect x="82.5" y="168" width="11" height="45" rx="5.2" fill={`url(#${pantsId})`} />
         {/* Pastel festive juttis */}
         <path
           d="M 63.5 214 C 63.5 211 68 210 73 210 C 77.5 210 79.5 213 79.5 216.5 C 79.5 219.5 76 220.5 71 220.5 C 65.5 220.5 63.5 218 63.5 214 Z"
@@ -1437,38 +1471,38 @@ export function AnamikaTeen({
             <path
               d="M 62 106 Q 44 96 42 81"
               fill="none"
-              stroke="url(#teen_skin)"
+              stroke={`url(#${skinId})`}
               strokeWidth="7.2"
               strokeLinecap="round"
             />
             <path
               d="M 98 106 Q 116 96 118 81"
               fill="none"
-              stroke="url(#teen_skin)"
+              stroke={`url(#${skinId})`}
               strokeWidth="7.2"
               strokeLinecap="round"
             />
-            <circle cx="42" cy="80" r="4.2" fill="url(#teen_skin)" />
-            <circle cx="118" cy="80" r="4.2" fill="url(#teen_skin)" />
+            <circle cx="42" cy="80" r="4.2" fill={`url(#${skinId})`} />
+            <circle cx="118" cy="80" r="4.2" fill={`url(#${skinId})`} />
           </>
         ) : isBonk ? (
           <>
             <path
               d="M 62 108 Q 48 96 55 77"
               fill="none"
-              stroke="url(#teen_skin)"
+              stroke={`url(#${skinId})`}
               strokeWidth="7.2"
               strokeLinecap="round"
             />
             <path
               d="M 98 108 Q 112 96 105 77"
               fill="none"
-              stroke="url(#teen_skin)"
+              stroke={`url(#${skinId})`}
               strokeWidth="7.2"
               strokeLinecap="round"
             />
-            <circle cx="56" cy="75" r="4.2" fill="url(#teen_skin)" />
-            <circle cx="104" cy="75" r="4.2" fill="url(#teen_skin)" />
+            <circle cx="56" cy="75" r="4.2" fill={`url(#${skinId})`} />
+            <circle cx="104" cy="75" r="4.2" fill={`url(#${skinId})`} />
           </>
         ) : (
           <>
@@ -1479,7 +1513,7 @@ export function AnamikaTeen({
                   : 'M 62 106 Q 52 124 55 144'
               }
               fill="none"
-              stroke="url(#teen_skin)"
+              stroke={`url(#${skinId})`}
               strokeWidth="7.2"
               strokeLinecap="round"
             />
@@ -1490,12 +1524,12 @@ export function AnamikaTeen({
                   : 'M 98 106 Q 108 124 105 144'
               }
               fill="none"
-              stroke="url(#teen_skin)"
+              stroke={`url(#${skinId})`}
               strokeWidth="7.2"
               strokeLinecap="round"
             />
-            <circle cx={isDetermined ? 52 : 55} cy={isDetermined ? 133 : 145} r="4.1" fill="url(#teen_skin)" />
-            <circle cx={isDetermined ? 108 : 105} cy={isDetermined ? 133 : 145} r="4.1" fill="url(#teen_skin)" />
+            <circle cx={isDetermined ? 52 : 55} cy={isDetermined ? 133 : 145} r="4.1" fill={`url(#${skinId})`} />
+            <circle cx={isDetermined ? 108 : 105} cy={isDetermined ? 133 : 145} r="4.1" fill={`url(#${skinId})`} />
           </>
         )}
       </g>
@@ -1514,7 +1548,7 @@ export function AnamikaTeen({
              L 104 176
              Q 80 182 56 176
              L 65 132 Z"
-          fill="url(#teen_kurti)"
+          fill={`url(#${kurtiId})`}
         />
         {/* Champagne-gold neckline embroidery */}
         <path
@@ -1538,7 +1572,7 @@ export function AnamikaTeen({
         <g className="origin-story-hair-sway" style={{ transformOrigin: '65px 104px' }}>
           <path
             d="M 62 100 L 72 100 C 69 124 65 148 56 172 L 49 167 C 56 144 59 122 62 100 Z"
-            fill="url(#teen_dupatta)"
+            fill={`url(#${dupattaId})`}
           />
           <path
             d="M 62 102 C 59 124 55 146 49.5 167"
@@ -1552,7 +1586,7 @@ export function AnamikaTeen({
 
       {/* Neck & Refined Teen Face */}
       <g>
-        <rect x="75" y="90" width="10" height="12" rx="4.5" fill="url(#teen_skin)" />
+        <rect x="75" y="90" width="10" height="12" rx="4.5" fill={`url(#${skinId})`} />
         {/* Subtle chin shadow */}
         <path d="M 75 93 Q 80 97 85 93 L 85 90 L 75 90 Z" fill="rgba(180, 112, 82, 0.2)" />
 
@@ -1563,7 +1597,7 @@ export function AnamikaTeen({
               C 93 ${crownY + 1} 102 ${crownY + 6} 102 ${headCy}
               C 102 ${headCy + 16} 93 ${headCy + 24} 80 ${headCy + 24}
               C 67 ${headCy + 24} 58 ${headCy + 16} 58 ${headCy} Z`}
-          fill="url(#teen_skin)"
+          fill={`url(#${skinId})`}
         />
 
         {/* Center-parted dark espresso-plum hair crown + side framing strands */}
@@ -1573,16 +1607,16 @@ export function AnamikaTeen({
               C 96 ${crownY} 106 ${crownY + 6} 105 ${headCy + 3}
               C 102 ${headCy - 7} 94 ${headCy - 14} 80 ${headCy - 16}
               C 66 ${headCy - 14} 58 ${headCy - 7} 55 ${headCy + 3} Z`}
-          fill="url(#teen_hair)"
+          fill={`url(#${hairId})`}
         />
         {/* Soft framing side locks */}
         <path
           d={`M 57 ${headCy - 2} C 55 ${headCy + 14} 57 ${headCy + 28} 61 ${headCy + 34} C 61 ${headCy + 22} 60 ${headCy + 10} 61 ${headCy - 2} Z`}
-          fill="url(#teen_hair)"
+          fill={`url(#${hairId})`}
         />
         <path
           d={`M 103 ${headCy - 2} C 105 ${headCy + 14} 103 ${headCy + 28} 99 ${headCy + 34} C 99 ${headCy + 22} 100 ${headCy + 10} 99 ${headCy - 2} Z`}
-          fill="url(#teen_hair)"
+          fill={`url(#${hairId})`}
         />
         {/* Glossy hair highlight ribbons */}
         <path

@@ -207,6 +207,8 @@ function ScratchCouponCard({
 }: ScratchCouponCardProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const sampleCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const lastSizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
   const dprRef = useRef(1);
   const isScratchingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
@@ -237,16 +239,25 @@ function ScratchCouponCard({
     }
   }, [revealed, coupon.id]);
 
-  // Size DPR-scaled canvas cleanly to card dimensions and paint fresh metallic foil
+  // Size DPR-scaled canvas cleanly to card dimensions, re-sync on layout/orientation resize, and paint fresh metallic foil
   useEffect(() => {
     const canvas = canvasRef.current;
     const card = cardRef.current;
     if (!canvas || !card) return;
 
-    const initFoil = () => {
+    const initFoil = (forceRepaint = false) => {
+      if (!forceRepaint && hasRevealedRef.current) return;
       const rect = card.getBoundingClientRect();
       const cssW = Math.max(240, Math.round(rect.width));
       const cssH = Math.max(216, Math.round(rect.height));
+      if (
+        !forceRepaint &&
+        Math.abs(cssW - lastSizeRef.current.w) <= 4 &&
+        Math.abs(cssH - lastSizeRef.current.h) <= 4
+      ) {
+        return;
+      }
+      lastSizeRef.current = { w: cssW, h: cssH };
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       dprRef.current = dpr;
       canvas.width = Math.round(cssW * dpr);
@@ -255,19 +266,38 @@ function ScratchCouponCard({
       setScratchPercent(0);
     };
 
-    initFoil();
+    initFoil(true);
+
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      initFoil(false);
+    });
+    observer.observe(card);
+    return () => {
+      observer.disconnect();
+    };
   }, [recoatVersion]);
 
   const checkClearedProgress = useCallback(() => {
     if (hasRevealedRef.current) return;
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
+    if (!canvas || canvas.width === 0 || canvas.height === 0) return;
 
-    const stride = Math.max(16, Math.round(16 * dprRef.current));
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    const clearedRatio = calculateClearedRatio(imgData, stride);
+    // Downsample onto a tiny 64x48 offscreen canvas to avoid multi-megabyte full-DPR GPU->CPU readbacks on Android
+    let sampleCanvas = sampleCanvasRef.current;
+    if (!sampleCanvas) {
+      sampleCanvas = document.createElement('canvas');
+      sampleCanvas.width = 64;
+      sampleCanvas.height = 48;
+      sampleCanvasRef.current = sampleCanvas;
+    }
+    const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+    if (!sampleCtx) return;
+
+    sampleCtx.clearRect(0, 0, sampleCanvas.width, sampleCanvas.height);
+    sampleCtx.drawImage(canvas, 0, 0, sampleCanvas.width, sampleCanvas.height);
+    const imgData = sampleCtx.getImageData(0, 0, sampleCanvas.width, sampleCanvas.height).data;
+    const clearedRatio = calculateClearedRatio(imgData, 1);
     setScratchPercent(Math.min(99, Math.round(clearedRatio * 100)));
 
     if (shouldAutoRevealScratch(clearedRatio)) {
@@ -283,7 +313,7 @@ function ScratchCouponCard({
     (clientX: number, clientY: number) => {
       const canvas = canvasRef.current;
       if (!canvas || hasRevealedRef.current) return;
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
       const rect = canvas.getBoundingClientRect();
@@ -298,21 +328,17 @@ function ScratchCouponCard({
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.globalCompositeOperation = 'destination-out';
       ctx.fillStyle = 'rgba(0,0,0,1)';
-      ctx.shadowColor = 'rgba(0,0,0,1)';
-      ctx.shadowBlur = 5;
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = brushRadius * 2;
 
       const prev = lastPointRef.current;
       if (prev) {
-        const dist = Math.hypot(x - prev.x, y - prev.y);
-        const steps = Math.max(1, Math.ceil(dist / 7));
-        for (let i = 1; i <= steps; i++) {
-          const t = i / steps;
-          const ix = prev.x + (x - prev.x) * t;
-          const iy = prev.y + (y - prev.y) * t;
-          ctx.beginPath();
-          ctx.arc(ix, iy, brushRadius, 0, Math.PI * 2);
-          ctx.fill();
-        }
+        ctx.beginPath();
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(x, y);
+        ctx.stroke();
       } else {
         ctx.beginPath();
         ctx.arc(x, y, brushRadius, 0, Math.PI * 2);

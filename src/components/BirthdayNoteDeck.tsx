@@ -3,6 +3,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { trackEvent } from '../utils/analytics';
@@ -74,6 +75,22 @@ export function BirthdayNoteDeck({
   const startTimeRef = useRef(0);
   const currentDxRef = useRef(0);
   const flickTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (flickTimerRef.current !== null) {
+      window.clearTimeout(flickTimerRef.current);
+      flickTimerRef.current = null;
+    }
+    isPointerDownRef.current = false;
+    isHorizontalDragRef.current = false;
+    currentDxRef.current = 0;
+    const cardEl = topCardRef.current;
+    if (cardEl) {
+      cardEl.style.transition = '';
+      cardEl.style.transform = 'translate3d(0, 0, 0) scale(1) rotate(0deg)';
+      cardEl.style.opacity = '1';
+    }
+  }, [mode]);
 
   useEffect(() => {
     return () => {
@@ -206,6 +223,19 @@ export function BirthdayNoteDeck({
     [commitCardAdvance],
   );
 
+  const handleStageKeyDown = useCallback(
+    (e: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        commitCardAdvance('right', 'button');
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        commitCardAdvance('left', 'button');
+      }
+    },
+    [commitCardAdvance],
+  );
+
   const visibleIndices = getVisibleStackIndices(currentIndex, notes.length);
 
   return (
@@ -266,7 +296,11 @@ export function BirthdayNoteDeck({
         {/* Interactive 4-Card Physical Stationery Stack (295px height + 28px clearance below) */}
         <div
           data-testid="note-deck-stage"
-          className="relative my-auto mt-5 mb-[28px] h-[295px] sm:h-[304px]"
+          tabIndex={0}
+          role="region"
+          aria-label="Birthday note card deck, swipe or press arrow keys for next note"
+          onKeyDown={handleStageKeyDown}
+          className="relative my-auto mt-5 mb-[28px] h-[295px] rounded-[22px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D94B7D] sm:h-[304px]"
         >
           {/* Render back-to-front so top card (depth 0) sits cleanly on top */}
           {[...visibleIndices].reverse().map((noteIdx, reversePos) => {

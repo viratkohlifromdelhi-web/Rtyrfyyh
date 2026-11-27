@@ -18,7 +18,7 @@ export function FloatingConfettiButton({ onPop }: FloatingConfettiButtonProps) {
   };
 
   return (
-    <div className="fixed right-[14px] bottom-[14px] z-40">
+    <div className="fixed right-[14px] bottom-[calc(14px+env(safe-area-inset-bottom,0px))] z-40">
       <button
         type="button"
         data-testid="floating-confetti-btn"
@@ -30,9 +30,9 @@ export function FloatingConfettiButton({ onPop }: FloatingConfettiButtonProps) {
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
         }}
-        className="group inline-flex h-[40px] w-[40px] cursor-pointer items-center justify-center rounded-full border-[1.5px] border-[#F2B5CC] opacity-85 shadow-[0_6px_16px_-4px_rgba(58,18,51,0.16)] transition-all duration-150 hover:-translate-y-0.5 hover:border-[#D94B7D] hover:opacity-100 hover:shadow-[0_10px_20px_-4px_rgba(217,75,125,0.24)] active:scale-[0.94] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
+        className="group inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-[1.5px] border-[#F2B5CC] opacity-85 shadow-[0_6px_16px_-4px_rgba(58,18,51,0.16)] transition-all duration-150 hover:-translate-y-0.5 hover:border-[#D94B7D] hover:opacity-100 hover:shadow-[0_10px_20px_-4px_rgba(217,75,125,0.24)] active:scale-[0.94] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
       >
-        <ConfettiSparkleMinimalSvg className="h-[18px] w-[18px] transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110" />
+        <ConfettiSparkleMinimalSvg className="h-[19px] w-[19px] transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110" />
       </button>
     </div>
   );

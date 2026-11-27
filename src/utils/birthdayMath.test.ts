@@ -33,16 +33,17 @@ test('December 2026 calendar fills 5 balanced rows with Nov 29-30, Dec 1-31, Jan
   assert.equal(decDays.length, 31);
 });
 
-test('computeBirthdayCountdown handles upcoming, today, and passed states and getRandomDateToast returns a cheeky line', () => {
-  const upcoming = computeBirthdayCountdown(new Date(2026, 10, 27, 15, 0, 0));
+test('computeBirthdayCountdown handles upcoming, today, and passed states in IST and getRandomDateToast returns a cheeky line', () => {
+  const upcoming = computeBirthdayCountdown(new Date('2026-11-27T15:00:00+05:30'));
   assert.equal(upcoming.status, 'upcoming');
   assert.equal(upcoming.daysLeft, 6);
   assert.equal(upcoming.label, '6 days left till Morgan turns 17');
 
-  const today = computeBirthdayCountdown(new Date(2026, 11, 3, 12, 0, 0));
-  assert.equal(today.status, 'today');
+  // 2026-12-02T19:00:00Z is already 2026-12-03T00:30:00+05:30 IST -> must be "today" in any timezone
+  const todayMidnightIst = computeBirthdayCountdown(new Date('2026-12-02T19:00:00Z'));
+  assert.equal(todayMidnightIst.status, 'today');
 
-  const passed = computeBirthdayCountdown(new Date(2026, 11, 10, 12, 0, 0));
+  const passed = computeBirthdayCountdown(new Date('2026-12-10T12:00:00+05:30'));
   assert.equal(passed.status, 'passed');
 
   const toast = getRandomDateToast(14);

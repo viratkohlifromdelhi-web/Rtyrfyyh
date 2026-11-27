@@ -374,7 +374,7 @@ export function HeroSection({
                   filter: isBright ? 'saturate(1) contrast(1)' : 'saturate(0.78) contrast(0.92)',
                 } as CSSProperties
               }
-              className={`animate-hero-emoji-bob pointer-events-auto absolute inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-[16px] leading-none transition-[opacity,filter] duration-500 ease-out hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] sm:text-[18px] lg:text-[19px] ${item.positionClass} ${
+              className={`animate-hero-emoji-bob pointer-events-auto absolute inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-[16px] leading-none transition-[opacity,filter] duration-500 ease-out hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] sm:text-[18px] lg:text-[19px] ${item.positionClass} ${
                 isBright ? 'opacity-95' : item.idleOpacityClass
               }`}
             >

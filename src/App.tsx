@@ -294,6 +294,10 @@ function BirthdayWebsiteShell() {
     setSummaryGiftData(null);
   }, []);
 
+  const handleVaultCodeUpdated = useCallback((newCode: string) => {
+    setSummaryGiftData((prev) => (prev ? { ...prev, code: newCode } : prev));
+  }, []);
+
   const handleHeaderEasterEgg = useCallback((originX: number, originY: number) => {
     confettiRef.current?.pop(originX, originY, 34);
     emitModinoEvent('friends_and_banter', { force: true, source: 'header-easter-egg' });
@@ -701,6 +705,7 @@ function BirthdayWebsiteShell() {
               onRevealConfetti={handleBurstConfetti}
               onFirstClaimUnlock={handleFirstVaultClaimUnlock}
               onVaultReset={handleVaultReset}
+              onCodeUpdated={handleVaultCodeUpdated}
               showFooterSummaryJump={showOneTimeSummary}
               onOpenKeepsakeModal={handleOpenKeepsakeModal}
             />

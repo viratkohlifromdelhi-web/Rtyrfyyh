@@ -6,32 +6,29 @@ import { soundEngine } from './soundEngine';
  * without any external audio files.
  */
 export class WheelAudioEngine {
-  private ctx: AudioContext | null = null;
   private noiseBuffer: AudioBuffer | null = null;
+  private noiseBufferSampleRate = 0;
 
   private ensureContext(): AudioContext | null {
-    if (typeof window === 'undefined') return null;
-    const AudioCtx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return null;
+    const ctx = soundEngine.getAudioContext();
+    if (!ctx) return null;
 
-    if (!this.ctx) {
-      this.ctx = new AudioCtx();
+    if (ctx.state === 'suspended') {
+      void ctx.resume().catch(() => {
+        // Ignore resume rejection
+      });
     }
-    if (this.ctx.state === 'suspended') {
-      void this.ctx.resume();
-    }
-    if (!this.noiseBuffer && this.ctx) {
-      const length = Math.floor(this.ctx.sampleRate * 0.03);
-      const buffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
+    if (!this.noiseBuffer || this.noiseBufferSampleRate !== ctx.sampleRate) {
+      const length = Math.floor(ctx.sampleRate * 0.03);
+      const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < length; i++) {
         data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (length * 0.28));
       }
       this.noiseBuffer = buffer;
+      this.noiseBufferSampleRate = ctx.sampleRate;
     }
-    return this.ctx;
+    return ctx;
   }
 
   /**
@@ -168,10 +165,8 @@ export class WheelAudioEngine {
   }
 
   public dispose(): void {
-    if (this.ctx) {
-      void this.ctx.close();
-      this.ctx = null;
-      this.noiseBuffer = null;
-    }
+    // Shared AudioContext is owned by soundEngine; only clear our local buffer reference
+    this.noiseBuffer = null;
+    this.noiseBufferSampleRate = 0;
   }
 }

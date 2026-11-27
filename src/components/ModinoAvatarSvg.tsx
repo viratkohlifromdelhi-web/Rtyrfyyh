@@ -233,7 +233,8 @@ export function ModinoAvatarSvg({ mood, tapRippleKey, paused = false }: ModinoAv
           <path
             d="M60 32 C84 32 96 50 96 74 C96 95 82 104 60 104 C38 104 24 95 24 74 C24 50 36 32 60 32 Z"
             fill={`url(#${bodyGradId})`}
-            filter="drop-shadow(0 4px 10px rgba(176, 62, 106, 0.14))"
+            stroke="rgba(217, 75, 125, 0.14)"
+            strokeWidth="1"
           />
           {/* Subtle top-head rim shine */}
           <ellipse cx="52" cy="41" rx="14" ry="5.5" fill="#FFFFFF" opacity="0.72" />
