@@ -1,17 +1,25 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
-import type { OneTimeSummaryGiftData } from '../utils/infinityVault';
+import {
+  INFINITY_STONES,
+  getStoneById,
+  type OneTimeSummaryGiftData,
+} from '../utils/infinityVault';
 import { soundEngine } from '../utils/soundEngine';
+import { InfinityStoneSvg } from './InfinityStoneSvg';
 
 interface BirthdaySummaryCardProps {
   data: OneTimeSummaryGiftData;
 }
 
 export function BirthdaySummaryCard({ data }: BirthdaySummaryCardProps) {
+  const grainId = useId().replace(/:/g, '');
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    trackEvent('summary_card_viewed', 'One-Time Footer Summary Card');
     return () => {
       if (copyTimerRef.current !== null) {
         window.clearTimeout(copyTimerRef.current);
@@ -21,6 +29,7 @@ export function BirthdaySummaryCard({ data }: BirthdaySummaryCardProps) {
 
   const handleCopyCode = useCallback(() => {
     if (!data.code) return;
+    trackEvent('summary_card_code_copied', 'Footer Summary Copy Code Button');
     haptics.summaryCopyTap();
     soundEngine.playBubbleClick(1.1);
 
@@ -60,134 +69,171 @@ export function BirthdaySummaryCard({ data }: BirthdaySummaryCardProps) {
     }
   }, [data.code]);
 
+  const stoneSpec =
+    data.stoneId
+      ? getStoneById(data.stoneId)
+      : (INFINITY_STONES.find((s) => s.name === data.stoneName) ?? INFINITY_STONES[2]);
+
+  const formattedCode = data.code.replace(/ - /g, '  ·  ');
+
   return (
     <div
       id="birthday-summary-card"
       data-testid="birthday-summary-card"
-      className="mx-auto flex w-full justify-center px-4 pt-6 pb-9 sm:pt-8 sm:pb-11 scroll-mt-20"
+      className="mx-auto flex w-full justify-center px-4 pt-6 pb-10 sm:pt-8 sm:pb-12 scroll-mt-20"
     >
       <div
-        className="animate-summary-card-enter relative w-[min(92vw,375px)] overflow-hidden rounded-[26px] border-[1.5px] border-[#F6CFD7]/55 px-5 py-6 text-center text-[#FFF6F9] shadow-[0_24px_56px_-18px_rgba(58,18,51,0.52)]"
+        className="animate-summary-card-enter relative w-[min(92vw,390px)] overflow-hidden rounded-[22px] text-center text-[#FAF3EA]"
         style={{
-          background:
-            'linear-gradient(150deg, #3A1233 0%, #5D1947 46%, #A83467 84%, #D94B7D 100%)',
+          background: 'linear-gradient(155deg, #24101B 0%, #140910 58%, #1C0C16 100%)',
+          border: '1px solid rgba(232, 200, 146, 0.34)',
+          boxShadow:
+            'inset 0 1px 0 rgba(255, 242, 218, 0.14), 0 28px 60px -22px rgba(22, 16, 23, 0.56)',
         }}
       >
-        {/* Faint diagonal glossy sheen */}
-        <div
+        {/* Subtle 3% fine film-grain noise texture */}
+        <svg
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(125deg, rgba(255,246,249,0.14) 0%, rgba(255,246,249,0.03) 34%, transparent 52%, rgba(246,207,215,0.12) 100%)',
-          }}
-        />
-
-        {/* Subtle inner rose-gold hairline */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-2.5 rounded-[18px] border border-[#F6CFD7]/25"
-        />
-
-        {/* 1. Top Warning Pill */}
-        <div className="relative z-10 flex justify-center">
-          <span
-            data-testid="summary-warning-pill"
-            className="inline-flex items-center gap-1 rounded-full border border-[#F6CFD7]/45 bg-[#2A0B26]/75 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.11em] text-[#FFE8F0] shadow-xs whitespace-nowrap"
-          >
-            📸 SCREENSHOT NOW — SHOWS ONLY ONCE
-          </span>
-        </div>
-
-        {/* 2. Header */}
-        <div className="relative z-10 mt-4">
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#FFDCE9]">
-            🎀 MORGAN&rsquo;S 17TH BIRTHDAY &bull; GIFT RECEIPT
-          </p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.22em] text-[#F6CFD7]/85">
-            03 DECEMBER 2026
-          </p>
-        </div>
-
-        {/* 3. Won Gift Card Hero Box */}
-        <div className="relative z-10 mt-4 rounded-2xl border border-[#F6CFD7]/35 bg-[#240921]/65 px-3.5 py-4 backdrop-blur-xs">
-          <div className="inline-flex items-center justify-center gap-2 text-xs font-semibold text-[#FFE5F0]">
-            <span
-              aria-hidden="true"
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{
-                backgroundColor: data.stoneColor,
-                boxShadow: `0 0 10px ${data.stoneGlow}, 0 0 4px #FFF6F9`,
-              }}
+          className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.035]"
+        >
+          <filter id={`receipt-grain-${grainId}`}>
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.84"
+              numOctaves="3"
+              stitchTiles="stitch"
             />
-            <span data-testid="summary-stone-label">Unlocked via {data.stoneName}</span>
-          </div>
+          </filter>
+          <rect width="100%" height="100%" filter={`url(#receipt-grain-${grainId})`} />
+        </svg>
 
+        {/* Restrained 5s champagne-gold diagonal specular sheen */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-[#F7E2B8]/25 to-transparent animate-vault-foil"
+        />
+
+        {/* Classic minimal corner hairline accents */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-3 left-3 h-2.5 w-2.5 border-t border-l border-[#E6C690]/40"
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-3 right-3 h-2.5 w-2.5 border-t border-r border-[#E6C690]/40"
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-3 left-3 h-2.5 w-2.5 border-b border-l border-[#E6C690]/40"
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute right-3 bottom-3 h-2.5 w-2.5 border-r border-b border-[#E6C690]/40"
+        />
+
+        {/* Upper Voucher Body */}
+        <div className="relative z-10 px-6 pt-6 pb-5 sm:px-7">
+          {/* 1. Understated One-Time Screenshot Notice */}
           <p
-            data-testid="summary-gift-value"
-            className="font-display mt-2 bg-gradient-to-b from-[#FFFDF9] via-[#FFE8C8] to-[#F3BA94] bg-clip-text text-[1.95rem] leading-tight font-extrabold tracking-tight text-transparent drop-shadow-[0_3px_12px_rgba(255,216,178,0.3)] sm:text-[2.1rem]"
+            data-testid="summary-warning-pill"
+            className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#D7B57E]"
           >
-            {data.value} GIFT CARD
+            Screenshot Now &nbsp;&middot;&nbsp; Shows Only Once
           </p>
 
-          {/* Single-line Monospace 12-Digit Code Pill + Compact Copy Button */}
-          <div className="mt-3.5 flex items-center justify-between gap-2 rounded-xl border border-[#F6CFD7]/30 bg-[#1B0619]/80 px-2.5 py-2">
+          <div className="mx-auto mt-3.5 h-px w-16 bg-[#E6C690]/25" aria-hidden="true" />
+
+          {/* 2. Editorial Header */}
+          <h3 className="font-display mt-4 text-2xl font-semibold italic tracking-tight text-[#FAF3EA]">
+            Morgan&rsquo;s 17th Birthday
+          </h3>
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#D7B57E]/82">
+            Gift Receipt &nbsp;&middot;&nbsp; 03 December 2026
+          </p>
+
+          {/* 3. Floating Movie-Grade Chosen Stone + Brushed Champagne Gold Value */}
+          <div className="mt-5 flex flex-col items-center">
+            <InfinityStoneSvg stone={stoneSpec} size={44} showSparks={false} />
+
+            <p
+              data-testid="summary-stone-label"
+              className="mt-2 text-[10.5px] font-semibold uppercase tracking-[0.2em] text-[#E8B4BE]"
+            >
+              Unlocked via {data.stoneName}
+            </p>
+
+            <p className="mt-4 text-[9.5px] font-semibold uppercase tracking-[0.26em] text-[#D7B57E]/80">
+              Gift Voucher
+            </p>
+            <p
+              data-testid="summary-gift-value"
+              className="font-display mt-0.5 bg-clip-text text-[3.5rem] leading-none font-semibold italic tracking-tight text-transparent sm:text-[3.85rem]"
+              style={{
+                backgroundImage:
+                  'linear-gradient(180deg, #FFF7E4 0%, #E7C382 52%, #B98C47 100%)',
+                filter: 'drop-shadow(0 4px 14px rgba(185, 140, 71, 0.24))',
+              }}
+            >
+              {data.value}
+            </p>
+          </div>
+        </div>
+
+        {/* Dashed Champagne-Gold Perforated Tear Line with Side Ticket Notches */}
+        <div className="relative z-10 flex items-center">
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -left-3 h-6 w-6 rounded-full border border-[rgba(232,200,146,0.34)] bg-[#FFF5F8]"
+          />
+          <div className="mx-5 w-full border-t border-dashed border-[#E6C690]/32" />
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-3 h-6 w-6 rounded-full border border-[rgba(232,200,146,0.34)] bg-[#FFF5F8]"
+          />
+        </div>
+
+        {/* Lower Ticket Stub — Airy & Unboxed (Zero Nested Boxes) */}
+        <div className="relative z-10 px-6 pt-5 pb-6 sm:px-7">
+          <span className="block text-[9.5px] font-semibold uppercase tracking-[0.22em] text-[#D7B57E]/80">
+            Activation Code
+          </span>
+
+          <div className="mt-2 flex items-center justify-center gap-3">
             <span
               data-testid="summary-gift-code"
-              className="whitespace-nowrap font-mono text-[13px] font-extrabold tracking-[0.06em] text-[#FFF6F9] sm:text-sm sm:tracking-[0.08em]"
+              className="whitespace-nowrap font-mono text-[14px] font-medium tabular-nums tracking-[0.12em] text-[#FAF3EA] sm:text-[15px]"
             >
-              {data.code}
+              {formattedCode}
             </span>
+
             <button
               type="button"
               data-testid="summary-copy-btn"
               onClick={handleCopyCode}
-              className={`shrink-0 whitespace-nowrap rounded-lg border px-2.5 py-1 text-[11px] font-extrabold transition-all duration-150 active:scale-95 cursor-pointer ${
+              className={`shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] transition-all duration-150 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E6C690] ${
                 copied
-                  ? 'border-[#4DF5A3]/60 bg-[#0D4A2F] text-[#B7FFDB]'
-                  : 'border-[#F6CFD7]/50 bg-[#FFF6F9] text-[#3A1233] hover:bg-[#FFE6F0]'
+                  ? 'border-[#E6C690] bg-[#E6C690]/18 text-[#FFF7E4]'
+                  : 'border-[#E6C690]/55 bg-transparent text-[#E6C690] hover:border-[#E6C690] hover:bg-[#E6C690]/12 hover:text-[#FAF3EA]'
               }`}
             >
-              {copied ? 'Copied ✓' : 'Copy 📋'}
+              {copied ? 'Copied ✓' : 'Copy Code'}
             </button>
           </div>
-        </div>
 
-        {/* 4. Activation Instruction */}
-        <p
-          data-testid="summary-activation-note"
-          className="relative z-10 mt-4 px-1 text-xs font-semibold leading-relaxed text-[#FFF6F9]"
-        >
-          Send this screenshot or 12-digit code to{' '}
-          <span className="rounded-md bg-white/15 px-1.5 py-0.5 font-mono font-extrabold text-[#FFE4F0]">
-            adinomide
-          </span>{' '}
-          to activate it.
-        </p>
+          {/* 4. Clean Editorial Activation Instruction */}
+          <p
+            data-testid="summary-activation-note"
+            className="mt-4 text-xs leading-relaxed text-[#FAF3EA]/78"
+          >
+            Send this screenshot or code to{' '}
+            <span className="font-semibold tracking-[0.02em] text-[#E6C690]">adinomide</span> to
+            activate your {data.value} gift card.
+          </p>
 
-        {/* 5. Playful Mini Footer Strip Inside Card + Semicircular Ticket Tear Notches */}
-        <div className="relative z-10 mt-5 border-t border-dashed border-[#F6CFD7]/45 pt-3.5">
-          {/* Semicircular side ticket notches aligned exactly with the dashed tear line */}
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute top-0 -left-8 h-6 w-6 -translate-y-1/2 rounded-full border-r border-[#F6CFD7]/55 bg-[#FFF6F9]"
-          />
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute top-0 -right-8 h-6 w-6 -translate-y-1/2 rounded-full border-l border-[#F6CFD7]/55 bg-[#FFF6F9]"
-          />
-
-          <div className="flex items-center justify-center gap-1.5 text-[9.5px] font-bold tracking-tight text-[#FFE4F0]/95 sm:text-[10px]">
-            <span className="whitespace-nowrap rounded-full border border-[#F6CFD7]/30 bg-white/10 px-2 py-0.5">
-              Bauni-Meter: 99%
-            </span>
-            <span aria-hidden="true" className="text-[#F6CFD7]/75">
-              &bull;
-            </span>
-            <span className="whitespace-nowrap rounded-full border border-[#F6CFD7]/30 bg-white/10 px-2 py-0.5">
-              Best Friend Rank: #2 (Behind Abhay)
-            </span>
-          </div>
+          {/* 5. Quiet Unboxed Keepsake Metadata Footer */}
+          <p className="mt-4 border-t border-[#E6C690]/15 pt-3.5 text-[10px] font-medium tracking-[0.06em] text-[#D7B57E]/72">
+            Bauni Meter: 99% &nbsp;&middot;&nbsp; Best Friend Rank: #2 (Behind Abhay)
+          </p>
         </div>
       </div>
     </div>

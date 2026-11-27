@@ -55,7 +55,7 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
   return (
     <section
       id="certificate"
-      className="relative z-20 scroll-mt-16 bg-gradient-to-b from-[#FFFDF8] via-[#F7F1FF]/60 to-[#FFFDF8] py-14 sm:py-20"
+      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         {/* Framed Mini-Certificate in Warm Cream with Pastel Pink Doodle Borders */}
@@ -95,7 +95,7 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
             {/* Certificate Header */}
             <div className="mt-2 text-center">
               <p className="text-xs font-semibold tracking-widest text-[#C2377E]">
-                Official-ish Paperwork
+                Official Paperwork
               </p>
               <h2 className="font-display mt-2 text-balance text-2xl font-bold tracking-wide text-[#3B1535] sm:text-3xl lg:text-4xl">
                 ADOPTION CERTIFICATE
@@ -114,7 +114,7 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
               </strong>{' '}
               is officially my lesbian daughter{' '}
               <strong className="font-bold text-[#C2377E]">&lsquo;Morgan&rsquo;</strong> and my{' '}
-              <strong className="font-bold text-[#3B1535]">greatest HG</strong> &mdash; holding the{' '}
+              <strong className="font-bold text-[#3B1535]">greatest HG</strong>, holding the{' '}
               <strong className="font-bold text-[#3B1535]">#2 spot</strong> on my friend list right
               behind Abhay.
             </p>
@@ -125,7 +125,7 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
                 <div>
                   <p className="text-xs font-semibold text-[#8A4D7E]">Effective Since</p>
                   <p className="text-sm font-semibold text-[#3B1535]">
-                    22 July 2026 (First Instagram DM)
+                    21 July 2026, 12:29 AM (First Instagram DM)
                   </p>
                 </div>
                 <div>

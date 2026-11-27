@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Delete, KeyRound, Lock, Sparkles, X } from 'lucide-react';
+import { Delete, KeyRound, Lock, X } from 'lucide-react';
 import {
   CLAIMED_DATE_LABEL,
   INFINITY_STONES,
@@ -27,6 +27,7 @@ import {
   type OneTimeSummaryGiftData,
   type VaultClaimRecord,
 } from '../utils/infinityVault';
+import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
@@ -57,6 +58,7 @@ export function InfinityVaultSection({
   onVaultReset,
   showFooterSummaryJump = false,
 }: InfinityVaultSectionProps) {
+  const grainFilterId = useId().replace(/:/g, '');
   const sectionRef = useRef<HTMLElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dustCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -349,6 +351,7 @@ export function InfinityVaultSection({
       stopOrbitLoop();
     } else if (phase === 'orbiting' || phase === 'stopping') {
       updateOrbitRadius();
+      applyStoneTransforms(orbitAngleRef.current, 0);
       ensureOrbitLoop();
     } else {
       stopOrbitLoop();
@@ -367,6 +370,7 @@ export function InfinityVaultSection({
 
   // Secret Reset (`9876`): wipes localStorage, resets refs/canvas/timers, plays reverse-time shimmer
   const executeSecretReset = useCallback(() => {
+    trackEvent('vault_reset_triggered', 'Infinity Gift Vault Reset');
     clearAllTimers();
     stopOrbitLoop();
     stopDustLoop(true);
@@ -409,6 +413,18 @@ export function InfinityVaultSection({
       const latestClaim = readVaultClaim();
       setClaimRecord(latestClaim);
       const resolution = evaluateVaultPasscode(fourDigits, latestClaim);
+      const trackedResult =
+        resolution === 'unlock'
+          ? 'unlocked'
+          : resolution === 'alreadyClaimed'
+            ? 'already_claimed'
+            : resolution === 'reset'
+              ? 'reset'
+              : 'wrong';
+      trackEvent('vault_passcode_attempt', 'Infinity Vault Keypad', {
+        codeEntered: fourDigits,
+        result: trackedResult,
+      });
 
       if (resolution === 'reset') {
         executeSecretReset();
@@ -491,6 +507,18 @@ export function InfinityVaultSection({
     (fourDigits: string) => {
       const latestClaim = readVaultClaim();
       const resolution = evaluateVaultPasscode(fourDigits, latestClaim);
+      const trackedResult =
+        resolution === 'unlock'
+          ? 'unlocked'
+          : resolution === 'alreadyClaimed'
+            ? 'already_claimed'
+            : resolution === 'reset'
+              ? 'reset'
+              : 'wrong';
+      trackEvent('vault_passcode_attempt', 'Infinity Vault Reset Modal', {
+        codeEntered: fourDigits,
+        result: trackedResult,
+      });
 
       if (resolution === 'reset') {
         executeSecretReset();
@@ -560,6 +588,7 @@ export function InfinityVaultSection({
   // Stop the orbital ring smoothly over 1.4s cubic ease-out
   const handleStopRing = useCallback(() => {
     if (phaseRef.current !== 'orbiting') return;
+    trackEvent('vault_ring_stopped', 'Infinity Vault Stop Ring Button');
     soundEngine.playVaultRingDecel();
     haptics.vaultStopRing();
     orbitSpeedRef.current = ORBIT_BASE_SPEED_RAD;
@@ -669,6 +698,11 @@ export function InfinityVaultSection({
         };
         writeVaultClaim(nextRecord);
         setClaimRecord(nextRecord);
+        trackEvent('vault_stone_picked', chosenStone.name, {
+          stoneName: chosenStone.name,
+          rewardValue: RIGGED_GIFT_DISPLAY,
+          generatedCode,
+        });
 
         // Reveal the ₹250 physical gift card smoothly right as the chosen stone bursts
         scheduleTimer(() => {
@@ -680,6 +714,7 @@ export function InfinityVaultSection({
             onFirstClaimUnlock?.({
               value: RIGGED_GIFT_DISPLAY,
               code: nextRecord.code,
+              stoneId: chosenStone.id,
               stoneName: chosenStone.name,
               stoneColor: chosenStone.bodyStart,
               stoneGlow: chosenStone.glow,
@@ -716,6 +751,7 @@ export function InfinityVaultSection({
   const handleCopyCode = useCallback(() => {
     const code = claimRecord?.code;
     if (!code) return;
+    trackEvent('vault_code_copied', 'Infinity Vault Copy Code Button');
     soundEngine.playBubbleClick(1.1);
 
     const markCopied = () => {
@@ -763,7 +799,6 @@ export function InfinityVaultSection({
 
   const activeStone = getStoneById(claimRecord?.stoneId ?? pickedStoneId ?? 'reality');
   const isOrbitStageMounted =
-    phase === 'locked' ||
     phase === 'orbiting' ||
     phase === 'stopping' ||
     phase === 'picking' ||
@@ -771,6 +806,7 @@ export function InfinityVaultSection({
     phase === 'dusting';
 
   const showRewardCard = phase === 'claimed' || phase === 'alreadyClaimed';
+  const formattedVoucherCode = claimRecord ? claimRecord.code.replace(/\s*-\s*/g, ' · ') : '';
 
   return (
     <section
@@ -778,48 +814,59 @@ export function InfinityVaultSection({
       id="infinity-vault"
       data-testid="infinity-vault-section"
       data-vault-phase={phase}
-      className="relative z-10 py-14 sm:py-20"
+      className="relative z-[2] bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-        {/* Section Header harmonized with Rose-Cream / Deep Plum / Rose Berry palette */}
+        {/* Clean Editorial Section Header on Soft Rose-Cream (#FFF6F9) */}
         <div className="mb-8 text-center sm:mb-10">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#F5C2D7] bg-[#FCE7F0] px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#D94B7D] shadow-xs">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Secret Vault &bull; 6 Infinity Stones</span>
-          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8F5A6E]">
+            The Collector&rsquo;s Vault &nbsp;&middot;&nbsp; Six Infinity Stones
+          </p>
 
-          <h2 className="font-display text-3xl font-bold tracking-tight text-[#3A1233] sm:text-4xl">
-            The Infinity Gift Vault
+          <h2 className="font-display mt-2.5 text-balance text-3xl font-semibold tracking-tight text-[#3A1233] sm:text-4xl">
+            The Infinity <span className="italic text-[#7A2D4F]">Gift Vault</span>
           </h2>
-          <p className="mx-auto mt-2.5 max-w-xl text-sm leading-relaxed text-[#7A4A63] sm:text-base">
-            Six Avengers Infinity Stones, one mystery birthday gift card locked inside. Unlock the
-            vault, stop the cosmic ring, and pick your stone.
+          <p className="mx-auto mt-2.5 max-w-lg text-sm leading-relaxed text-[#7A4A63] sm:text-[15px]">
+            Six cosmic stones, one birthday gift voucher sealed inside. Enter the passcode, bring
+            the astrolabe to rest, and claim your stone.
           </p>
         </div>
 
-        {/* Deep Cosmic-Plum Glass Vault Card */}
+        {/* Bespoke Matte Velvet Espresso-Obsidian & Brushed Champagne-Gold Collector's Case */}
         <div
-          className="relative overflow-hidden rounded-[28px] border border-[#E8A3BE]/35 bg-gradient-to-b from-[#1B0920] via-[#230B2B] to-[#2B0E34] px-4 py-6 text-[#FFF6F9] shadow-[0_24px_60px_-20px_rgba(43,14,52,0.55)] sm:px-8 sm:py-8"
+          className="relative overflow-hidden rounded-[26px] px-5 py-8 text-[#FAF3EA] sm:px-10 sm:py-11"
+          style={{
+            background: 'linear-gradient(165deg, #161017 0%, #0E0A10 100%)',
+            border: '1px solid rgba(232, 200, 146, 0.24)',
+            boxShadow:
+              'inset 0 1px 0 rgba(255, 240, 212, 0.14), 0 30px 68px -26px rgba(22, 16, 23, 0.56), 0 10px 26px -14px rgba(58, 18, 51, 0.22)',
+          }}
         >
-          {/* Subtle cosmic starlight dots & soft ambient violet/rose glow */}
-          <div
+          {/* Subtle 3% Fine Film-Grain Noise Texture (Matte Velvet / Anodized Metal Materiality) */}
+          <svg
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
-            style={{
-              backgroundImage:
-                'radial-gradient(circle at 20% 18%, rgba(217, 75, 125, 0.22), transparent 44%), radial-gradient(circle at 82% 80%, rgba(169, 51, 255, 0.22), transparent 46%)',
-            }}
-          />
+            className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.035]"
+          >
+            <filter id={`vault-grain-${grainFilterId}`}>
+              <feTurbulence
+                type="fractalNoise"
+                baseFrequency="0.84"
+                numOctaves="3"
+                stitchTiles="stitch"
+              />
+            </filter>
+            <rect width="100%" height="100%" filter={`url(#vault-grain-${grainFilterId})`} />
+          </svg>
 
           {/* Reverse-time emerald shimmer overlay on 9876 reset */}
           {emeraldFlashKey > 0 && (
             <div
               key={emeraldFlashKey}
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 z-30 rounded-[28px] animate-vault-emerald-reset"
+              className="pointer-events-none absolute inset-0 z-30 rounded-[26px] animate-vault-emerald-reset"
               style={{
                 background:
-                  'radial-gradient(circle at 50% 50%, rgba(0, 222, 115, 0.45), rgba(0, 122, 61, 0.12) 60%, transparent 80%)',
+                  'radial-gradient(circle at 50% 50%, rgba(12, 230, 126, 0.38), rgba(0, 117, 58, 0.1) 58%, transparent 78%)',
               }}
             />
           )}
@@ -829,38 +876,16 @@ export function InfinityVaultSection({
             <div
               role="status"
               data-testid="vault-reset-toast"
-              className="pointer-events-none absolute top-4 left-1/2 z-40 -translate-x-1/2 rounded-full border border-[#4DF5A3]/55 bg-[#092C1D]/92 px-4 py-1.5 text-xs font-bold tracking-wide text-[#B7FFDB] shadow-lg backdrop-blur-md animate-pop-in"
+              className="pointer-events-none absolute top-4 left-1/2 z-40 -translate-x-1/2 rounded-full border border-[#19F08A]/45 bg-[#081F14]/92 px-4 py-1.5 text-[11px] font-semibold tracking-[0.12em] uppercase text-[#C9FFE4] shadow-lg backdrop-blur-md animate-pop-in"
             >
-              Vault reset ✨
+              Vault Reset
             </div>
           )}
 
-          {/* Top Prize Pool Strip — uniform styling across all 6 tiers (zero hint of rigging) */}
-          <div className="relative z-10 mb-5 flex flex-col items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#F2B7CE]/80">
-              Vault Prize Pool
-            </span>
-            <div
-              data-testid="vault-prize-strip"
-              className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 rounded-full border border-[#F5C2D7]/22 bg-white/[0.06] px-3 py-1.5 text-[11px] font-bold tracking-tight text-[#FFE9F2] backdrop-blur-sm sm:gap-x-3 sm:px-4 sm:text-sm sm:tracking-wide"
-            >
-              {PRIZE_POOL_TIERS.map((tier, idx) => (
-                <span key={tier} className="inline-flex items-center gap-1.5 whitespace-nowrap sm:gap-3">
-                  <span>{tier}</span>
-                  {idx < PRIZE_POOL_TIERS.length - 1 && (
-                    <span aria-hidden="true" className="text-[#D94B7D]/80">
-                      &bull;
-                    </span>
-                  )}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Interactive Vault Stage (Orbital Arena + 2D Dust Canvas + Lock Overlay OR Gift Card) */}
+          {/* Interactive Vault Stage (Luxury Lock Dial OR Celestial Astrolabe OR Physical Foil Voucher) */}
           <div
             ref={stageRef}
-            className="relative z-10 mx-auto flex min-h-[404px] w-full max-w-[460px] flex-col items-center justify-center sm:min-h-[420px]"
+            className="relative z-10 mx-auto flex min-h-[430px] w-full max-w-[480px] flex-col items-center justify-center sm:min-h-[452px]"
           >
             {/* Transparent 2D Canvas layered strictly over the vault stage for Thanos-snap dust */}
             <canvas
@@ -870,54 +895,274 @@ export function InfinityVaultSection({
               className="pointer-events-none absolute inset-0 z-30 h-full w-full"
             />
 
-            {/* Orbital Stage + 6 Faceted Avengers Infinity Stones */}
-            {isOrbitStageMounted && (
+            {/* =========================================================================
+                1. LOCKED PASSCODE SCREEN — Luxury Vault Dial (Zero Rainbow Blobs)
+                ========================================================================= */}
+            {phase === 'locked' && (
               <div
-                className={`relative flex h-[310px] w-full items-center justify-center sm:h-[340px] ${
-                  phase === 'locked' ? 'pointer-events-none select-none' : ''
-                }`}
+                data-testid="vault-lock-overlay"
+                className="relative z-20 flex w-full flex-col items-center justify-center py-2"
               >
-                {/* Glowing dashed rose-gold & cosmic-violet orbital track */}
-                <div
+                {/* Delicate Engraved Champagne-Gold Concentric Celestial Ring Backdrop (opacity 0.14) */}
+                <svg
                   aria-hidden="true"
-                  className={`pointer-events-none absolute rounded-full border-2 border-dashed transition-opacity duration-500 ${
-                    phase === 'revealing' || phase === 'dusting'
-                      ? 'border-[#F2B7CE]/10 opacity-20'
-                      : 'border-[#E8A3BE]/40 opacity-95'
-                  }`}
-                  style={{
-                    width: 'min(68vw, 256px)',
-                    height: 'min(68vw, 256px)',
-                    boxShadow:
-                      '0 0 36px rgba(169, 51, 255, 0.22), inset 0 0 28px rgba(217, 75, 125, 0.16)',
-                  }}
-                />
+                  viewBox="0 0 420 420"
+                  fill="none"
+                  className="pointer-events-none absolute top-1/2 left-1/2 h-[370px] w-[370px] -translate-x-1/2 -translate-y-1/2 opacity-[0.14] sm:h-[420px] sm:w-[420px]"
+                >
+                  <circle cx="210" cy="210" r="196" stroke="#E6C690" strokeWidth="0.75" />
+                  <circle
+                    cx="210"
+                    cy="210"
+                    r="168"
+                    stroke="#E6C690"
+                    strokeWidth="0.6"
+                    strokeDasharray="2 7"
+                  />
+                  <circle cx="210" cy="210" r="134" stroke="#E6C690" strokeWidth="0.5" strokeOpacity="0.65" />
+                  {/* Subtle compass ticks */}
+                  {Array.from({ length: 24 }).map((_, i) => {
+                    const deg = i * 15;
+                    const isMajor = i % 6 === 0;
+                    return (
+                      <line
+                        key={deg}
+                        x1="210"
+                        y1={isMajor ? 10 : 14}
+                        x2="210"
+                        y2={isMajor ? 22 : 19}
+                        stroke="#E6C690"
+                        strokeWidth={isMajor ? '1' : '0.6'}
+                        transform={`rotate(${deg} 210 210)`}
+                      />
+                    );
+                  })}
+                </svg>
 
-                {/* Secondary subtle inner cosmic ring */}
-                <div
+                {/* Minimal Top Header */}
+                <div className="relative z-10 flex flex-col items-center text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#D7B57E] sm:text-[11px]">
+                    The Infinity Vault
+                  </p>
+
+                  {/* Whisper-thin horizontal prize tiers line — visible ONLY while locked */}
+                  <div
+                    data-testid="vault-prize-strip"
+                    className="mt-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] font-medium tabular-nums tracking-[0.06em] text-[#FAF3EA]/72 sm:text-xs"
+                  >
+                    {PRIZE_POOL_TIERS.map((tier, idx) => (
+                      <span key={tier} className="inline-flex items-center gap-2 whitespace-nowrap">
+                        <span>{tier}</span>
+                        {idx < PRIZE_POOL_TIERS.length - 1 && (
+                          <span aria-hidden="true" className="text-[#D7B57E]/45">
+                            &middot;
+                          </span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Minimalist Champagne-Gold Lock + Crisp Warm Ivory Prompt */}
+                  <div className="mt-6 flex items-center gap-2 text-[#FAF3EA]">
+                    <Lock className="h-3.5 w-3.5 text-[#E6C690]" strokeWidth={1.75} aria-hidden="true" />
+                    <span className="text-[13px] font-normal tracking-[0.03em] text-[#FAF3EA]/92">
+                      Enter 4 digit passcode
+                    </span>
+                  </div>
+                </div>
+
+                {/* Minimalist Circular Champagne-Gold PIN Display + Accessible Keyboard Input */}
+                <div className="relative z-10 mt-5 mb-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={4}
+                    autoComplete="one-time-code"
+                    aria-label="Vault 4-digit passcode"
+                    data-testid="vault-passcode-input"
+                    value={codeDigits}
+                    onKeyDown={handleMainKeyDown}
+                    onChange={(e) => handleMainDigitInput(e.target.value)}
+                    className="absolute -inset-2 z-10 cursor-pointer opacity-0"
+                  />
+                  <div
+                    key={shakeCount}
+                    className={`flex items-center justify-center gap-4 ${
+                      shakeCount > 0 && codeError ? 'animate-vault-shake' : ''
+                    }`}
+                  >
+                    {[0, 1, 2, 3].map((slot) => {
+                      const filled = Boolean(codeDigits[slot]);
+                      const isActive = codeDigits.length === slot;
+                      return (
+                        <div
+                          key={slot}
+                          data-testid={`vault-digit-${slot}`}
+                          className={`h-4 w-4 rounded-full border transition-all duration-150 ${
+                            codeError
+                              ? 'border-[#E88B98] bg-[#E88B98]/25 shadow-[0_0_12px_rgba(232,139,152,0.45)]'
+                              : filled
+                                ? 'scale-110 border-[#FAF3EA] bg-gradient-to-br from-[#FAF3EA] to-[#D7B57E] shadow-[0_0_14px_rgba(230,198,144,0.55)]'
+                                : isActive
+                                  ? 'border-[#E6C690]/85 bg-transparent'
+                                  : 'border-[#E6C690]/32 bg-transparent'
+                          }`}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Error Feedback */}
+                <div className="relative z-10 mb-4 min-h-[18px] text-center">
+                  {codeError && (
+                    <p
+                      role="alert"
+                      data-testid="vault-passcode-error"
+                      className="text-xs font-medium tracking-[0.02em] text-[#E8B4BE]"
+                    >
+                      {codeError}
+                    </p>
+                  )}
+                </div>
+
+                {/* Sleek Circular Tactile Keypad (iPhone / Luxury Safe Style — 58px × 58px) */}
+                <div className="relative z-10 grid grid-cols-3 place-items-center gap-x-5 gap-y-3.5">
+                  {KEYPAD_KEYS.map((key) => {
+                    const isUtility = key === 'CLEAR' || key === 'BACK';
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        data-testid={`vault-key-${key.toLowerCase()}`}
+                        onClick={() => handleMainKeyTap(key)}
+                        className={
+                          isUtility
+                            ? 'flex h-[58px] w-[58px] items-center justify-center rounded-full text-xs font-medium tracking-[0.08em] text-[#D7B57E]/80 transition-all duration-150 hover:text-[#FAF3EA] active:scale-[0.94] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E6C690]'
+                            : 'flex h-[58px] w-[58px] items-center justify-center rounded-full border border-[rgba(232,200,146,0.18)] bg-[rgba(255,246,238,0.04)] text-[22px] font-light tabular-nums text-[#FAF3EA] transition-all duration-150 hover:border-[rgba(232,200,146,0.36)] hover:bg-[rgba(232,200,146,0.1)] active:scale-[0.94] active:bg-[rgba(232,200,146,0.16)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E6C690]'
+                        }
+                        aria-label={
+                          key === 'BACK'
+                            ? 'Backspace'
+                            : key === 'CLEAR'
+                              ? 'Clear passcode'
+                              : `Digit ${key}`
+                        }
+                      >
+                        {key === 'BACK' ? (
+                          <Delete className="h-[19px] w-[19px]" strokeWidth={1.6} aria-hidden="true" />
+                        ) : key === 'CLEAR' ? (
+                          'Clear'
+                        ) : (
+                          key
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* =========================================================================
+                2. ORBITING CELESTIAL ASTROLABE STAGE (Unlocked — Prize Strip Hidden)
+                ========================================================================= */}
+            {isOrbitStageMounted && (
+              <div className="relative flex h-[350px] w-full items-center justify-center sm:h-[380px]">
+                {/* Engraved Antique-Gold Celestial Astrolabe Ring SVG */}
+                <svg
                   aria-hidden="true"
-                  className={`pointer-events-none absolute rounded-full border border-[#C984FF]/20 transition-opacity duration-500 ${
-                    phase === 'revealing' || phase === 'dusting' ? 'opacity-10' : 'opacity-70'
+                  viewBox="0 0 320 320"
+                  fill="none"
+                  className={`pointer-events-none absolute transition-opacity duration-500 ${
+                    phase === 'revealing' || phase === 'dusting' ? 'opacity-15' : 'opacity-90'
                   }`}
                   style={{
-                    width: 'min(52vw, 196px)',
-                    height: 'min(52vw, 196px)',
+                    width: 'min(78vw, 310px)',
+                    height: 'min(78vw, 310px)',
                   }}
-                />
+                >
+                  {/* Outer ultra-thin engraved orbital ring (1px) */}
+                  <circle
+                    cx="160"
+                    cy="160"
+                    r="132"
+                    stroke="#E6C690"
+                    strokeOpacity="0.34"
+                    strokeWidth="1"
+                  />
+                  {/* Secondary inner celestial hairline ring (0.75px) */}
+                  <circle
+                    cx="160"
+                    cy="160"
+                    r="102"
+                    stroke="#D7B57E"
+                    strokeOpacity="0.22"
+                    strokeWidth="0.75"
+                  />
+                  {/* Subtle precision degree tick marks around the astrolabe */}
+                  {Array.from({ length: 36 }).map((_, i) => {
+                    const deg = i * 10;
+                    const isCardinal = i % 9 === 0;
+                    const isMid = i % 3 === 0;
+                    return (
+                      <line
+                        key={deg}
+                        x1="160"
+                        y1={isCardinal ? 21 : isMid ? 24 : 26}
+                        x2="160"
+                        y2="29"
+                        stroke="#E6C690"
+                        strokeOpacity={isCardinal ? '0.62' : isMid ? '0.36' : '0.18'}
+                        strokeWidth={isCardinal ? '1' : '0.65'}
+                        transform={`rotate(${deg} 160 160)`}
+                      />
+                    );
+                  })}
+                  {/* Sparse pinprick starlight dust motes */}
+                  <circle cx="56" cy="78" r="1" fill="#FAF3EA" opacity="0.45" className="animate-vault-spark" />
+                  <circle
+                    cx="266"
+                    cy="92"
+                    r="0.9"
+                    fill="#E6C690"
+                    opacity="0.5"
+                    className="animate-vault-spark"
+                    style={{ animationDelay: '0.9s' }}
+                  />
+                  <circle
+                    cx="248"
+                    cy="250"
+                    r="1.1"
+                    fill="#FAF3EA"
+                    opacity="0.4"
+                    className="animate-vault-spark"
+                    style={{ animationDelay: '1.5s' }}
+                  />
+                  <circle
+                    cx="72"
+                    cy="240"
+                    r="0.85"
+                    fill="#E6C690"
+                    opacity="0.45"
+                    className="animate-vault-spark"
+                    style={{ animationDelay: '0.4s' }}
+                  />
+                </svg>
 
                 {/* Expanding circular shockwave flash in chosen stone's color */}
                 {shockwaveColor && (phase === 'revealing' || phase === 'dusting') && (
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute h-24 w-24 rounded-full border-4 animate-vault-shockwave"
+                    className="pointer-events-none absolute h-24 w-24 rounded-full border-2 animate-vault-shockwave"
                     style={{
                       borderColor: shockwaveColor,
-                      boxShadow: `0 0 32px ${shockwaveColor}`,
+                      boxShadow: `0 0 28px ${shockwaveColor}`,
                     }}
                   />
                 )}
 
-                {/* All 6 Bespoke Layered SVG Infinity Stones positioned via direct DOM refs */}
+                {/* All 6 Movie-Grade 6-Layer Infinity Stones positioned via direct DOM refs */}
                 {INFINITY_STONES.map((stone, idx) => {
                   const isChosen = pickedStoneId === stone.id;
                   const isOther = pickedStoneId !== null && !isChosen;
@@ -930,7 +1175,7 @@ export function InfinityVaultSection({
                         stoneWrapRefs.current[idx] = node;
                       }}
                       data-testid={`vault-stone-wrap-${stone.id}`}
-                      className={`absolute left-1/2 top-1/2 -ml-7 -mt-7 flex h-14 w-14 items-center justify-center will-change-transform ${
+                      className={`absolute left-1/2 top-1/2 -ml-[30px] -mt-[30px] flex h-[60px] w-[60px] items-center justify-center will-change-transform ${
                         phase === 'revealing' || phase === 'dusting'
                           ? isChosen
                             ? 'z-20 transition-[transform,opacity] duration-[620ms] ease-[cubic-bezier(0.22,1,0.36,1)]'
@@ -950,14 +1195,11 @@ export function InfinityVaultSection({
                         disabled={!isInteractive}
                         onClick={() => handlePickStone(idx)}
                         aria-label={`Pick the ${stone.name}`}
-                        className={`group relative flex h-14 w-14 flex-col items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFE4F0] ${
+                        className={`group relative flex h-[60px] w-[60px] flex-col items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E6C690] ${
                           isInteractive
-                            ? 'cursor-pointer transition-transform duration-200 hover:scale-115 active:scale-95'
+                            ? 'cursor-pointer transition-transform duration-200 hover:scale-112 active:scale-95'
                             : 'cursor-default'
                         }`}
-                        style={{
-                          filter: `drop-shadow(0 0 12px ${stone.glow})`,
-                        }}
                       >
                         <span
                           className={`inline-flex items-center justify-center ${
@@ -967,10 +1209,10 @@ export function InfinityVaultSection({
                             isInteractive ? { animationDelay: `${(idx * 0.42).toFixed(2)}s` } : undefined
                           }
                         >
-                          <InfinityStoneSvg stone={stone} size={52} />
+                          <InfinityStoneSvg stone={stone} size={58} />
                         </span>
                         {isInteractive && (
-                          <span className="pointer-events-none absolute -bottom-4.5 whitespace-nowrap rounded-full bg-[#1B0920]/85 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-[#FFE9F2] opacity-90 shadow-sm">
+                          <span className="pointer-events-none absolute -bottom-5 whitespace-nowrap text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[#FAF3EA]/90 drop-shadow-[0_1px_4px_rgba(14,10,16,0.95)]">
                             {stone.name.replace(' Stone', '')}
                           </span>
                         )}
@@ -979,269 +1221,222 @@ export function InfinityVaultSection({
                   );
                 })}
 
-                {/* Center Stage Controls / Status Prompts */}
+                {/* Center Stage Controls — Brushed Champagne-Gold & Deep Obsidian Medallion */}
                 {phase === 'orbiting' && (
                   <button
                     type="button"
                     data-testid="vault-stop-btn"
                     onClick={handleStopRing}
-                    className="relative z-20 inline-flex items-center justify-center rounded-full border border-[#FFD1E3]/70 bg-gradient-to-r from-[#D94B7D] via-[#B83B8A] to-[#8C31B8] px-5 py-2.5 text-sm font-extrabold tracking-wide text-white shadow-[0_0_28px_rgba(217,75,125,0.65)] transition-transform duration-150 hover:scale-105 active:scale-95 cursor-pointer"
+                    className="group relative z-20 inline-flex items-center justify-center rounded-full px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#FAF3EA] transition-transform duration-150 hover:scale-[1.03] active:scale-[0.96] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#E6C690]"
+                    style={{
+                      background:
+                        'radial-gradient(circle at 50% 0%, rgba(230, 198, 144, 0.2), rgba(20, 13, 21, 0.94) 72%)',
+                      border: '1px solid rgba(232, 200, 146, 0.5)',
+                      boxShadow:
+                        'inset 0 1px 0 rgba(255, 245, 224, 0.24), 0 14px 30px -12px rgba(0, 0, 0, 0.72)',
+                    }}
                   >
-                    <span>Stop the Ring ⚡</span>
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -inset-1.5 rounded-full border border-[#E6C690]/25 animate-vault-medallion-aura"
+                    />
+                    <span className="relative z-10 whitespace-nowrap">Stop the Ring</span>
                   </button>
                 )}
 
                 {phase === 'stopping' && (
                   <div
                     data-testid="vault-stopping-label"
-                    className="relative z-20 max-w-[165px] rounded-2xl border border-white/15 bg-[#1B0920]/75 px-3.5 py-2 text-center text-xs font-bold tracking-wide text-[#FFE4F0] backdrop-blur-sm"
+                    className="relative z-20 max-w-[168px] text-center text-[11px] font-medium uppercase tracking-[0.18em] text-[#D7B57E]/90"
                   >
-                    Slowing the ring...
+                    Slowing the ring&hellip;
                   </div>
                 )}
 
                 {phase === 'picking' && (
                   <div
                     data-testid="vault-pick-prompt"
-                    className="relative z-20 max-w-[170px] rounded-2xl border border-[#F5C2D7]/35 bg-[#1B0920]/80 px-3.5 py-2.5 text-center text-xs font-extrabold leading-snug text-[#FFF6F9] shadow-md backdrop-blur-sm animate-pop-in"
+                    className="relative z-20 max-w-[164px] px-2 text-center animate-pop-in"
                   >
-                    Tap any 1 stone to reveal your gift card ✨
+                    <p className="font-display text-sm italic leading-snug text-[#FAF3EA]">
+                      Tap any stone
+                    </p>
+                    <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-[#D7B57E]/80">
+                      to unveil your gift
+                    </p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Frosted Glass Passcode Gate Overlay (Default Locked State) */}
-            {phase === 'locked' && (
-              <div
-                data-testid="vault-lock-overlay"
-                className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl border border-[#F5C2D7]/20 bg-[#1B0920]/68 px-4 py-5 backdrop-blur-md"
-              >
-                <div className="mb-2.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#F5C2D7]/35 bg-[#D94B7D]/25 text-[#FFD7E7] shadow-[0_0_20px_rgba(217,75,125,0.35)]">
-                  <Lock className="h-4 w-4" aria-hidden="true" />
-                </div>
-
-                <p className="mb-3.5 max-w-[270px] text-center text-xs font-semibold leading-relaxed text-[#FFE9F2] sm:text-sm">
-                  Enter the 4-digit passcode to unlock the Infinity Stones.
-                </p>
-
-                {/* 4 Glowing Digit Boxes + Hidden/Accessible Numeric Input for Keyboard Typing */}
-                <div className="relative mb-2">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={4}
-                    autoComplete="one-time-code"
-                    aria-label="Vault 4-digit passcode"
-                    data-testid="vault-passcode-input"
-                    value={codeDigits}
-                    onKeyDown={handleMainKeyDown}
-                    onChange={(e) => handleMainDigitInput(e.target.value)}
-                    className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-                  />
-                  <div
-                    key={shakeCount}
-                    className={`flex items-center justify-center gap-2.5 ${
-                      shakeCount > 0 && codeError ? 'animate-vault-shake' : ''
-                    }`}
-                  >
-                    {[0, 1, 2, 3].map((slot) => {
-                      const char = codeDigits[slot] ?? '';
-                      const isActive = codeDigits.length === slot;
-                      return (
-                        <div
-                          key={slot}
-                          data-testid={`vault-digit-${slot}`}
-                          className={`flex h-12 w-11 items-center justify-center rounded-xl border text-lg font-extrabold tracking-widest transition-all duration-150 ${
-                            codeError
-                              ? 'border-[#FF5C77] bg-[#FF5C77]/15 text-[#FFD7DE] shadow-[0_0_16px_rgba(255,92,119,0.4)]'
-                              : char
-                                ? 'border-[#F5A8C7] bg-[#D94B7D]/25 text-white shadow-[0_0_18px_rgba(217,75,125,0.45)]'
-                                : isActive
-                                  ? 'border-[#E8A3BE]/80 bg-white/10 text-white shadow-[0_0_14px_rgba(232,163,190,0.3)]'
-                                  : 'border-white/20 bg-white/[0.06] text-white/60'
-                          }`}
-                        >
-                          {char ? '•' : ''}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Error Feedback */}
-                <div className="mb-2.5 min-h-[18px] text-center">
-                  {codeError && (
-                    <p
-                      role="alert"
-                      data-testid="vault-passcode-error"
-                      className="text-xs font-bold text-[#FF8CA0]"
-                    >
-                      {codeError}
-                    </p>
-                  )}
-                </div>
-
-                {/* Mobile-Friendly Tactile 3×4 Numeric Keypad */}
-                <div className="grid w-full max-w-[236px] grid-cols-3 gap-2">
-                  {KEYPAD_KEYS.map((key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      data-testid={`vault-key-${key.toLowerCase()}`}
-                      onClick={() => handleMainKeyTap(key)}
-                      className={`flex h-10 items-center justify-center rounded-xl border text-sm font-bold transition-all duration-100 active:scale-92 cursor-pointer ${
-                        key === 'CLEAR' || key === 'BACK'
-                          ? 'border-white/15 bg-white/[0.06] text-[11px] font-semibold text-[#F2C6D8] hover:bg-white/[0.12]'
-                          : 'border-[#F5C2D7]/22 bg-white/[0.09] text-white hover:border-[#F5C2D7]/45 hover:bg-[#D94B7D]/25'
-                      }`}
-                      aria-label={
-                        key === 'BACK'
-                          ? 'Backspace'
-                          : key === 'CLEAR'
-                            ? 'Clear passcode'
-                            : `Digit ${key}`
-                      }
-                    >
-                      {key === 'BACK' ? (
-                        <Delete className="h-4 w-4" aria-hidden="true" />
-                      ) : key === 'CLEAR' ? (
-                        'Clear'
-                      ) : (
-                        key
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Physical-Style ₹250 Gift Card (Fresh Claim & Already Claimed Views) */}
+            {/* =========================================================================
+                3. BESPOKE PHYSICAL FOIL VOUCHER (Fresh Claim & Already Claimed Views)
+                ========================================================================= */}
             {showRewardCard && claimRecord && (
               <div
                 data-testid={
                   phase === 'alreadyClaimed' ? 'vault-already-claimed-view' : 'vault-claimed-view'
                 }
-                className="relative z-20 flex w-full max-w-[390px] flex-col items-center animate-vault-card-reveal"
+                className="relative z-20 flex w-full max-w-[400px] flex-col items-center animate-vault-card-reveal"
               >
                 {phase === 'alreadyClaimed' && (
-                  <div className="mb-4 text-center">
-                    <div
+                  <div className="mb-5 text-center">
+                    <p
                       data-testid="vault-already-claimed-badge"
-                      className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-[#4DF5A3]/45 bg-[#0C3B26]/80 px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#A8FFD3]"
+                      className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-[#D7B57E]"
                     >
-                      <span>✅ ALREADY CLAIMED &bull; {claimRecord.claimedOn.toUpperCase()}</span>
-                    </div>
-                    <p className="text-xs font-medium leading-relaxed text-[#F4D2E1] sm:text-sm">
-                      You already claimed your Infinity Stone gift card! No second tries allowed.
+                      Already Claimed &nbsp;&middot;&nbsp; {claimRecord.claimedOn.toUpperCase()}
+                    </p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-[#FAF3EA]/72 sm:text-[13px]">
+                      You already claimed your Infinity Stone voucher. No second tries allowed.
                     </p>
                   </div>
                 )}
 
-                {/* Metallic Rose-Gold Foil Deep Plum & Rose Berry Gift Card */}
+                {/* Matte Deep Burgundy-Obsidian Physical Birthday Foil Voucher */}
                 <div
-                  className="relative w-full overflow-hidden rounded-[22px] border border-[#F5C7A9]/60 p-5 text-left shadow-[0_22px_48px_-14px_rgba(217,75,125,0.55)] sm:p-6"
+                  className="relative w-full overflow-hidden rounded-[20px] text-left"
                   style={{
                     background:
-                      'linear-gradient(135deg, #3A1233 0%, #6D1D4C 45%, #B83A6E 82%, #D94B7D 100%)',
+                      'linear-gradient(145deg, #24101B 0%, #140910 60%, #1F0D18 100%)',
+                    border: '1px solid rgba(232, 200, 146, 0.34)',
+                    boxShadow:
+                      'inset 0 1px 0 rgba(255, 242, 218, 0.14), 0 24px 52px -20px rgba(0, 0, 0, 0.78)',
                   }}
                 >
-                  {/* Animated metallic rose-gold foil sheen sweep */}
+                  {/* Subtle fine paper-grain noise texture */}
+                  <svg
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.032]"
+                  >
+                    <rect
+                      width="100%"
+                      height="100%"
+                      filter={`url(#vault-grain-${grainFilterId})`}
+                    />
+                  </svg>
+
+                  {/* Slow restrained diagonal champagne-gold foil sheen every 5s */}
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-[#FFE7D6]/35 to-transparent animate-vault-foil"
+                    className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-[#F7E2B8]/30 to-transparent animate-vault-foil"
                   />
 
-                  {/* Subtle inner rose-gold hairline frame */}
-                  <div
+                  {/* Tiny classic corner hairline accents (no double-nested rounded borders) */}
+                  <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-2 rounded-[16px] border border-[#F6CFAF]/30"
+                    className="pointer-events-none absolute top-3 left-3 h-2.5 w-2.5 border-t border-l border-[#E6C690]/40"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-3 right-3 h-2.5 w-2.5 border-t border-r border-[#E6C690]/40"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute bottom-3 left-3 h-2.5 w-2.5 border-b border-l border-[#E6C690]/40"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-3 bottom-3 h-2.5 w-2.5 border-r border-b border-[#E6C690]/40"
                   />
 
-                  {/* Top Row: Picked Infinity Stone Icon + INFINITY VAULT REWARD */}
-                  <div className="relative z-10 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className="flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-[#1B0920]/55"
-                        style={{ boxShadow: `0 0 14px ${activeStone.glow}` }}
-                      >
-                        <InfinityStoneSvg stone={activeStone} size={28} showSparks={false} />
+                  {/* Top Section: Floating Movie-Grade Chosen Stone + Minimal Date Mark */}
+                  <div className="relative z-10 px-6 pt-6 pb-5 sm:px-7 sm:pt-7">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <InfinityStoneSvg
+                          stone={activeStone}
+                          size={44}
+                          showSparks={false}
+                          className="shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#FAF3EA]">
+                            {claimRecord.stoneName}
+                          </p>
+                          <p className="mt-0.5 text-[11px] font-normal tracking-[0.04em] text-[#D7B57E]/78">
+                            Infinity Vault Edition
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#FFE0C8]">
-                          Infinity Vault Reward
-                        </p>
-                        <p className="text-[11px] font-semibold text-[#FFD5E7]/90">
-                          Unlocked with {claimRecord.stoneName}
-                        </p>
-                      </div>
+
+                      <span className="shrink-0 text-[10.5px] font-medium tabular-nums tracking-[0.2em] text-[#D7B57E]/85">
+                        03 &middot; 12 &middot; 26
+                      </span>
                     </div>
 
-                    {/* Decorative metallic rose-gold card chip */}
-                    <div
+                    {/* Hero Value Centerpiece */}
+                    <div className="mt-6 mb-2 text-center">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-[#D7B57E]">
+                        Gift Voucher
+                      </p>
+                      <p
+                        data-testid="vault-reward-amount"
+                        className="font-display mt-1 bg-clip-text text-6xl leading-none font-semibold italic tracking-tight text-transparent sm:text-[4.25rem]"
+                        style={{
+                          backgroundImage:
+                            'linear-gradient(180deg, #FFF7E4 0%, #E7C382 52%, #B98C47 100%)',
+                          filter: 'drop-shadow(0 4px 14px rgba(185, 140, 71, 0.24))',
+                        }}
+                      >
+                        {RIGGED_GIFT_DISPLAY}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Perforated Gold Divider with Left/Right Semi-Circular Ticket Notches */}
+                  <div className="relative z-10 flex items-center">
+                    <span
                       aria-hidden="true"
-                      className="h-6 w-8 rounded-md border border-[#FFE5C8]/60 bg-gradient-to-br from-[#F7D7B5] via-[#E5A78A] to-[#C27866] opacity-90 shadow-inner"
+                      className="pointer-events-none absolute -left-3 h-6 w-6 rounded-full border border-[rgba(232,200,146,0.34)] bg-[#110C13]"
+                    />
+                    <div className="mx-5 w-full border-t border-dashed border-[#E6C690]/32" />
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -right-3 h-6 w-6 rounded-full border border-[rgba(232,200,146,0.34)] bg-[#110C13]"
                     />
                   </div>
 
-                  {/* Center Shimmering ₹250 Value */}
-                  <div className="relative z-10 my-5 text-center">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#FFE5D4]/80">
-                      Gift Card Value
-                    </p>
-                    <p
-                      data-testid="vault-reward-amount"
-                      className="font-display mt-0.5 bg-gradient-to-b from-[#FFFDF9] via-[#FFE7C7] to-[#F4B694] bg-clip-text text-5xl font-extrabold tracking-tight text-transparent drop-shadow-[0_4px_14px_rgba(255,215,175,0.35)] sm:text-6xl"
-                    >
-                      {RIGGED_GIFT_DISPLAY}
-                    </p>
-                  </div>
-
-                  {/* 12-Digit Code Box + Copy Button */}
-                  <div className="relative z-10 rounded-xl border border-white/20 bg-[#1B0920]/55 px-3.5 py-3 backdrop-blur-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <span className="block text-[9px] font-bold uppercase tracking-[0.2em] text-[#F5C2D7]/75">
-                          12-Digit Gift Code
-                        </span>
-                        <span
-                          data-testid="vault-gift-code"
-                          className="font-mono text-base font-extrabold tracking-[0.14em] text-[#FFF6F9] sm:text-lg"
-                        >
-                          {claimRecord.code}
-                        </span>
-                      </div>
-
-                      <button
-                        type="button"
-                        data-testid="vault-copy-btn"
-                        onClick={handleCopyCode}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-extrabold transition-all duration-150 active:scale-95 cursor-pointer ${
-                          copied
-                            ? 'border-[#4DF5A3]/60 bg-[#0D4A2F] text-[#B7FFDB]'
-                            : 'border-[#F7CFAF]/50 bg-[#FFF6F9] text-[#3A1233] hover:bg-[#FFE6F0]'
-                        }`}
+                  {/* Bottom Ticket Stub — Airy & Unboxed (Zero Nested Inner Rectangle) */}
+                  <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 px-6 pt-5 pb-6 sm:px-7">
+                    <div className="min-w-0">
+                      <span className="block text-[9.5px] font-semibold uppercase tracking-[0.22em] text-[#D7B57E]/80">
+                        Activation Code
+                      </span>
+                      <span
+                        data-testid="vault-gift-code"
+                        className="mt-1 block whitespace-nowrap font-mono text-[15px] font-medium tabular-nums tracking-[0.14em] text-[#FAF3EA] sm:text-base"
                       >
-                        {copied ? <span>Copied! ✓</span> : <span>Copy Code 📋</span>}
-                      </button>
+                        {formattedVoucherCode}
+                      </span>
                     </div>
+
+                    <button
+                      type="button"
+                      data-testid="vault-copy-btn"
+                      onClick={handleCopyCode}
+                      className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 text-[11px] font-semibold tracking-[0.12em] uppercase transition-all duration-150 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E6C690] ${
+                        copied
+                          ? 'border-[#E6C690] bg-[#E6C690]/18 text-[#FFF7E4]'
+                          : 'border-[#E6C690]/55 bg-transparent text-[#E6C690] hover:border-[#E6C690] hover:bg-[#E6C690]/12 hover:text-[#FAF3EA]'
+                      }`}
+                    >
+                      {copied ? 'Copied ✓' : 'Copy Code'}
+                    </button>
                   </div>
                 </div>
 
-                {/* Clear Activation Instruction */}
+                {/* Clean Editorial Activation Note (Outside Voucher — No Clunky Highlight Box) */}
                 <p
                   data-testid="vault-activation-note"
-                  className="mt-4 max-w-[350px] text-center text-xs font-semibold leading-relaxed text-[#FFE5F0] sm:text-sm"
+                  className="mt-5 max-w-[340px] text-center text-xs leading-relaxed text-[#FAF3EA]/78 sm:text-[13px]"
                 >
-                  Send this 12-digit code to{' '}
-                  <span className="rounded-md bg-white/12 px-1.5 py-0.5 font-mono font-extrabold text-[#FFD7EA]">
-                    adinomide
-                  </span>{' '}
+                  Send this code to{' '}
+                  <span className="font-semibold tracking-[0.02em] text-[#E6C690]">adinomide</span>{' '}
                   to activate your {RIGGED_GIFT_DISPLAY} gift card.
                 </p>
 
-                {/* Subtle pulsing jump button strictly on first-time unlock */}
+                {/* Subtle champagne-gold jump button strictly on first-time unlock */}
                 {phase === 'claimed' && showFooterSummaryJump && (
                   <button
                     type="button"
@@ -1253,16 +1448,16 @@ export function InfinityVaultSection({
                         .getElementById('birthday-summary-card')
                         ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }}
-                    className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#F6CFD7]/45 bg-[#D94B7D]/25 px-4 py-2 text-xs font-extrabold tracking-wide text-[#FFE9F2] shadow-[0_0_20px_rgba(217,75,125,0.35)] transition-all duration-150 hover:bg-[#D94B7D]/40 active:scale-95 animate-pulse cursor-pointer"
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#E6C690]/40 bg-[#E6C690]/[0.08] px-4 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase text-[#E6C690] transition-all duration-150 hover:border-[#E6C690]/70 hover:bg-[#E6C690]/16 hover:text-[#FAF3EA] active:scale-95 cursor-pointer"
                   >
-                    <span>View Screenshot Card in Footer ↓</span>
+                    <span>View Screenshot Card in Footer &darr;</span>
                   </button>
                 )}
               </div>
             )}
           </div>
 
-          {/* Unobtrusive Corner 🔑 Button on Claimed / Already Claimed Views for Secret Reset */}
+          {/* Discreet Corner 🔑 Reset Button on Claimed / Already Claimed Views (subtle opacity 0.3) */}
           {showRewardCard && (
             <button
               type="button"
@@ -1275,15 +1470,15 @@ export function InfinityVaultSection({
               }}
               aria-label="Open vault passcode key"
               title="Vault key"
-              className="absolute right-3.5 top-3.5 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/[0.06] text-xs text-[#F2B7CE]/75 transition-all hover:border-[#F5C2D7]/40 hover:bg-white/[0.14] hover:text-white cursor-pointer"
+              className="absolute right-4 top-4 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-[#E6C690]/25 bg-transparent text-[#E6C690] opacity-30 transition-all duration-200 hover:border-[#E6C690]/60 hover:opacity-90 cursor-pointer"
             >
-              <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
+              <KeyRound className="h-3.5 w-3.5" strokeWidth={1.7} aria-hidden="true" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Portaled Minimal 4-Digit Reset Modal (z-[9500] so TopBar never intercepts clicks) */}
+      {/* Portaled Minimal Luxury 4-Digit Reset Modal (z-[9500] so TopBar never intercepts clicks) */}
       {resetModalOpen &&
         typeof document !== 'undefined' &&
         createPortal(
@@ -1292,11 +1487,16 @@ export function InfinityVaultSection({
             aria-modal="true"
             aria-label="Vault key passcode"
             data-testid="vault-reset-modal"
-            className="fixed inset-0 z-[9500] flex items-center justify-center bg-[#120416]/78 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[9500] flex items-center justify-center bg-[#09060B]/82 p-4 backdrop-blur-sm"
             onClick={() => setResetModalOpen(false)}
           >
             <div
-              className="relative w-full max-w-[300px] rounded-3xl border border-[#E8A3BE]/35 bg-gradient-to-b from-[#230B2B] to-[#1B0920] p-5 text-center text-[#FFF6F9] shadow-2xl animate-pop-in"
+              className="relative w-full max-w-[312px] rounded-[24px] p-6 text-center text-[#FAF3EA] shadow-2xl animate-pop-in"
+              style={{
+                background: 'linear-gradient(165deg, #18111A 0%, #0E0A10 100%)',
+                border: '1px solid rgba(232, 200, 146, 0.28)',
+                boxShadow: 'inset 0 1px 0 rgba(255, 240, 212, 0.14), 0 28px 60px rgba(0, 0, 0, 0.72)',
+              }}
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -1304,18 +1504,20 @@ export function InfinityVaultSection({
                 data-testid="vault-reset-modal-close"
                 aria-label="Close vault key modal"
                 onClick={() => setResetModalOpen(false)}
-                className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-[#FFE4F0] transition-colors hover:bg-white/20 cursor-pointer"
+                className="absolute right-3.5 top-3.5 flex h-7 w-7 items-center justify-center rounded-full text-[#D7B57E]/75 transition-colors hover:bg-white/[0.06] hover:text-[#FAF3EA] cursor-pointer"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
 
-              <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full border border-[#F5C2D7]/35 bg-[#D94B7D]/25 text-[#FFD7E7]">
-                <KeyRound className="h-4 w-4" aria-hidden="true" />
-              </div>
-              <h3 className="font-display text-lg font-bold text-[#FFF6F9]">Vault Key</h3>
-              <p className="mt-1 mb-3.5 text-xs text-[#F2C6D8]/85">Enter 4-digit passcode</p>
+              <KeyRound
+                className="mx-auto mb-2.5 h-4 w-4 text-[#E6C690]"
+                strokeWidth={1.7}
+                aria-hidden="true"
+              />
+              <h3 className="font-display text-xl font-semibold text-[#FAF3EA]">Vault Key</h3>
+              <p className="mt-1 mb-5 text-xs text-[#D7B57E]/80">Enter 4 digit passcode</p>
 
-              {/* 4 Digit Boxes + Keyboard Input */}
+              {/* 4 Circular Champagne-Gold PIN Dots + Keyboard Input */}
               <div className="relative mb-2">
                 <input
                   type="text"
@@ -1328,64 +1530,65 @@ export function InfinityVaultSection({
                   value={modalDigits}
                   onKeyDown={handleMainKeyDown}
                   onChange={(e) => handleModalDigitInput(e.target.value)}
-                  className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                  className="absolute -inset-2 z-10 cursor-pointer opacity-0"
                 />
                 <div
                   key={modalShakeCount}
-                  className={`flex items-center justify-center gap-2 ${
+                  className={`flex items-center justify-center gap-3.5 ${
                     modalShakeCount > 0 && modalError ? 'animate-vault-shake' : ''
                   }`}
                 >
                   {[0, 1, 2, 3].map((slot) => {
-                    const char = modalDigits[slot] ?? '';
+                    const filled = Boolean(modalDigits[slot]);
                     return (
                       <div
                         key={slot}
-                        className={`flex h-11 w-10 items-center justify-center rounded-xl border text-lg font-extrabold ${
+                        className={`h-3.5 w-3.5 rounded-full border transition-all duration-150 ${
                           modalError
-                            ? 'border-[#FF5C77] bg-[#FF5C77]/15 text-[#FFD7DE]'
-                            : char
-                              ? 'border-[#F5A8C7] bg-[#D94B7D]/25 text-white'
-                              : 'border-white/20 bg-white/[0.06] text-white/60'
+                            ? 'border-[#E88B98] bg-[#E88B98]/25'
+                            : filled
+                              ? 'scale-110 border-[#FAF3EA] bg-gradient-to-br from-[#FAF3EA] to-[#D7B57E] shadow-[0_0_10px_rgba(230,198,144,0.5)]'
+                              : 'border-[#E6C690]/35 bg-transparent'
                         }`}
-                      >
-                        {char ? '•' : ''}
-                      </div>
+                      />
                     );
                   })}
                 </div>
               </div>
 
-              <div className="mb-2.5 min-h-[16px]">
+              <div className="mb-3.5 min-h-[16px]">
                 {modalError && (
-                  <p data-testid="vault-modal-error" className="text-xs font-bold text-[#FF8CA0]">
+                  <p data-testid="vault-modal-error" className="text-xs font-medium text-[#E8B4BE]">
                     {modalError}
                   </p>
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                {KEYPAD_KEYS.map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    data-testid={`vault-modal-key-${key.toLowerCase()}`}
-                    onClick={() => handleModalKeyTap(key)}
-                    className={`flex h-10 items-center justify-center rounded-xl border text-sm font-bold transition-all active:scale-92 cursor-pointer ${
-                      key === 'CLEAR' || key === 'BACK'
-                        ? 'border-white/15 bg-white/[0.06] text-[11px] font-semibold text-[#F2C6D8] hover:bg-white/[0.12]'
-                        : 'border-[#F5C2D7]/22 bg-white/[0.09] text-white hover:border-[#F5C2D7]/45 hover:bg-[#D94B7D]/25'
-                    }`}
-                  >
-                    {key === 'BACK' ? (
-                      <Delete className="h-4 w-4" aria-hidden="true" />
-                    ) : key === 'CLEAR' ? (
-                      'Clear'
-                    ) : (
-                      key
-                    )}
-                  </button>
-                ))}
+              <div className="grid grid-cols-3 place-items-center gap-x-3 gap-y-3">
+                {KEYPAD_KEYS.map((key) => {
+                  const isUtility = key === 'CLEAR' || key === 'BACK';
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      data-testid={`vault-modal-key-${key.toLowerCase()}`}
+                      onClick={() => handleModalKeyTap(key)}
+                      className={
+                        isUtility
+                          ? 'flex h-[50px] w-[50px] items-center justify-center rounded-full text-[11px] font-medium tracking-[0.06em] text-[#D7B57E]/80 transition-all hover:text-[#FAF3EA] active:scale-[0.94] cursor-pointer'
+                          : 'flex h-[50px] w-[50px] items-center justify-center rounded-full border border-[rgba(232,200,146,0.18)] bg-[rgba(255,246,238,0.04)] text-lg font-light tabular-nums text-[#FAF3EA] transition-all hover:border-[rgba(232,200,146,0.36)] hover:bg-[rgba(232,200,146,0.1)] active:scale-[0.94] active:bg-[rgba(232,200,146,0.16)] cursor-pointer'
+                      }
+                    >
+                      {key === 'BACK' ? (
+                        <Delete className="h-4 w-4" strokeWidth={1.6} aria-hidden="true" />
+                      ) : key === 'CLEAR' ? (
+                        'Clear'
+                      ) : (
+                        key
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>,

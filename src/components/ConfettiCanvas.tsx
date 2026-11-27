@@ -12,6 +12,7 @@ import { soundEngine } from '../utils/soundEngine';
 export interface ConfettiCanvasHandle {
   pop: (originX?: number, originY?: number, count?: number) => void;
   fireCannons: () => void;
+  popWithCannons: (originX?: number, originY?: number) => void;
 }
 
 function drawStar(ctx: CanvasRenderingContext2D, radius: number) {
@@ -187,6 +188,44 @@ export const ConfettiCanvas = forwardRef<ConfettiCanvasHandle>(function Confetti
           viewportWidth: window.innerWidth,
           viewportHeight: window.innerHeight,
           countPerSide: 20,
+        });
+        particlesRef.current = [...particlesRef.current, ...secondary].slice(
+          -MAX_CONFETTI_PARTICLES,
+        );
+        ensureRunning();
+      }, 180);
+      secondaryTimersRef.current.push(timerId);
+    },
+
+    popWithCannons(originX?: number, originY?: number) {
+      setBurstCount((c) => c + 1);
+      soundEngine.playConfettiPop('cannon');
+      haptics.heroPopConfetti();
+
+      const x = originX ?? window.innerWidth * 0.5;
+      const y = originY ?? window.innerHeight * 0.52;
+      const buttonBurst = spawnConfettiBurst({
+        originX: x,
+        originY: y,
+        count: 68,
+      });
+      const sideCannons = spawnSideCannons({
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        countPerSide: 36,
+      });
+      particlesRef.current = [...particlesRef.current, ...buttonBurst, ...sideCannons].slice(
+        -MAX_CONFETTI_PARTICLES,
+      );
+      ensureRunning();
+
+      // Secondary celebratory mini-burst 180ms later
+      const timerId = window.setTimeout(() => {
+        secondaryTimersRef.current = secondaryTimersRef.current.filter((id) => id !== timerId);
+        const secondary = spawnSideCannons({
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          countPerSide: 18,
         });
         particlesRef.current = [...particlesRef.current, ...secondary].slice(
           -MAX_CONFETTI_PARTICLES,

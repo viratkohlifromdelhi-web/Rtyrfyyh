@@ -26,6 +26,8 @@ export interface InfinityStoneSpec {
   core: string;
   bodyStart: string;
   bodyEnd: string;
+  darkEdge: string;
+  aura: string;
   glow: string;
   sparkColor: string;
   dustPalette: readonly [string, string, string, string];
@@ -35,62 +37,74 @@ export const INFINITY_STONES: readonly InfinityStoneSpec[] = [
   {
     id: 'space',
     name: 'Space Stone',
-    core: '#E6F9FF',
-    bodyStart: '#269BFF',
-    bodyEnd: '#0A4AD8',
-    glow: 'rgba(38, 155, 255, 0.85)',
-    sparkColor: '#A8E5FF',
-    dustPalette: ['#E6F9FF', '#5EC0FF', '#269BFF', '#1863D6'],
+    core: '#F0FAFF',
+    bodyStart: '#2A9BFF',
+    bodyEnd: '#08349C',
+    darkEdge: '#03154A',
+    aura: '#38A7FF',
+    glow: 'rgba(56, 167, 255, 0.72)',
+    sparkColor: '#BCE7FF',
+    dustPalette: ['#F0FAFF', '#64BEFF', '#2A9BFF', '#08349C'],
   },
   {
     id: 'mind',
     name: 'Mind Stone',
-    core: '#FFFDE0',
-    bodyStart: '#FFD83D',
-    bodyEnd: '#D98E00',
-    glow: 'rgba(255, 216, 61, 0.85)',
-    sparkColor: '#FFF3A8',
-    dustPalette: ['#FFFDE0', '#FFE46B', '#FFD83D', '#D98E00'],
+    core: '#FFFFF0',
+    bodyStart: '#FFD538',
+    bodyEnd: '#C97B00',
+    darkEdge: '#5E3300',
+    aura: '#FFCC33',
+    glow: 'rgba(255, 204, 51, 0.72)',
+    sparkColor: '#FFF3B0',
+    dustPalette: ['#FFFFF0', '#FFE26A', '#FFD538', '#C97B00'],
   },
   {
     id: 'reality',
     name: 'Reality Stone',
-    core: '#FFE3E6',
-    bodyStart: '#F01D35',
-    bodyEnd: '#8F0016',
-    glow: 'rgba(240, 29, 53, 0.85)',
-    sparkColor: '#FF8A99',
-    dustPalette: ['#FFE3E6', '#FF566B', '#F01D35', '#A80E24'],
+    core: '#FFF0F2',
+    bodyStart: '#F21B38',
+    bodyEnd: '#8C0018',
+    darkEdge: '#3D000A',
+    aura: '#FF2947',
+    glow: 'rgba(255, 41, 71, 0.72)',
+    sparkColor: '#FF94A3',
+    dustPalette: ['#FFF0F2', '#FF5970', '#F21B38', '#8C0018'],
   },
   {
     id: 'power',
     name: 'Power Stone',
-    core: '#F6E3FF',
-    bodyStart: '#A933FF',
-    bodyEnd: '#5A00B8',
-    glow: 'rgba(169, 51, 255, 0.85)',
-    sparkColor: '#DDA6FF',
-    dustPalette: ['#F6E3FF', '#C96BFF', '#A933FF', '#6D18C7'],
+    core: '#FAF0FF',
+    bodyStart: '#B238FF',
+    bodyEnd: '#5B00B5',
+    darkEdge: '#250052',
+    aura: '#BD4DFF',
+    glow: 'rgba(189, 77, 255, 0.72)',
+    sparkColor: '#E2B3FF',
+    dustPalette: ['#FAF0FF', '#CE78FF', '#B238FF', '#5B00B5'],
   },
   {
     id: 'time',
     name: 'Time Stone',
-    core: '#E3FFF0',
-    bodyStart: '#00DE73',
-    bodyEnd: '#007A3D',
-    glow: 'rgba(0, 222, 115, 0.85)',
-    sparkColor: '#8CFFC7',
-    dustPalette: ['#E3FFF0', '#4DF5A3', '#00DE73', '#0A9650'],
+    core: '#EEFFF6',
+    bodyStart: '#0CE67E',
+    bodyEnd: '#00753A',
+    darkEdge: '#00331A',
+    aura: '#19F08A',
+    glow: 'rgba(25, 240, 138, 0.72)',
+    sparkColor: '#96FFCC',
+    dustPalette: ['#EEFFF6', '#59F5AA', '#0CE67E', '#00753A'],
   },
   {
     id: 'soul',
     name: 'Soul Stone',
-    core: '#FFF0DB',
-    bodyStart: '#FF8000',
-    bodyEnd: '#C44200',
-    glow: 'rgba(255, 128, 0, 0.85)',
-    sparkColor: '#FFC480',
-    dustPalette: ['#FFF0DB', '#FFA94D', '#FF8000', '#C44200'],
+    core: '#FFF6E8',
+    bodyStart: '#FF8811',
+    bodyEnd: '#BA4000',
+    darkEdge: '#521800',
+    aura: '#FF9124',
+    glow: 'rgba(255, 145, 36, 0.72)',
+    sparkColor: '#FFCA8A',
+    dustPalette: ['#FFF6E8', '#FFB057', '#FF8811', '#BA4000'],
   },
 ] as const;
 
@@ -105,6 +119,7 @@ export interface VaultClaimRecord {
 export interface OneTimeSummaryGiftData {
   value: string;
   code: string;
+  stoneId: InfinityStoneId;
   stoneName: string;
   stoneColor: string;
   stoneGlow: string;
@@ -189,7 +204,7 @@ export function generateGiftCardCode(rng: () => number = Math.random): string {
     }
     groups.push(chunk);
   }
-  return groups.join(' - ');
+  return groups.join(' · ');
 }
 
 /**

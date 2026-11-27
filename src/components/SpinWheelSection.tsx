@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { SparkleStarSvg } from './DoodleSvgs';
+import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { WheelAudioEngine } from '../utils/wheelAudio';
@@ -161,6 +162,7 @@ export function SpinWheelSection() {
     // Unlock Web Audio cleanly on user tap & duck background music to 0.12 (0.3s) while spinning
     audioRef.current?.unlock();
     bgMusicPlayer.beginWheelSpin();
+    trackEvent('wheel_spun', 'Spin the Wheel');
 
     if (landedTimeoutRef.current !== null) {
       window.clearTimeout(landedTimeoutRef.current);
@@ -248,6 +250,9 @@ export function SpinWheelSection() {
       audioRef.current?.playWompBoing();
       haptics.wheelLand();
       bgMusicPlayer.endWheelSpin();
+      trackEvent('wheel_landed', 'Spin the Wheel Result', {
+        result: winningSlice.label,
+      });
 
       setSpinsTried((prev) => {
         const nextCount = prev + 1;
@@ -299,7 +304,7 @@ export function SpinWheelSection() {
   return (
     <section
       id="wheel"
-      className="relative z-20 scroll-mt-16 overflow-x-hidden bg-gradient-to-b from-[#FFFDF8] via-[#F7F1FF]/65 to-[#FFFDF8] py-14 sm:py-20"
+      className="relative z-[2] scroll-mt-16 overflow-x-hidden bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}

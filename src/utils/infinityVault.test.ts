@@ -55,12 +55,24 @@ test('all 6 Avengers Infinity Stones and prize pool tiers match exact specificat
       'Soul Stone',
     ],
   );
-  assert.equal(INFINITY_STONES[0].bodyStart, '#269BFF');
-  assert.equal(INFINITY_STONES[1].bodyStart, '#FFD83D');
-  assert.equal(INFINITY_STONES[2].bodyStart, '#F01D35');
-  assert.equal(INFINITY_STONES[3].bodyStart, '#A933FF');
-  assert.equal(INFINITY_STONES[4].bodyStart, '#00DE73');
-  assert.equal(INFINITY_STONES[5].bodyStart, '#FF8000');
+  assert.equal(INFINITY_STONES[0].bodyStart, '#2A9BFF');
+  assert.equal(INFINITY_STONES[0].darkEdge, '#03154A');
+  assert.equal(INFINITY_STONES[0].aura, '#38A7FF');
+  assert.equal(INFINITY_STONES[1].bodyStart, '#FFD538');
+  assert.equal(INFINITY_STONES[1].darkEdge, '#5E3300');
+  assert.equal(INFINITY_STONES[1].aura, '#FFCC33');
+  assert.equal(INFINITY_STONES[2].bodyStart, '#F21B38');
+  assert.equal(INFINITY_STONES[2].darkEdge, '#3D000A');
+  assert.equal(INFINITY_STONES[2].aura, '#FF2947');
+  assert.equal(INFINITY_STONES[3].bodyStart, '#B238FF');
+  assert.equal(INFINITY_STONES[3].darkEdge, '#250052');
+  assert.equal(INFINITY_STONES[3].aura, '#BD4DFF');
+  assert.equal(INFINITY_STONES[4].bodyStart, '#0CE67E');
+  assert.equal(INFINITY_STONES[4].darkEdge, '#00331A');
+  assert.equal(INFINITY_STONES[4].aura, '#19F08A');
+  assert.equal(INFINITY_STONES[5].bodyStart, '#FF8811');
+  assert.equal(INFINITY_STONES[5].darkEdge, '#521800');
+  assert.equal(INFINITY_STONES[5].aura, '#FF9124');
 
   assert.deepEqual([...PRIZE_POOL_TIERS], ['₹50', '₹100', '₹150', '₹250', '₹500', '₹1,000']);
 });
@@ -96,10 +108,10 @@ test('passcode gate enforces 1845 unlock/alreadyClaimed, 9876 universal reset, a
   assert.equal(evaluateVaultPasscode('5555', claimedRecord), 'wrong');
 });
 
-test('generateGiftCardCode creates 12-digit code formatted as XXXX - XXXX - XXXX', () => {
+test('generateGiftCardCode creates 12-digit code formatted as XXXX · XXXX · XXXX', () => {
   for (let i = 0; i < 25; i++) {
     const code = generateGiftCardCode();
-    assert.match(code, /^[1-9]\d{3} - \d{4} - \d{4}$/);
+    assert.match(code, /^[1-9]\d{3} · \d{4} · \d{4}$/);
   }
 });
 

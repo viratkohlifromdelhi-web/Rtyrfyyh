@@ -19,8 +19,11 @@ import {
 } from './caseFilePhysics';
 
 test('local receipt path and first text date constants match spec', () => {
-  assert.equal(RECEIPT_IMG_SRC, '/first-text-22july.jpg');
-  assert.equal(FIRST_TEXT_DATE, '2026-07-22');
+  assert.equal(
+    RECEIPT_IMG_SRC,
+    `/${encodeURIComponent('Screenshot_2026-11-26-13-11-51-847_com.instagram.android.png')}`,
+  );
+  assert.equal(FIRST_TEXT_DATE, '2026-07-21T00:29:00+05:30');
   assert.equal(CARD_SPRING_CONFIG.stiffness, 175);
   assert.equal(CARD_SPRING_CONFIG.damping, 16);
   assert.equal(CARD_SPRING_CONFIG.mass, 1.0);
@@ -98,15 +101,24 @@ test('Stage 3 stamp impact scales 2.1 -> 1.0, opacity 0 -> 0.92, with subtle rec
 
 test('live days-since-first-text counter computes exact days cleanly', () => {
   // Same day -> 0 days
-  assert.equal(computeDaysSinceFirstText('2026-07-22', new Date(2026, 6, 22, 14, 0, 0)), 0);
-  // Next day -> 1 day (singular)
-  const oneDay = computeDaysSinceFirstText('2026-07-22', new Date(2026, 6, 23, 9, 0, 0));
+  assert.equal(
+    computeDaysSinceFirstText(FIRST_TEXT_DATE, new Date('2026-07-21T14:00:00+05:30')),
+    0,
+  );
+  // Next day after 12:29 AM -> 1 day (singular)
+  const oneDay = computeDaysSinceFirstText(FIRST_TEXT_DATE, new Date('2026-07-22T09:00:00+05:30'));
   assert.equal(oneDay, 1);
-  assert.equal(formatDaysSinceLabel(oneDay), '⏳ 1 day since this first text');
-  // Birthday (03 Dec 2026): July(9) + Aug(31) + Sep(30) + Oct(31) + Nov(30) + Dec(3) = 134 days
-  const onBirthday = computeDaysSinceFirstText('2026-07-22', new Date(2026, 11, 3, 12, 0, 0));
-  assert.equal(onBirthday, 134);
-  assert.equal(formatDaysSinceLabel(onBirthday), '⏳ 134 days since this first text');
+  assert.equal(formatDaysSinceLabel(oneDay), '⏳ 1 day since my 12:29 AM first text');
+  // Birthday (03 Dec 2026, 12:00 PM IST): July(10) + Aug(31) + Sep(30) + Oct(31) + Nov(30) + Dec(3) = 135 days
+  const onBirthday = computeDaysSinceFirstText(
+    FIRST_TEXT_DATE,
+    new Date('2026-12-03T12:00:00+05:30'),
+  );
+  assert.equal(onBirthday, 135);
+  assert.equal(formatDaysSinceLabel(onBirthday), '⏳ 135 days since my 12:29 AM first text');
   // Before start date clamps safely to 0
-  assert.equal(computeDaysSinceFirstText('2026-07-22', new Date(2026, 6, 10)), 0);
+  assert.equal(
+    computeDaysSinceFirstText(FIRST_TEXT_DATE, new Date('2026-07-10T12:00:00+05:30')),
+    0,
+  );
 });

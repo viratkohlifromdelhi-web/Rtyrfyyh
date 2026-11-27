@@ -49,19 +49,19 @@ test('computeBirthdayCountdown handles upcoming, today, and passed states and ge
   assert.ok(toast.length > 5);
 });
 
-test('computeFriendshipDuration calculates accurate elapsed time since 22 July 2026', () => {
-  const start = new Date(2026, 6, 22, 0, 0, 0);
-  const target = new Date(2026, 10, 24, 10, 30, 45); // Nov 24, 2026 10:30:45
+test('computeFriendshipDuration calculates accurate elapsed time since 21 July 2026, 12:29 AM IST', () => {
+  const start = new Date('2026-07-21T00:29:00+05:30');
+  const target = new Date('2026-11-24T10:59:45+05:30');
   const duration = computeFriendshipDuration(target, start);
-  assert.equal(duration.totalDays, 125);
+  assert.equal(duration.totalDays, 126);
   assert.equal(duration.hours, 10);
   assert.equal(duration.minutes, 30);
   assert.equal(duration.seconds, 45);
 });
 
 test('computeFriendshipDuration clamps cleanly to zero if date is before start', () => {
-  const start = new Date(2026, 6, 22, 0, 0, 0);
-  const before = new Date(2026, 5, 1, 0, 0, 0);
+  const start = new Date('2026-07-21T00:29:00+05:30');
+  const before = new Date('2026-06-01T00:00:00+05:30');
   const duration = computeFriendshipDuration(before, start);
   assert.deepEqual(duration, { totalDays: 0, hours: 0, minutes: 0, seconds: 0 });
 });

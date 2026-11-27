@@ -803,7 +803,7 @@ export class BirthdayMusicPlayer {
   }
 
   /**
-   * Case File #0722 Folder Open: smoothly duck down to 0.18 over 0.25s
+   * Case File #0721 Folder Open: smoothly duck down to 0.18 over 0.25s
    * so paperclip, cardstock slide, and rubber stamp thud stand out cleanly.
    */
   public beginCaseFileOpen(): void {
@@ -811,7 +811,7 @@ export class BirthdayMusicPlayer {
   }
 
   /**
-   * Case File #0722 Stamp Landed / Cleanup: smoothly restore back to active base gain over 0.9s.
+   * Case File #0721 Stamp Landed / Cleanup: smoothly restore back to active base gain over 0.9s.
    */
   public endCaseFileOpen(): void {
     if (this.activeDucks.caseFile !== undefined) {

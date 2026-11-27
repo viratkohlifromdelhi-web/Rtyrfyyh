@@ -101,6 +101,8 @@ test('all interactive haptic methods emit the exact specified vibration patterns
   assert.equal(engine.confettiCannon(), true);
   engine.dodgeTap();
   engine.summaryCopyTap();
+  engine.cardFlip();
+  engine.rankSlide();
   engine.stopHaptics();
 
   assert.deepEqual(calls, [
@@ -126,6 +128,8 @@ test('all interactive haptic methods emit the exact specified vibration patterns
     [20, 30, 35],
     10,
     15,
+    14,
+    12,
     0,
   ]);
 });

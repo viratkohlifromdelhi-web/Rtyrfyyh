@@ -42,7 +42,7 @@ export function LifeStatsSection({ paused = false }: LifeStatsSectionProps) {
   return (
     <section
       id="life-stats"
-      className="relative z-20 scroll-mt-16 bg-gradient-to-b from-[#FFFDF8] via-[#FFE4F0]/55 to-[#FFFDF8] py-14 sm:py-20"
+      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">

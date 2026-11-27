@@ -1,0 +1,277 @@
+{
+  "entities": {
+    "SiteVisit": {
+      "title": "SiteVisit",
+      "description": "Visitor telemetry session record written silently on page load and updated on scroll/heartbeat/geo enrichment.",
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "visitorId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "visitNumber": {
+          "type": "integer"
+        },
+        "openedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "openedAtMs": {
+          "type": "integer"
+        },
+        "openedAtIST": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "lastActiveAtMs": {
+          "type": "integer"
+        },
+        "durationSeconds": {
+          "type": "integer"
+        },
+        "maxScrollPct": {
+          "type": "integer"
+        },
+        "totalInteractions": {
+          "type": "integer"
+        },
+        "deviceName": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "deviceType": {
+          "type": "string",
+          "enum": ["Mobile", "Tablet", "Desktop"]
+        },
+        "osName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "osVersion": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "browserName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "inAppBrowser": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "screenResolution": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "viewportSize": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "pixelRatio": {
+          "type": "number"
+        },
+        "colorDepth": {
+          "type": "integer"
+        },
+        "cpuCores": {
+          "type": "integer"
+        },
+        "ramGb": {
+          "type": "number"
+        },
+        "gpuRenderer": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "touchPoints": {
+          "type": "integer"
+        },
+        "orientation": {
+          "type": "string",
+          "enum": ["portrait", "landscape"]
+        },
+        "colorScheme": {
+          "type": "string",
+          "enum": ["dark", "light"]
+        },
+        "reducedMotion": {
+          "type": "boolean"
+        },
+        "language": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "timezone": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "referrer": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "entryUrl": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "userAgent": {
+          "type": "string",
+          "maxLength": 600
+        },
+        "batteryLevel": {
+          "type": "integer"
+        },
+        "batteryCharging": {
+          "type": "boolean"
+        },
+        "batteryChargingTime": {
+          "type": "number"
+        },
+        "batteryDischargingTime": {
+          "type": "number"
+        },
+        "connectionType": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "effectiveType": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "downlinkMbps": {
+          "type": "number"
+        },
+        "rttMs": {
+          "type": "number"
+        },
+        "saveData": {
+          "type": "boolean"
+        },
+        "ipAddress": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "city": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "region": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "postal": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "country": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "approxCoords": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "isp": {
+          "type": "string",
+          "maxLength": 180
+        }
+      },
+      "required": [
+        "sessionId",
+        "visitorId",
+        "visitNumber",
+        "openedAt",
+        "openedAtMs",
+        "openedAtIST",
+        "lastActiveAtMs",
+        "durationSeconds",
+        "maxScrollPct",
+        "totalInteractions",
+        "deviceName",
+        "deviceType",
+        "osName",
+        "osVersion",
+        "browserName",
+        "inAppBrowser",
+        "screenResolution",
+        "viewportSize",
+        "pixelRatio",
+        "colorDepth",
+        "touchPoints",
+        "orientation",
+        "colorScheme",
+        "reducedMotion",
+        "language",
+        "timezone",
+        "referrer",
+        "entryUrl",
+        "userAgent"
+      ]
+    },
+    "VisitEvent": {
+      "title": "VisitEvent",
+      "description": "Append-only chronological element interaction event nested under a visitor session.",
+      "type": "object",
+      "properties": {
+        "eventTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "eventTimeMs": {
+          "type": "integer"
+        },
+        "eventTimeIST": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "elapsedSeconds": {
+          "type": "integer"
+        },
+        "eventType": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "elementName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "details": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "eventTime",
+        "eventTimeMs",
+        "eventTimeIST",
+        "elapsedSeconds",
+        "eventType",
+        "elementName",
+        "details"
+      ]
+    }
+  },
+  "firestore": {
+    "/site_visits/{sessionId}": {
+      "schema": {
+        "$ref": "#/entities/SiteVisit"
+      },
+      "description": "Visitor session telemetry documents. Write-only for anonymous visitors; read/list/delete strictly restricted to the verified site owner."
+    },
+    "/site_visits/{sessionId}/events/{eventId}": {
+      "schema": {
+        "$ref": "#/entities/VisitEvent"
+      },
+      "description": "Append-only chronological interaction timeline per visit session. Create-only for visitors when parent session exists; read/list strictly restricted to the verified site owner."
+    }
+  }
+}

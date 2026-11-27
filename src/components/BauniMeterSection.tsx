@@ -7,6 +7,7 @@ import {
   SCANNER_DURATION_MS,
   SCANNER_MAX_PROGRESS,
 } from '../utils/interactiveFun';
+import { trackEvent } from '../utils/analytics';
 import { getScannerHapticStep, haptics, stopHaptics } from '../utils/haptics';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
@@ -90,6 +91,7 @@ export function BauniMeterSection() {
           soundEngine.playScannerComplete();
           bgMusicPlayer.endScannerVerdict();
           haptics.scannerVerdict();
+          trackEvent('bauni_scan_completed', 'Bauni-Meter Scanner', { result: '99%' });
           return;
         }
       } else if (mode === 'rewinding') {
@@ -117,6 +119,9 @@ export function BauniMeterSection() {
     if (progressRef.current >= SCANNER_MAX_PROGRESS) return;
 
     // Immediately abort scan, silence haptics, play descending "uh-oh" bloop, restore background music, and rewind to 0%
+    trackEvent('bauni_scan_released_early', 'Bauni-Meter Scanner', {
+      pct: Math.floor(progressRef.current),
+    });
     stopScannerHaptics();
     soundEngine.playScannerAbort();
     bgMusicPlayer.endScannerAbort();
@@ -173,6 +178,7 @@ export function BauniMeterSection() {
     soundEngine.startScannerHold();
     bgMusicPlayer.beginScannerHold();
     startScannerHapticPulse();
+    trackEvent('bauni_scan_started', 'Bauni-Meter Scanner');
 
     runLoop();
   };
@@ -194,11 +200,11 @@ export function BauniMeterSection() {
   const isVerdict = phase === 'verdict';
 
   const statusMessage = isAborted
-    ? "Don't lift your finger early — hold till 99%!"
+    ? "Don't lift your finger early, hold till 99%!"
     : getScannerStageMessage(progress);
 
   return (
-    <section id="bauni-meter" className="relative z-20 scroll-mt-16">
+    <section id="bauni-meter" className="relative z-[2] scroll-mt-16">
       <WavyDivider fill="#3B1535" />
 
       <div className="bg-[#3B1535] py-12 text-[#FFFDF8] sm:py-16">
@@ -208,7 +214,7 @@ export function BauniMeterSection() {
               Height Check
             </p>
             <h2 className="font-display mt-1.5 text-balance text-3xl font-semibold tracking-tight text-[#FFFDF8] sm:text-4xl lg:text-5xl">
-              Bauni-Meter Scanner 📏✨
+              Bauni Meter Scanner 📏✨
             </h2>
             <p className="mt-2.5 text-base text-[#FFE4F0]">
               Press and hold until 99% to check your height.

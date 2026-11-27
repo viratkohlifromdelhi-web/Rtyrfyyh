@@ -17,6 +17,7 @@ import {
   PartyTreatDoodleSvg,
   SparkleStarSvg,
 } from './DoodleSvgs';
+import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
@@ -501,6 +502,12 @@ export function ScratchCouponsSection({
     (id: CouponSpec['id'], originX: number, originY: number) => {
       setRevealedMap((prev) => {
         if (prev[id]) return prev;
+        const cardIndex = COUPONS.findIndex((c) => c.id === id);
+        const coupon = COUPONS[cardIndex];
+        trackEvent('scratch_card_revealed', coupon?.title ?? `Scratch Card ${cardIndex + 1}`, {
+          cardIndex: cardIndex >= 0 ? cardIndex : 0,
+          cardTitle: coupon?.title ?? id,
+        });
         return { ...prev, [id]: true };
       });
       if (id === 'troll' || id === 'nothing') {
@@ -525,6 +532,14 @@ export function ScratchCouponsSection({
     soundEngine.playScratchSparkle();
     haptics.scratchReveal();
     bgMusicPlayer.triggerScratchReveal();
+    COUPONS.forEach((coupon, idx) => {
+      if (!revealedMap[coupon.id]) {
+        trackEvent('scratch_card_revealed', coupon.title, {
+          cardIndex: idx,
+          cardTitle: coupon.title,
+        });
+      }
+    });
     setRevealedMap({ nothing: true, party: true, troll: true });
     onCardRevealConfetti(window.innerWidth * 0.5, window.innerHeight * 0.45);
   };
@@ -534,7 +549,7 @@ export function ScratchCouponsSection({
   return (
     <section
       id="scratch-cards"
-      className="relative z-20 scroll-mt-16 bg-gradient-to-b from-[#FFFDF8] via-[#FFE4F0]/55 to-[#FFFDF8] py-14 sm:py-20"
+      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-6xl px-5 sm:px-6 lg:px-8">
         <div className="text-center">
@@ -542,7 +557,7 @@ export function ScratchCouponsSection({
             Birthday Scratch Cards 🎟️✨
           </p>
           <h2 className="font-display mt-1.5 text-balance text-3xl font-semibold tracking-tight text-[#3B1535] sm:text-4xl lg:text-5xl">
-            Scratch-Off Cards ✨
+            Scratch Off Cards ✨
           </h2>
           <p className="mx-auto mt-2.5 max-w-xl text-base text-[#5E2E57]">
             Rub the pink foil with your finger to see what you got.
@@ -573,7 +588,7 @@ export function ScratchCouponsSection({
             className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full border-2 border-[#E6B5D5] bg-[#FFFDF8] px-6 py-2.5 text-sm font-semibold text-[#3B1535] shadow-xs transition-all duration-150 hover:-translate-y-0.5 hover:bg-[#FFE4F0] cursor-pointer whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2377E]"
           >
             <RotateCcw className="h-4 w-4 text-[#C2377E]" aria-hidden="true" />
-            <span>Re-coat Cards 🎀</span>
+            <span>Recoat Cards 🎀</span>
           </button>
 
           {!allRevealed && (

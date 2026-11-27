@@ -2,236 +2,410 @@ import {
   useEffect,
   useRef,
   useState,
-  type ChangeEvent,
   type CSSProperties,
   type MouseEvent,
 } from 'react';
-import { ImagePlus, RotateCcw } from 'lucide-react';
-import { ANAMIKA, HERO_STICKERS, MODE_MESSAGES } from '../data/celebrationData';
+import { ANAMIKA, HERO_STICKERS } from '../data/celebrationData';
+import { trackEvent } from '../utils/analytics';
 import { splitHeadlineWords } from '../utils/celebration';
-import {
-  PolaroidCameraDoodle,
-  RibbonSquiggleSvg,
-  SparkleBurstIconSvg,
-  SparkleStarSvg,
-} from './DoodleSvgs';
+import { haptics } from '../utils/haptics';
+import { smoothScrollToTarget } from '../utils/smoothScroll';
+import { soundEngine } from '../utils/soundEngine';
+import { AnamikaEditorialCard } from './AnamikaEditorialCard';
+import { RibbonSquiggleSvg } from './DoodleSvgs';
 
-interface FloatingEmojiSpec {
+interface PerimeterEmojiConfig {
   id: string;
   emoji: string;
+  label: string;
   positionClass: string;
-  sizeClass: string;
-  animClass: 'animate-emoji-a' | 'animate-emoji-b' | 'animate-emoji-c';
-  dur: string;
-  delay: string;
+  durSec: number;
+  delaySec: number;
+  rotA: string;
+  rotB: string;
+  idleOpacityClass: string;
 }
 
-const HERO_FLOATING_EMOJIS: FloatingEmojiSpec[] = [
+/**
+ * 8 soft, background-blended perimeter emojis (16px–19px, opacity 0.42–0.50)
+ * pinned strictly outside the central text safe-zone on both mobile and desktop.
+ */
+const PERIMETER_EMOJIS: readonly PerimeterEmojiConfig[] = [
   {
-    id: 'em-heart-hands',
-    emoji: '🫶🏻',
-    positionClass: 'top-6 left-2 sm:top-10 sm:left-4 lg:left-6',
-    sizeClass: 'text-2xl sm:text-3xl',
-    animClass: 'animate-emoji-a',
-    dur: '5.4s',
-    delay: '0s',
+    id: 'heart-hands',
+    emoji: '🫶',
+    label: 'Pop heart hands celebration spark',
+    positionClass: 'top-[12px] left-[3%] sm:top-[18px] lg:top-[4%] lg:left-[4%]',
+    durSec: 4.2,
+    delaySec: 0,
+    rotA: '-5deg',
+    rotB: '5deg',
+    idleOpacityClass: 'opacity-[0.46]',
   },
   {
-    id: 'em-cake',
+    id: 'cake',
     emoji: '🎂',
-    positionClass: 'top-6 right-2 sm:top-8 sm:right-5 lg:right-8',
-    sizeClass: 'text-2xl sm:text-3xl',
-    animClass: 'animate-emoji-b',
-    dur: '6.2s',
-    delay: '-1.1s',
+    label: 'Pop birthday cake celebration spark',
+    positionClass: 'top-[12px] right-[3%] sm:top-[18px] lg:top-[4%] lg:right-[4%]',
+    durSec: 4.6,
+    delaySec: -1.1,
+    rotA: '4deg',
+    rotB: '-6deg',
+    idleOpacityClass: 'opacity-[0.48]',
   },
   {
-    id: 'em-crown',
+    id: 'popper',
+    emoji: '🎉',
+    label: 'Pop party popper celebration spark',
+    positionClass: 'top-[196px] left-[2.5%] sm:top-[214px] lg:top-[26%] lg:left-[2%]',
+    durSec: 3.9,
+    delaySec: -0.6,
+    rotA: '-6deg',
+    rotB: '4deg',
+    idleOpacityClass: 'opacity-[0.44]',
+  },
+  {
+    id: 'crown',
     emoji: '👑',
-    positionClass: 'top-[27%] right-2 sm:top-10 sm:right-[28%] lg:top-8 lg:left-[64%] lg:right-auto',
-    sizeClass: 'text-xl sm:text-2xl lg:text-3xl',
-    animClass: 'animate-emoji-c',
-    dur: '5.9s',
-    delay: '-2.3s',
+    label: 'Pop crown celebration spark',
+    positionClass: 'top-[192px] right-[2.5%] sm:top-[210px] lg:top-[25%] lg:right-[2%]',
+    durSec: 4.4,
+    delaySec: -2.0,
+    rotA: '6deg',
+    rotB: '-5deg',
+    idleOpacityClass: 'opacity-[0.46]',
   },
   {
-    id: 'em-unicorn',
-    emoji: '🦄',
-    positionClass: 'top-[58%] right-2 sm:right-5 lg:bottom-14 lg:top-auto lg:right-8',
-    sizeClass: 'text-2xl sm:text-3xl',
-    animClass: 'animate-emoji-a',
-    dur: '6.8s',
-    delay: '-0.7s',
-  },
-  {
-    id: 'em-sob',
+    id: 'crying-laugh',
     emoji: '😭',
-    positionClass: 'top-[32%] left-2 sm:top-[44%] sm:left-4 lg:top-[52%] lg:left-5',
-    sizeClass: 'text-xl sm:text-2xl lg:text-3xl',
-    animClass: 'animate-emoji-b',
-    dur: '5.6s',
-    delay: '-1.8s',
+    label: 'Pop crying emoji celebration spark',
+    positionClass: 'top-[316px] left-[3%] sm:top-[346px] lg:top-[64%] lg:left-[2%]',
+    durSec: 4.9,
+    delaySec: -1.5,
+    rotA: '-4deg',
+    rotB: '6deg',
+    idleOpacityClass: 'opacity-[0.42]',
   },
   {
-    id: 'em-wilted-rose',
-    emoji: '🥀',
-    positionClass: 'top-[18%] left-[12%] sm:top-[22%] sm:left-[44%] lg:top-[18%] lg:left-[46%]',
-    sizeClass: 'text-xl sm:text-2xl',
-    animClass: 'animate-emoji-c',
-    dur: '6.4s',
-    delay: '-1.5s',
+    id: 'ribbon',
+    emoji: '🎀',
+    label: 'Pop ribbon bow celebration spark',
+    positionClass: 'top-[314px] right-[3%] sm:top-[344px] lg:top-[63%] lg:right-[2%]',
+    durSec: 3.7,
+    delaySec: -2.6,
+    rotA: '5deg',
+    rotB: '-5deg',
+    idleOpacityClass: 'opacity-[0.48]',
   },
   {
-    id: 'em-devil',
-    emoji: '😈',
-    positionClass: 'bottom-[31%] left-2 sm:bottom-16 sm:left-6 lg:bottom-10 lg:left-[10%]',
-    sizeClass: 'text-xl sm:text-2xl lg:text-3xl',
-    animClass: 'animate-emoji-c',
-    dur: '6.1s',
-    delay: '-3.1s',
+    id: 'dino',
+    emoji: '🦖',
+    label: 'Pop dinosaur celebration spark',
+    positionClass: 'top-[502px] left-[4%] sm:top-[492px] lg:top-auto lg:bottom-[10%] lg:left-[5%]',
+    durSec: 4.7,
+    delaySec: -0.9,
+    rotA: '-6deg',
+    rotB: '5deg',
+    idleOpacityClass: 'opacity-[0.45]',
   },
   {
-    id: 'em-heart-box',
-    emoji: '💟',
-    positionClass: 'bottom-6 left-4 sm:bottom-8 sm:left-[38%] lg:bottom-8 lg:left-[48%]',
-    sizeClass: 'text-xl sm:text-2xl',
-    animClass: 'animate-emoji-a',
-    dur: '5.2s',
-    delay: '-0.4s',
-  },
-  {
-    id: 'em-snake-1',
-    emoji: '🐍',
-    positionClass: 'top-[47%] left-2 sm:top-[28%] sm:right-6 sm:left-auto lg:top-[38%] lg:left-[54%]',
-    sizeClass: 'text-xl sm:text-2xl',
-    animClass: 'animate-emoji-b',
-    dur: '6.6s',
-    delay: '-2.5s',
-  },
-  {
-    id: 'em-snake-2',
-    emoji: '🐍',
-    positionClass: 'bottom-[15%] right-2 sm:bottom-24 sm:right-4 lg:top-[44%] lg:bottom-auto lg:right-5',
-    sizeClass: 'text-xl sm:text-2xl',
-    animClass: 'animate-emoji-c',
-    dur: '5.7s',
-    delay: '-1.3s',
-  },
-  {
-    id: 'em-snake-3',
-    emoji: '🐍',
-    positionClass: 'bottom-5 right-14 sm:bottom-7 sm:right-[24%] lg:bottom-7 lg:left-[31%] lg:right-auto',
-    sizeClass: 'text-xl sm:text-2xl',
-    animClass: 'animate-emoji-a',
-    dur: '7.0s',
-    delay: '-3.6s',
+    id: 'balloon',
+    emoji: '🎈',
+    label: 'Pop birthday balloon celebration spark',
+    positionClass: 'top-[486px] right-[4%] sm:top-[478px] lg:top-auto lg:bottom-[14%] lg:right-[4%]',
+    durSec: 4.1,
+    delaySec: -1.8,
+    rotA: '5deg',
+    rotB: '-6deg',
+    idleOpacityClass: 'opacity-[0.48]',
   },
 ];
 
+const EMOJI_SPARK_VECTORS: readonly { x: string; y: string; color: string }[] = [
+  { x: '-16px', y: '-16px', color: '#D94B7D' },
+  { x: '16px', y: '-15px', color: '#E8C892' },
+  { x: '-15px', y: '15px', color: '#C69CE6' },
+  { x: '15px', y: '14px', color: '#F39CB8' },
+];
+
+/**
+ * Bespoke crisp inline SVG angled party-popper / ribbon burst icon (18px).
+ */
+function PartyPopperIconSvg({ className = 'h-[18px] w-[18px]' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M3.6 19.6L8.2 7.8L16.2 15.8L4.4 20.4C3.85 20.62 3.38 20.15 3.6 19.6Z"
+        fill="#F4D7A1"
+        fillOpacity="0.22"
+        stroke="#F4D7A1"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.8 11.4L12.6 17.2M5.5 14.8L9.2 18.5"
+        stroke="#F9B8CE"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+      />
+      <path
+        d="M12.4 7.6C13.6 5.2 15.8 4.4 17.8 4.6"
+        stroke="#F4D7A1"
+        strokeWidth="1.55"
+        strokeLinecap="round"
+      />
+      <path
+        d="M15.4 10.6C17.4 9.2 19.4 9.4 20.8 10.6"
+        stroke="#F9B8CE"
+        strokeWidth="1.55"
+        strokeLinecap="round"
+      />
+      <circle cx="15.8" cy="7.4" r="1.15" fill="#F9B8CE" />
+      <circle cx="19.6" cy="6.6" r="1" fill="#F4D7A1" />
+      <circle cx="18.2" cy="13.4" r="1.05" fill="#F4D7A1" />
+    </svg>
+  );
+}
+
+/**
+ * Delicate inline SVG minimalist gift-box with ribbon bow (17px).
+ */
+function MinimalGiftBoxIconSvg({ className = 'h-[17px] w-[17px]' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M12 7.5C10.1 4.4 6.6 4.6 7 6.8C7.3 8.1 9.6 7.9 12 7.5Z"
+        stroke="#D94B7D"
+        strokeWidth="1.65"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 7.5C13.9 4.4 17.4 4.6 17 6.8C16.7 8.1 14.4 7.9 12 7.5Z"
+        stroke="#D94B7D"
+        strokeWidth="1.65"
+        strokeLinejoin="round"
+      />
+      <rect
+        x="3.75"
+        y="7.75"
+        width="16.5"
+        height="4"
+        rx="1.5"
+        stroke="#D94B7D"
+        strokeWidth="1.65"
+      />
+      <path
+        d="M5.25 11.75H18.75V18.25C18.75 19.35 17.85 20.25 16.75 20.25H7.25C6.15 20.25 5.25 19.35 5.25 18.25V11.75Z"
+        stroke="#D94B7D"
+        strokeWidth="1.65"
+        strokeLinejoin="round"
+      />
+      <path d="M12 7.75V20.25" stroke="#D94B7D" strokeWidth="1.65" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 interface HeroSectionProps {
-  isWholesomeMode: boolean;
+  isBirthdayTruce: boolean;
   onPopConfetti: (originX?: number, originY?: number) => void;
 }
 
-export function HeroSection({ isWholesomeMode, onPopConfetti }: HeroSectionProps) {
-  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
+export function HeroSection({ onPopConfetti }: HeroSectionProps) {
   const lineOneWords = splitHeadlineWords('Happy 17th Birthday,');
   const lineTwoWords = splitHeadlineWords(`${ANAMIKA.firstName}!`);
 
+  const [popBurstCount, setPopBurstCount] = useState(0);
+  const [isPoppedState, setIsPoppedState] = useState(false);
+  const [primaryPressed, setPrimaryPressed] = useState(false);
+  const [secondaryPressed, setSecondaryPressed] = useState(false);
+  const [emojiBursts, setEmojiBursts] = useState<Record<string, number>>({});
+  const [brightEmojis, setBrightEmojis] = useState<Record<string, boolean>>({});
+
+  const labelTimerRef = useRef<number | null>(null);
+  const scrollDelayTimerRef = useRef<number | null>(null);
+  const cancelScrollRef = useRef<(() => void) | null>(null);
+  const emojiBrightTimersRef = useRef<Record<string, number>>({});
+
   useEffect(() => {
+    const brightTimers = emojiBrightTimersRef.current;
     return () => {
-      if (uploadedPhotoUrl) {
-        URL.revokeObjectURL(uploadedPhotoUrl);
+      if (labelTimerRef.current !== null) {
+        window.clearTimeout(labelTimerRef.current);
       }
+      if (scrollDelayTimerRef.current !== null) {
+        window.clearTimeout(scrollDelayTimerRef.current);
+      }
+      if (cancelScrollRef.current) {
+        cancelScrollRef.current();
+      }
+      Object.values(brightTimers).forEach((t) => window.clearTimeout(t));
     };
-  }, [uploadedPhotoUrl]);
+  }, []);
 
-  const handlePhotoSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (uploadedPhotoUrl) {
-      URL.revokeObjectURL(uploadedPhotoUrl);
-    }
-    const nextUrl = URL.createObjectURL(file);
-    setUploadedPhotoUrl(nextUrl);
-  };
+  const handlePerimeterEmojiTap = (id: string, idx: number) => {
+    soundEngine.playBubbleClick(1.04 + (idx % 4) * 0.05);
+    haptics.emojiBounce();
+    setEmojiBursts((prev) => ({
+      ...prev,
+      [id]: (prev[id] ?? 0) + 1,
+    }));
 
-  const handleClearPhoto = () => {
-    if (uploadedPhotoUrl) {
-      URL.revokeObjectURL(uploadedPhotoUrl);
+    // Briefly brighten to opacity 0.95 then ease smoothly back into soft ambient fade
+    setBrightEmojis((prev) => ({ ...prev, [id]: true }));
+    if (emojiBrightTimersRef.current[id]) {
+      window.clearTimeout(emojiBrightTimersRef.current[id]);
     }
-    setUploadedPhotoUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    emojiBrightTimersRef.current[id] = window.setTimeout(() => {
+      setBrightEmojis((prev) => ({ ...prev, [id]: false }));
+      delete emojiBrightTimersRef.current[id];
+    }, 520);
   };
 
   const handleConfettiClick = (e: MouseEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    onPopConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    const buttonEl = e.currentTarget;
+    const rect = buttonEl.getBoundingClientRect();
+    const originX = rect.left + rect.width / 2;
+    const originY = rect.top + rect.height / 2;
+
+    setPopBurstCount((n) => n + 1);
+    onPopConfetti(originX, originY);
+    trackEvent('hero_confetti_popped', 'Hero Pop Confetti Button');
+
+    setIsPoppedState(true);
+    if (labelTimerRef.current !== null) {
+      window.clearTimeout(labelTimerRef.current);
+    }
+    labelTimerRef.current = window.setTimeout(() => {
+      setIsPoppedState(false);
+      labelTimerRef.current = null;
+    }, 1200);
+
+    if (scrollDelayTimerRef.current !== null) {
+      window.clearTimeout(scrollDelayTimerRef.current);
+    }
+    scrollDelayTimerRef.current = window.setTimeout(() => {
+      scrollDelayTimerRef.current = null;
+      const photoSlot = document.querySelector<HTMLElement>('[data-testid="single-photo-slot"]');
+      const nextSection = document.getElementById('toggles');
+
+      let target: HTMLElement | null = nextSection;
+      if (photoSlot) {
+        const photoRect = photoSlot.getBoundingClientRect();
+        const btnRect = buttonEl.getBoundingClientRect();
+        if (photoRect.top > btnRect.bottom + 12) {
+          target = photoSlot;
+        }
+      }
+
+      if (target) {
+        cancelScrollRef.current = smoothScrollToTarget(target, 850);
+      }
+    }, 550);
   };
 
-  const modeNote = isWholesomeMode
-    ? MODE_MESSAGES.wholesome.polaroidNote
-    : MODE_MESSAGES.roast.polaroidNote;
+  const handleOpenGiftClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    haptics.heroOpenGift();
+    soundEngine.playBubbleClick(1.04);
+    trackEvent('hero_open_gift_clicked', 'Hero Open Your Gift Button');
+
+    if (scrollDelayTimerRef.current !== null) {
+      window.clearTimeout(scrollDelayTimerRef.current);
+      scrollDelayTimerRef.current = null;
+    }
+
+    const giftSection = document.getElementById('gift');
+    if (giftSection) {
+      cancelScrollRef.current = smoothScrollToTarget(giftSection, 1050);
+    }
+  };
 
   return (
     <section
       id="top"
-      className="relative scroll-mt-16 overflow-hidden bg-gradient-to-b from-[#FFF6F9] via-[#FFF0F6] to-[#FFF6F9] pt-8 pb-14 sm:pt-12 sm:pb-20 lg:pt-14 lg:pb-22"
+      data-testid="hero-section"
+      className="hero-pastel-mesh relative scroll-mt-16 overflow-hidden pt-8 pb-14 sm:pt-12 sm:pb-20 lg:pt-14 lg:pb-22"
     >
-      {/* Soft pastel ambient washes */}
+      {/* Soft, Background-Blended Perimeter Floating Emojis (16px–19px, opacity 0.42–0.50) */}
       <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-24 -left-24 h-80 w-80 rounded-full bg-[#FFE6F0]/85 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute top-24 -right-24 h-96 w-96 rounded-full bg-[#F1E9FF]/85 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-[#FFF3C4]/50 blur-3xl"
-      />
-
-      {/* Chaotic Playful Floating Emoji Layer */}
-      <div
-        data-testid="hero-floating-emojis"
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0 overflow-x-hidden px-4 select-none sm:px-6"
+        data-testid="hero-perimeter-emojis"
+        className="pointer-events-none absolute inset-0 z-[2] overflow-hidden select-none"
       >
-        <div className="relative h-full w-full">
-          {HERO_FLOATING_EMOJIS.map((item) => {
-            const style = {
-              '--emoji-dur': item.dur,
-              '--emoji-delay': item.delay,
-            } as CSSProperties;
-            return (
+        {PERIMETER_EMOJIS.map((item, idx) => {
+          const burstCount = emojiBursts[item.id] ?? 0;
+          const isBright = Boolean(brightEmojis[item.id]);
+          return (
+            <button
+              key={item.id}
+              type="button"
+              data-testid={`hero-perimeter-emoji-${item.id}`}
+              data-emoji={item.emoji}
+              data-burst-count={burstCount}
+              data-bright={String(isBright)}
+              aria-label={item.label}
+              onClick={() => handlePerimeterEmojiTap(item.id, idx)}
+              style={
+                {
+                  '--bob-dur': `${item.durSec}s`,
+                  '--bob-delay': `${item.delaySec}s`,
+                  '--bob-rot-a': item.rotA,
+                  '--bob-rot-b': item.rotB,
+                  filter: isBright ? 'saturate(1) contrast(1)' : 'saturate(0.78) contrast(0.92)',
+                } as CSSProperties
+              }
+              className={`animate-hero-emoji-bob pointer-events-auto absolute inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-[16px] leading-none transition-[opacity,filter] duration-500 ease-out hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] sm:text-[18px] lg:text-[19px] will-change-transform ${item.positionClass} ${
+                isBright ? 'opacity-95' : item.idleOpacityClass
+              }`}
+            >
+              {/* Tiny 4-spark pastel burst on tap */}
+              {burstCount > 0 && (
+                <span
+                  key={`sparks-${burstCount}`}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                >
+                  {EMOJI_SPARK_VECTORS.map((vec, sIdx) => (
+                    <span
+                      key={sIdx}
+                      style={
+                        {
+                          backgroundColor: vec.color,
+                          '--sp-x': vec.x,
+                          '--sp-y': vec.y,
+                        } as CSSProperties
+                      }
+                      className="animate-hero-emoji-spark absolute h-1.5 w-1.5 rounded-full will-change-[transform,opacity]"
+                    />
+                  ))}
+                </span>
+              )}
+
               <span
-                key={item.id}
-                style={style}
-                className={`absolute leading-none opacity-45 drop-shadow-[0_4px_10px_rgba(59,21,53,0.1)] sm:opacity-55 ${item.positionClass} ${item.sizeClass} ${item.animClass}`}
+                key={`glyph-${burstCount}`}
+                aria-hidden="true"
+                className={`inline-block will-change-transform ${
+                  burstCount > 0 ? 'animate-hero-emoji-bounce' : ''
+                }`}
               >
                 {item.emoji}
               </span>
-            );
-          })}
-        </div>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="relative z-20 mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        {/* Floating Animated Sticker Badges around the Header */}
+      <div className="pointer-events-none relative z-[3] mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        {/* Balanced 2x2 Top Tag Pills on mobile (max-w-340px), single clean row on desktop */}
         <div
+          data-testid="hero-tag-pills"
           aria-label="Anamika's official titles"
-          className="mb-7 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3.5 lg:justify-start"
+          className="mx-auto mb-7 flex max-w-[340px] flex-wrap items-center justify-center gap-2 lg:mx-0 lg:max-w-none lg:justify-start lg:gap-3"
         >
           {HERO_STICKERS.map((sticker, idx) => (
             <span
               key={sticker.id}
               style={{ animationDelay: `${idx * 0.45}s` }}
-              className={`inline-flex items-center rounded-2xl border px-3.5 py-1.5 text-xs font-semibold text-[#3B1535] shadow-xs transition-transform duration-200 hover:scale-105 sm:text-sm ${sticker.bg} ${sticker.border} ${sticker.rotate} ${
+              className={`pointer-events-auto inline-flex items-center rounded-2xl border px-[13px] py-[6px] text-[13px] leading-tight font-semibold whitespace-nowrap text-[#3B1535] shadow-xs transition-transform duration-200 hover:scale-105 lg:text-sm ${sticker.bg} ${sticker.border} ${sticker.rotate} ${
                 idx % 2 === 0 ? 'animate-float-gentle' : 'animate-float-reverse'
               }`}
             >
@@ -242,15 +416,25 @@ export function HeroSection({ isWholesomeMode, onPopConfetti }: HeroSectionProps
 
         {/* Two-column balanced hero on desktop, clean stacked mobile-first */}
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-10">
-          {/* Left Column: Playful Headline, Cheeky Subtitle & Pop Confetti CTA */}
-          <div className="text-center lg:col-span-7 lg:text-left">
-            <p className="mb-3 text-sm font-medium text-[#8C3B71]">
-              {ANAMIKA.fullName} &middot; {ANAMIKA.birthdayLabel} &middot; Turning {ANAMIKA.age}
+          {/* Left Column: Clean Uncluttered Center Safe-Zone for Headline, Subtitle & Tactile Stationery CTAs */}
+          <div
+            data-testid="hero-text-safe-zone"
+            className="relative z-[3] px-5 text-center sm:px-8 lg:col-span-7 lg:px-0 lg:text-left"
+          >
+            <p
+              data-testid="hero-eyebrow-date"
+              className="hero-eyebrow-line pointer-events-auto mx-auto mb-3 inline-block text-[12px] font-medium tracking-[0.01em] whitespace-nowrap text-[#8C3B71] sm:text-sm lg:mx-0"
+            >
+              <span>
+                {ANAMIKA.fullName} &middot; {ANAMIKA.birthdayLabel}
+              </span>
+              <span className="hero-eyebrow-dot-2"> &middot; </span>
+              <span className="hero-eyebrow-age">Turning {ANAMIKA.age}</span>
             </p>
 
             <h1
               aria-label={`Happy ${ANAMIKA.age}th Birthday, ${ANAMIKA.firstName}!`}
-              className="font-display text-balance text-5xl leading-[1.06] font-semibold tracking-tight text-[#3B1535] sm:text-6xl lg:text-[4.25rem]"
+              className="font-display pointer-events-auto mx-auto block w-fit text-balance text-[2.65rem] leading-[1.06] font-semibold tracking-tight text-[#3B1535] sm:text-6xl lg:mx-0 lg:text-[4.25rem]"
             >
               <span className="block">
                 {lineOneWords.map((w, wi) => (
@@ -280,112 +464,91 @@ export function HeroSection({ isWholesomeMode, onPopConfetti }: HeroSectionProps
               <RibbonSquiggleSvg className="h-5 w-28 text-[#E089B6]" />
             </div>
 
-            <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-[#52244B] sm:text-lg lg:mx-0">
+            <p className="pointer-events-auto mx-auto mt-5 max-w-xl text-base leading-relaxed text-[#52244B] sm:text-lg lg:mx-0">
               {ANAMIKA.heroSubtitle}
             </p>
 
-            {/* Primary CTA */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5 lg:justify-start">
-              <button
-                type="button"
-                data-testid="hero-pop-confetti-btn"
-                onClick={handleConfettiClick}
-                className="group inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#3A1233] to-[#9E2A5B] px-7 py-3 text-sm font-semibold text-[#FFFDFB] shadow-[0_10px_24px_-10px_rgba(58,18,51,0.48)] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_14px_28px_-10px_rgba(158,42,91,0.52)] active:scale-[0.96] whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#D94B7D]"
-              >
-                <SparkleBurstIconSvg className="h-5 w-5 shrink-0 text-[#FFFDFB] transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110" />
-                <span>Pop Confetti</span>
-              </button>
+            {/* Luxury Tactile Stationery CTA Button Pair (Preserved untouched) */}
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5 sm:gap-4 lg:justify-start">
+              {/* Primary Tactile Confetti Popper Button */}
+              <div className="pointer-events-auto relative inline-flex">
+                {popBurstCount > 0 && (
+                  <span
+                    key={`ripple-${popBurstCount}`}
+                    aria-hidden="true"
+                    data-testid="hero-confetti-ripple"
+                    className="animate-hero-btn-ripple pointer-events-none absolute inset-0 rounded-full border-[1.5px] border-[#E8C892] will-change-[transform,opacity]"
+                  />
+                )}
 
+                <button
+                  type="button"
+                  data-testid="hero-pop-confetti-btn"
+                  data-pressed={String(primaryPressed)}
+                  data-popped={String(isPoppedState)}
+                  onClick={handleConfettiClick}
+                  onPointerDown={() => setPrimaryPressed(true)}
+                  onPointerUp={() => setPrimaryPressed(false)}
+                  onPointerLeave={() => setPrimaryPressed(false)}
+                  onPointerCancel={() => setPrimaryPressed(false)}
+                  className="hero-btn-primary relative inline-flex min-w-[220px] cursor-pointer items-center justify-center gap-2.5 overflow-hidden rounded-full px-[26px] py-[14px] text-sm font-medium tracking-[0.01em] whitespace-nowrap shrink-0 select-none focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#D94B7D]"
+                >
+                  {popBurstCount > 0 && (
+                    <span
+                      key={`sheen-${popBurstCount}`}
+                      aria-hidden="true"
+                      className="animate-hero-btn-tap-sheen pointer-events-none absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-[#F6DFB5]/45 to-transparent will-change-[transform,opacity]"
+                    />
+                  )}
+
+                  <span
+                    key={`icon-${popBurstCount}`}
+                    className={`relative z-10 inline-flex shrink-0 items-center justify-center will-change-transform ${
+                      popBurstCount > 0 ? 'animate-hero-popper-recoil' : ''
+                    }`}
+                  >
+                    <PartyPopperIconSvg className="h-[18px] w-[18px]" />
+                  </span>
+
+                  <span
+                    data-testid="hero-pop-confetti-label"
+                    className="relative z-10 transition-opacity duration-200"
+                  >
+                    {isPoppedState ? 'Celebration On 🎉' : 'Pop Confetti'}
+                  </span>
+
+                  <span
+                    aria-hidden="true"
+                    className="relative z-10 ml-0.5 text-xs leading-none opacity-65"
+                  >
+                    ↓
+                  </span>
+                </button>
+              </div>
+
+              {/* Secondary Matching Tactile Stationery Pill (Open Your Gift) */}
               <a
                 href="#gift"
-                className="inline-flex min-h-[50px] items-center justify-center rounded-full border border-[#DEC9EC] bg-[#F1E9FF]/80 px-6 py-3 text-sm font-semibold text-[#3A1233] transition-colors duration-200 hover:bg-[#F1E9FF] whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3A1233]"
+                data-testid="hero-open-gift-btn"
+                data-pressed={String(secondaryPressed)}
+                onClick={handleOpenGiftClick}
+                onPointerDown={() => setSecondaryPressed(true)}
+                onPointerUp={() => setSecondaryPressed(false)}
+                onPointerLeave={() => setSecondaryPressed(false)}
+                onPointerCancel={() => setSecondaryPressed(false)}
+                className="hero-btn-secondary pointer-events-auto inline-flex min-w-[220px] cursor-pointer items-center justify-center gap-2.5 rounded-full px-[26px] py-[13px] text-sm font-medium tracking-[0.01em] whitespace-nowrap shrink-0 select-none focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#3A1233]"
               >
-                Open Your Gift 🎁
+                <MinimalGiftBoxIconSvg className="h-[17px] w-[17px] shrink-0" />
+                <span>Open Your Gift</span>
               </a>
             </div>
           </div>
 
-          {/* Right Column: THE ONLY PHOTO SLOT ON THE ENTIRE WEBSITE */}
-          <div className="relative mx-auto w-full max-w-md lg:col-span-5 lg:max-w-none">
-            <SparkleStarSvg className="animate-twinkle pointer-events-none absolute -top-5 left-1 z-0 h-8 w-8 text-[#E878B0] opacity-70 sm:-left-2 sm:h-9 sm:w-9" />
-            <SparkleStarSvg
-              className="animate-twinkle pointer-events-none absolute right-1 -bottom-4 z-0 h-7 w-7 text-[#E8BE44] opacity-70 sm:-right-2 sm:h-8 sm:w-8"
-              style={{ animationDelay: '0.9s' }}
-            />
-            <SparkleStarSvg
-              className="animate-twinkle pointer-events-none absolute top-10 right-1 z-0 h-5 w-5 text-[#A385F2] opacity-70 sm:-right-3 sm:h-6 sm:w-6"
-              style={{ animationDelay: '1.5s' }}
-            />
-
-            {/* Decorative pastel masking tape */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -top-3 left-1/2 z-20 h-7 w-28 -translate-x-1/2 -rotate-2 rounded-xs bg-[#FFE898]/85 shadow-xs"
-            />
-
-            <figure
-              data-testid="single-photo-slot"
-              className="relative z-10 -rotate-2 rounded-3xl border border-[#ECD6EA] bg-[#FFFDF8] p-3.5 pb-6 shadow-[0_24px_50px_-20px_rgba(59,21,53,0.24)] transition-transform duration-300 hover:rotate-0 sm:p-4 sm:pb-7"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoSelect}
-                aria-label="Add Anamika's photo to the Polaroid frame"
-                className="sr-only"
-              />
-
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-dashed border-[#DFB9D8] bg-gradient-to-br from-[#FFE4F0] via-[#FFFDF8] to-[#EBE3FF]">
-                {uploadedPhotoUrl ? (
-                  <>
-                    <img
-                      src={uploadedPhotoUrl}
-                      alt="Anamika Singh — aka Morgan"
-                      referrerPolicy="no-referrer"
-                      className="h-full w-full object-cover object-center"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleClearPhoto}
-                      aria-label="Reset Anamika's photo placeholder"
-                      className="absolute right-2.5 bottom-2.5 inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-[#3B1535]/85 px-3 py-1.5 text-xs font-semibold text-[#FFFDF8] backdrop-blur-xs transition-colors hover:bg-[#3B1535] cursor-pointer"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>Swap Photo</span>
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    aria-label="Add Anamika's photo here"
-                    className="group flex h-full w-full flex-col items-center justify-center p-5 text-center transition-colors hover:bg-[#FFE4F0]/45 cursor-pointer focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#C2377E]"
-                  >
-                    <PolaroidCameraDoodle className="h-24 w-24 transition-transform duration-300 group-hover:scale-105" />
-                    <span className="font-display mt-2 text-lg font-semibold text-[#3B1535]">
-                      Anamika&rsquo;s Photo
-                    </span>
-                    <span className="mt-1 max-w-[230px] text-xs leading-relaxed text-[#6E3C66]">
-                      Add 1 picture of Anamika (aka Morgan) here.
-                    </span>
-                    <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#3B1535] px-4 py-1.5 text-xs font-semibold text-[#FFFDF8] shadow-xs transition-transform group-hover:scale-105">
-                      <ImagePlus className="h-3.5 w-3.5 text-[#FFE898]" aria-hidden="true" />
-                      <span>Add Photo</span>
-                    </span>
-                  </button>
-                )}
-              </div>
-
-              <figcaption className="mt-4 px-1">
-                <p className="font-display text-base italic text-[#3B1535] sm:text-lg">
-                  {ANAMIKA.polaroidCaption}
-                </p>
-                <p className="mt-1 text-xs font-medium text-[#8C3B71]">
-                  {modeNote}
-                </p>
-              </figcaption>
-            </figure>
+          {/* Right Column: Anamika's Authentic Printed Photo Card */}
+          <div className="relative z-[3] mx-auto flex w-full justify-center lg:col-span-5">
+            <div className="pointer-events-auto">
+              <AnamikaEditorialCard />
+            </div>
           </div>
         </div>
       </div>

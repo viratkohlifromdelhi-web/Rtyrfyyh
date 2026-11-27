@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Volume2 } from 'lucide-react';
 import { SparkleStarSvg } from './DoodleSvgs';
+import { trackEvent } from '../utils/analytics';
 import { soundEngine } from '../utils/soundEngine';
 import {
   BG_MUSIC_AUTOPLAY_FADE_MS,
@@ -596,9 +597,13 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
         }
         exitTriggeredRef.current = true;
 
+        const currentVideoSec = Number((videoRef.current?.currentTime ?? 0).toFixed(1));
         if (triggeredBySkip) {
+          trackEvent('intro_skipped', 'Skip Intro Button', { atVideoSecond: currentVideoSec });
           audioUnlockedRef.current = true;
           soundEngine.unlock();
+        } else {
+          trackEvent('intro_completed', 'Opening Curtain Intro');
         }
 
         // Stop preloader, opening & playback watchers
@@ -1006,6 +1011,10 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
           loaderPillRef.current.dataset.loaderVisible = 'false';
           loaderPillRef.current.dataset.loaderSkipped = 'true';
         }
+        trackEvent('intro_loader_finished', 'Intro Video Smart Preloader', {
+          bufferMs: 0,
+          wasCached: true,
+        });
         startCurtainOpening();
         return;
       }
@@ -1073,6 +1082,10 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
             loaderPillRef.current.dataset.loaderVisible = 'false';
             loaderPillRef.current.dataset.loaderSkipped = 'true';
           }
+          trackEvent('intro_loader_finished', 'Intro Video Smart Preloader', {
+            bufferMs: Math.max(0, Math.round(now - mountTs)),
+            wasCached: true,
+          });
           startCurtainOpening();
           return;
         }
@@ -1145,6 +1158,10 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
                 loaderPillRef.current.style.opacity = '0';
                 loaderPillRef.current.dataset.loaderVisible = 'false';
               }
+              trackEvent('intro_loader_finished', 'Intro Video Smart Preloader', {
+                bufferMs: Math.max(0, Math.round(now - mountTs)),
+                wasCached: false,
+              });
               startCurtainOpening();
               return;
             }
@@ -1230,6 +1247,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
     }, [startCurtainOpening]);
 
     const handleTapForSound = () => {
+      trackEvent('intro_unmuted_tapped', 'Intro Tap for Sound Button');
       audioUnlockedRef.current = true;
       soundEngine.unlock();
       soundEngine.playBubbleClick(1.1);

@@ -41,6 +41,17 @@ export const HAPTIC_PATTERNS = {
   celebrationBurst: [20, 30, 35] as const,
   dodgeTap: 10,
   summaryCopyTap: 15,
+  cardFlip: 14,
+  lighterSpark: 18,
+  heroPopConfetti: 22,
+  heroOpenGift: 14,
+  emojiBounce: 10,
+  modeSwitch: 15,
+  noteCardFlick: 12,
+  rankSlide: 12,
+  sparkleToggle: 12,
+  timelineNodeClimax: 12,
+  timelineReceiptJump: 12,
 } as const;
 
 /**
@@ -154,6 +165,17 @@ export function createHapticsEngine(options?: {
     confettiCannon: () => vibrateCelebration(),
     dodgeTap: () => vibrateSafe(HAPTIC_PATTERNS.dodgeTap),
     summaryCopyTap: () => vibrateSafe(HAPTIC_PATTERNS.summaryCopyTap),
+    cardFlip: () => vibrateSafe(HAPTIC_PATTERNS.cardFlip),
+    lighterSpark: () => vibrateSafe(HAPTIC_PATTERNS.lighterSpark),
+    heroPopConfetti: () => vibrateSafe(HAPTIC_PATTERNS.heroPopConfetti),
+    heroOpenGift: () => vibrateSafe(HAPTIC_PATTERNS.heroOpenGift),
+    emojiBounce: () => vibrateSafe(HAPTIC_PATTERNS.emojiBounce),
+    modeSwitch: () => vibrateSafe(HAPTIC_PATTERNS.modeSwitch),
+    noteCardFlick: () => vibrateSafe(HAPTIC_PATTERNS.noteCardFlick),
+    rankSlide: () => vibrateSafe(HAPTIC_PATTERNS.rankSlide),
+    sparkleToggle: () => vibrateSafe(HAPTIC_PATTERNS.sparkleToggle),
+    timelineNodeClimax: () => vibrateSafe(HAPTIC_PATTERNS.timelineNodeClimax),
+    timelineReceiptJump: () => vibrateSafe(HAPTIC_PATTERNS.timelineReceiptJump),
   };
 }
 

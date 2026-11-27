@@ -1,10 +1,11 @@
 /**
  * Pure 60fps spring-solver physics, timeline interpolation, and live day counter
- * for the "Case File #0722" keepsake evidence folder.
+ * for the "Case File #0721" keepsake evidence folder.
  */
 
-export const RECEIPT_IMG_SRC = encodeURI('/first-text-22july.jpg');
-export const FIRST_TEXT_DATE = '2026-07-22';
+const BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/';
+export const RECEIPT_IMG_SRC = `${BASE_URL}${encodeURIComponent('Screenshot_2026-11-26-13-11-51-847_com.instagram.android.png')}`;
+export const FIRST_TEXT_DATE = '2026-07-21T00:29:00+05:30';
 
 export interface SpringConfig {
   stiffness: number;
@@ -191,7 +192,7 @@ export function computeFrontFlapOpenFrame(elapsedSec: number): {
 }
 
 /**
- * Computes the ink stamp (`VERIFIED • 22 JULY`) impact frame (`0.84s - 1.01s`)
+ * Computes the ink stamp (`VERIFIED • 21 JULY`) impact frame (`0.84s - 1.01s`)
  * and subtle `+2.5px` card micro-recoil (`90ms`).
  */
 export function computeStampImpactFrame(elapsedSec: number): {
@@ -232,14 +233,22 @@ export function computeStampImpactFrame(elapsedSec: number): {
 }
 
 /**
- * Computes the live whole-day count since `FIRST_TEXT_DATE` ('2026-07-22').
- * Uses calendar-day UTC difference from the local date so it increments cleanly at midnight
- * and stays accurate on 03 Dec 2026 and beyond.
+ * Computes the live whole-day count since `FIRST_TEXT_DATE` ('2026-07-21T00:29:00+05:30').
+ * Supports exact ISO timestamps with timezone offset as well as YYYY-MM-DD dates.
  */
 export function computeDaysSinceFirstText(
   firstTextDateIso: string = FIRST_TEXT_DATE,
   now: Date = new Date(),
 ): number {
+  if (firstTextDateIso.includes('T')) {
+    const parsedStartMs = Date.parse(firstTextDateIso);
+    if (!Number.isFinite(parsedStartMs)) {
+      return 0;
+    }
+    const diffDays = Math.floor((now.getTime() - parsedStartMs) / 86_400_000);
+    return Math.max(0, diffDays);
+  }
+
   const parts = firstTextDateIso.split('-').map((n) => Number.parseInt(n, 10));
   if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) {
     return 0;
@@ -253,5 +262,5 @@ export function computeDaysSinceFirstText(
 
 export function formatDaysSinceLabel(days: number): string {
   const safeDays = Math.max(0, Math.floor(days));
-  return `⏳ ${safeDays.toLocaleString('en-US')} ${safeDays === 1 ? 'day' : 'days'} since this first text`;
+  return `⏳ ${safeDays.toLocaleString('en-US')} ${safeDays === 1 ? 'day' : 'days'} since my 12:29 AM first text`;
 }

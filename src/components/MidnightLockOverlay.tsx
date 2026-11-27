@@ -11,6 +11,7 @@ import {
   writeMidnightBypass,
   type MidnightCountdownParts,
 } from '../utils/midnightLock';
+import { trackEvent } from '../utils/analytics';
 import { soundEngine } from '../utils/soundEngine';
 
 interface MidnightLockOverlayProps {
@@ -69,6 +70,7 @@ export function MidnightLockOverlay({
 
   // Lock body & document scroll strictly while this overlay is mounted
   useEffect(() => {
+    trackEvent('midnight_lock_viewed', 'Midnight Countdown Lock');
     const prevHtmlOverflow = document.documentElement.style.overflow;
     const prevBodyOverflow = document.body.style.overflow;
     document.documentElement.style.overflow = 'hidden';
@@ -85,6 +87,7 @@ export function MidnightLockOverlay({
   const triggerMidnightCelebration = useCallback(() => {
     if (unlockTriggeredRef.current) return;
     unlockTriggeredRef.current = true;
+    trackEvent('midnight_auto_unlocked', 'Midnight Countdown Auto Unlock');
     setModalOpen(false);
     setIsCelebrating(true);
     soundEngine.playVaultUnlock();
@@ -137,6 +140,10 @@ export function MidnightLockOverlay({
   const submitBypassCode = useCallback(
     (fourDigits: string) => {
       const result = evaluateMidnightBypassCode(fourDigits);
+      trackEvent('midnight_bypass_attempt', 'Midnight Bypass Keypad', {
+        codeEntered: fourDigits,
+        success: result === 'bypass',
+      });
       if (result === 'bypass') {
         triggerSecretBypass();
         return;
@@ -380,7 +387,7 @@ export function MidnightLockOverlay({
               <span aria-hidden="true">🔑</span>
             </div>
             <h2 className="font-display text-lg font-bold text-[#3A1233]">Secret Passcode</h2>
-            <p className="mt-0.5 mb-3.5 text-xs text-[#7A4A63]">Enter 4-digit code</p>
+            <p className="mt-0.5 mb-3.5 text-xs text-[#7A4A63]">Enter 4 digit code</p>
 
             {/* 4 Digit Boxes + Keyboard / Mobile Numeric Input */}
             <div className="relative mb-2">

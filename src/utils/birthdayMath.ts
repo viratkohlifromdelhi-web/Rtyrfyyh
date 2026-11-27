@@ -17,6 +17,8 @@ export interface FriendRankEntry {
   id: string;
   name: string;
   tag: string;
+  instagramHandle?: string;
+  instagramUrl?: string;
   isAnamika?: boolean;
 }
 
@@ -26,8 +28,8 @@ export interface BirthdayCountdown {
   label: string;
 }
 
-// 22 July 2026 — First Instagram DM date
-export const FRIENDSHIP_START_ISO = '2026-07-22T00:00:00';
+// 21 July 2026, 12:29 AM IST — First Instagram DM timestamp
+export const FRIENDSHIP_START_ISO = '2026-07-21T00:29:00+05:30';
 
 const CHEEKY_DATE_TOASTS = [
   'Wrong date, tap 3 👀',
@@ -127,7 +129,7 @@ export function computeBirthdayCountdown(
     return {
       status: 'today',
       daysLeft: 0,
-      label: "It's today — Happy 17th Birthday, Morgan!",
+      label: "It's today! Happy 17th Birthday, Morgan!",
     };
   }
   return {
@@ -138,11 +140,11 @@ export function computeBirthdayCountdown(
 }
 
 /**
- * Computes elapsed days/hours/minutes/seconds since 22 July 2026.
+ * Computes elapsed days/hours/minutes/seconds since 21 July 2026, 12:29 AM IST.
  */
 export function computeFriendshipDuration(
   now: Date,
-  start: Date = new Date(2026, 6, 22, 0, 0, 0),
+  start: Date = new Date(FRIENDSHIP_START_ISO),
 ): FriendshipDuration {
   const diffMs = Math.max(0, now.getTime() - start.getTime());
   const totalSeconds = Math.floor(diffMs / 1000);

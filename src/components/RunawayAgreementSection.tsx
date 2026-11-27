@@ -14,6 +14,7 @@ import {
   type Rect2D,
 } from '../utils/interactiveFun';
 import { SparkleStarSvg } from './DoodleSvgs';
+import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import { soundEngine } from '../utils/soundEngine';
 
@@ -117,13 +118,18 @@ export function RunawayAgreementSection({ onAcceptConfetti }: RunawayAgreementSe
 
     setNoPos(nextPos);
     setHasMeasured(true);
-    setDodgeCount((c) => c + 1);
+    setDodgeCount((c) => {
+      const nextCount = c + 1;
+      trackEvent('runaway_no_dodged', 'Runaway No Button', { dodgeCount: nextCount });
+      return nextCount;
+    });
     soundEngine.playDodgeZip();
     haptics.dodgeTap();
   }, [noPos]);
 
   const handleAccept = (e: MouseEvent<HTMLButtonElement>) => {
     setAccepted(true);
+    trackEvent('yes_button_clicked', 'Best-Friend Agreement Yes Button');
     const rect = e.currentTarget.getBoundingClientRect();
     onAcceptConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
   };
@@ -137,7 +143,7 @@ export function RunawayAgreementSection({ onAcceptConfetti }: RunawayAgreementSe
   return (
     <section
       id="agreement"
-      className="relative z-20 scroll-mt-16 bg-gradient-to-b from-[#FFFDF8] via-[#FFE4F0]/75 to-[#FFFDF8] py-14 sm:py-20"
+      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         <div
@@ -159,7 +165,7 @@ export function RunawayAgreementSection({ onAcceptConfetti }: RunawayAgreementSe
             Quick Question
           </p>
           <h2 className="font-display mt-1.5 text-balance text-2xl font-semibold tracking-tight text-[#3B1535] sm:text-4xl">
-            Best-Friend Agreement 📜
+            Best Friend Agreement 📜
           </h2>
 
           <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-[#572B50] sm:text-lg">

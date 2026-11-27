@@ -137,7 +137,7 @@ export function StarterPackGrid() {
   return (
     <section
       id="starter-pack"
-      className="relative z-20 scroll-mt-16 bg-gradient-to-b from-[#FFFDF8] via-[#FFF4F9] to-[#FFFDF8] py-14 sm:py-20"
+      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-2 text-center md:flex-row md:items-end md:justify-between md:text-left">

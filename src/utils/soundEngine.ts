@@ -817,7 +817,7 @@ class SoundEffectsEngine {
   }
 
   /**
-   * Case File #0722 — Paperclip Metallic Unclip (t = 0.0s):
+   * Case File #0721 — Paperclip Metallic Unclip (t = 0.0s):
    * Crisp high metallic "ting-click" using triangle @ 2450Hz + sine @ 3900Hz decaying 0.16 -> 0.001 over 55ms.
    */
   public playPaperclipUnclip(): void {
@@ -853,7 +853,7 @@ class SoundEffectsEngine {
   }
 
   /**
-   * Case File #0722 — Cardstock Slide & Folder Rustle (t = 0.14s):
+   * Case File #0721 — Cardstock Slide & Folder Rustle (t = 0.14s):
    * 460ms filtered noise buffer through bandpass (Q: 1.7, 620Hz -> 1550Hz -> 880Hz), peak gain 0.24.
    */
   public playCardstockSlide(): void {
@@ -905,7 +905,7 @@ class SoundEffectsEngine {
   }
 
   /**
-   * Case File #0722 — Rubber Stamp Soft Thud + Mini Chime (t = 0.84s):
+   * Case File #0721 — Rubber Stamp Soft Thud + Mini Chime (t = 0.84s):
    * Soft stamp thud (sine 155Hz -> 48Hz over 95ms, gain 0.26) + 25ms lowpass noise tap (400Hz, gain 0.12)
    * + E5 (659Hz) & B5 (987Hz) soft sine chime decaying over 320ms (gain 0.11).
    */
@@ -1263,6 +1263,241 @@ class SoundEffectsEngine {
         gain.connect(ctx.destination);
         osc.start(start);
         osc.stop(start + 0.26);
+      });
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Anamika Editorial Collector Card — Crisp glossy-cardboard 3D flip swoosh
+   * (180ms bandpass-filtered noise sweeping 700Hz -> 1700Hz, gain 0.15).
+   */
+  public playEditorialCardFlip(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx || !this.noiseBuffer) return;
+      const now = ctx.currentTime;
+
+      const noise = ctx.createBufferSource();
+      noise.buffer = this.noiseBuffer;
+
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.setValueAtTime(700, now);
+      bp.frequency.exponentialRampToValueAtTime(1700, now + 0.18);
+      bp.Q.setValueAtTime(1.6, now);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.15, now + 0.032);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.185);
+
+      noise.connect(bp);
+      bp.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start(now);
+      noise.stop(now + 0.195);
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Anamika Editorial Collector Card — Lighter-flick metallic flint click (triangle 3200Hz, 25ms)
+   * + brief warm ignition whoosh (120ms filtered noise 500Hz -> 1200Hz, gain 0.16).
+   */
+  public playLighterSpark(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      // 1. Metallic flint click
+      const clickOsc = ctx.createOscillator();
+      const clickGain = ctx.createGain();
+      clickOsc.type = 'triangle';
+      clickOsc.frequency.setValueAtTime(3200, now);
+      clickOsc.frequency.exponentialRampToValueAtTime(2100, now + 0.025);
+
+      clickGain.gain.setValueAtTime(0.0001, now);
+      clickGain.gain.linearRampToValueAtTime(0.14, now + 0.003);
+      clickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.026);
+
+      clickOsc.connect(clickGain);
+      clickGain.connect(ctx.destination);
+      clickOsc.start(now);
+      clickOsc.stop(now + 0.03);
+
+      // 2. Warm ignition whoosh right after flint click
+      if (this.noiseBuffer) {
+        const start = now + 0.02;
+        const noise = ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(500, start);
+        bp.frequency.exponentialRampToValueAtTime(1200, start + 0.12);
+        bp.Q.setValueAtTime(1.1, start);
+
+        const nGain = ctx.createGain();
+        nGain.gain.setValueAtTime(0.0001, start);
+        nGain.gain.linearRampToValueAtTime(0.16, start + 0.024);
+        nGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.125);
+
+        noise.connect(bp);
+        bp.connect(nGain);
+        nGain.connect(ctx.destination);
+        noise.start(start);
+        noise.stop(start + 0.135);
+      }
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Stacked Note Deck — Crisp 110ms soft bandpass paper-flick swoosh (gain 0.14).
+   */
+  public playPaperFlick(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx || !this.noiseBuffer) return;
+      const now = ctx.currentTime;
+
+      const noise = ctx.createBufferSource();
+      noise.buffer = this.noiseBuffer;
+
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.setValueAtTime(950, now);
+      bp.frequency.exponentialRampToValueAtTime(1850, now + 0.11);
+      bp.Q.setValueAtTime(1.5, now);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.14, now + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.115);
+
+      noise.connect(bp);
+      bp.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start(now);
+      noise.stop(now + 0.125);
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Soft tactile toggle chime when switching between No Filter and Birthday Truce.
+   */
+  public playModeChime(isTruce: boolean): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const freqs = isTruce ? [523.25, 659.25] : [587.33, 493.88];
+
+      freqs.forEach((freq, idx) => {
+        const start = now + idx * 0.045;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.linearRampToValueAtTime(0.065, start + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.2);
+      });
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Subtle paper-slide Web Audio tick when Friend List Rankings animate between Before/After 21 July.
+   */
+  public playPaperSlideTick(rising = true): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      // Soft paper brush swoosh
+      if (this.noiseBuffer) {
+        const noise = ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(rising ? 880 : 1450, now);
+        bp.frequency.exponentialRampToValueAtTime(rising ? 1650 : 820, now + 0.095);
+        bp.Q.setValueAtTime(1.6, now);
+
+        const nGain = ctx.createGain();
+        nGain.gain.setValueAtTime(0.0001, now);
+        nGain.gain.linearRampToValueAtTime(0.09, now + 0.014);
+        nGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+
+        noise.connect(bp);
+        bp.connect(nGain);
+        nGain.connect(ctx.destination);
+        noise.start(now);
+        noise.stop(now + 0.11);
+      }
+
+      // Delicate tactile settling tick
+      const tickOsc = ctx.createOscillator();
+      const tickGain = ctx.createGain();
+      tickOsc.type = 'sine';
+      tickOsc.frequency.setValueAtTime(rising ? 520 : 440, now + 0.025);
+      tickOsc.frequency.exponentialRampToValueAtTime(rising ? 660 : 380, now + 0.07);
+
+      tickGain.gain.setValueAtTime(0.0001, now + 0.025);
+      tickGain.gain.linearRampToValueAtTime(0.042, now + 0.032);
+      tickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.085);
+
+      tickOsc.connect(tickGain);
+      tickGain.connect(ctx.destination);
+      tickOsc.start(now + 0.025);
+      tickOsc.stop(now + 0.09);
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Tiny soft crystalline twinkle chime when Sparkle Rain is toggled ON.
+   */
+  public playSparkleTwinkle(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const notes = [1046.5, 1318.5, 1567.98]; // C6 -> E6 -> G6 airy shimmer
+
+      notes.forEach((freq, idx) => {
+        const start = now + idx * 0.042;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.linearRampToValueAtTime(0.045, start + 0.009);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.19);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.21);
       });
     } catch {
       // Ignore Web Audio errors

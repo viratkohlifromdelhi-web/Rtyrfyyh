@@ -1,12 +1,31 @@
 import { useEffect, useState, type MouseEvent } from 'react';
-import { Cake, Crown, MessageCircle, X } from 'lucide-react';
+import { MessageCircle, X } from 'lucide-react';
 import {
   buildDecember2026Calendar,
   computeBirthdayCountdown,
   computeFriendshipDuration,
   getRandomDateToast,
 } from '../utils/birthdayMath';
+import { trackEvent } from '../utils/analytics';
 import { soundEngine } from '../utils/soundEngine';
+
+function CalendarArrowSvg({ className = 'h-3 w-3' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M2.5 8H13.5" />
+      <path d="M9.5 4.25L13.5 8L9.5 11.75" />
+    </svg>
+  );
+}
 
 interface CalendarAndCounterSectionProps {
   onBirthdayDateTap: (originX?: number, originY?: number) => void;
@@ -42,12 +61,20 @@ export function CalendarAndCounterSection({
   const handleTapDec3 = (e: MouseEvent<HTMLButtonElement>) => {
     setDateToast(null);
     setShowBirthdayPopup((prev) => !prev);
+    trackEvent('calendar_date_tapped', 'December 3 Birthday Date', {
+      day: 3,
+      isBirthday: true,
+    });
     const rect = e.currentTarget.getBoundingClientRect();
     onBirthdayDateTap(rect.left + rect.width / 2, rect.top + rect.height / 2);
   };
 
   const handleTapOtherDate = (day: number) => {
     soundEngine.playBubbleClick(0.95 + (day % 4) * 0.04);
+    trackEvent('calendar_date_tapped', `December ${day} Calendar Date`, {
+      day,
+      isBirthday: false,
+    });
     setDateToast({
       day,
       message: getRandomDateToast(day),
@@ -58,7 +85,7 @@ export function CalendarAndCounterSection({
   return (
     <section
       id="calendar"
-      className="relative z-20 scroll-mt-16 bg-gradient-to-b from-[#FBF0F6] via-[#F4ECFC] to-[#FBF0F6] py-14 sm:py-20"
+      className="relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
@@ -71,34 +98,44 @@ export function CalendarAndCounterSection({
         </div>
 
         <div className="mt-8 grid grid-cols-1 items-stretch gap-7 lg:grid-cols-12">
-          {/* Left Card: Cute Desk Calendar for December 2026 */}
-          <div className="relative flex flex-col justify-between overflow-hidden rounded-[28px] border-[1.5px] border-[#E4B8D5] bg-[#FFFDF8] shadow-[0_18px_42px_-20px_rgba(59,21,53,0.22),0_4px_14px_-4px_rgba(194,55,126,0.1)] lg:col-span-7">
-            {/* Desk Calendar Top Banner + Spiral Binder Rings */}
-            <div className="relative bg-gradient-to-r from-[#3B1535] via-[#6B215B] to-[#A6347C] px-5 pt-5 pb-4 text-[#FFFDF8] sm:px-7">
-              {/* Decorative top spiral binder rings */}
+          {/* Left Card: Editorial Printed Pastel Desk Calendar for December 2026 */}
+          <div
+            data-testid="dec-2026-calendar-card"
+            className="relative flex flex-col justify-between overflow-hidden rounded-[26px] border border-[#E9C9DA] bg-[#FFFDFB] shadow-[0_18px_42px_-22px_rgba(58,18,51,0.18),0_4px_14px_-4px_rgba(217,75,125,0.08)] lg:col-span-7"
+          >
+            {/* Refined Soft Blush-Cream Desk Calendar Header + Hairline Divider */}
+            <div
+              data-testid="calendar-editorial-header"
+              className="relative bg-[#FFF4F8] px-5 pt-4 pb-4 sm:px-7 sm:pt-5 sm:pb-5"
+              style={{ borderBottom: '1px solid rgba(58, 18, 51, 0.1)' }}
+            >
+              {/* Subtle metallic rose-ivory desk calendar binder rings */}
               <div
                 aria-hidden="true"
                 className="pointer-events-none mb-3 flex items-center justify-around px-3"
               >
                 {BINDER_RINGS.map((ring) => (
                   <span key={ring} className="flex flex-col items-center">
-                    <span className="h-3.5 w-2 rounded-full bg-gradient-to-b from-[#FFFDF8] via-[#FFE4F0] to-[#D497B9] shadow-[0_2px_4px_rgba(0,0,0,0.3)]" />
-                    <span className="-mt-1 h-2 w-2.5 rounded-full bg-[#240A20]/85 ring-1 ring-[#FFE4F0]/35" />
+                    <span className="h-3 w-1.5 rounded-full bg-gradient-to-b from-[#DFC3A1] via-[#F2DFC6] to-[#C49E72] shadow-[0_1px_2px_rgba(58,18,51,0.18)]" />
+                    <span className="-mt-1 h-1.5 w-2 rounded-full bg-[#3A1233]/18 ring-1 ring-[#FFFFFF]/80" />
                   </span>
                 ))}
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <div>
-                  <h3 className="font-display text-2xl font-semibold tracking-tight text-[#FFFDF8] sm:text-[26px]">
+                  <h3 className="font-display text-2xl font-semibold tracking-tight text-[#3A1233] sm:text-[26px]">
                     December 2026
                   </h3>
-                  <p className="mt-0.5 text-xs text-[#FFE4F0]/90">
-                    Tap <span className="font-bold text-[#FFE898]">3</span> for a birthday note (or try other dates)
+                  <p className="mt-0.5 text-xs text-[#7A4A63]">
+                    Tap <span className="font-bold text-[#D94B7D]">3</span> for the main note, or explore other dates
                   </p>
                 </div>
 
-                <span className="inline-flex items-center rounded-full border border-[#FFE898]/55 bg-[#FFFDF8]/15 px-3 py-1 text-[11px] font-bold tracking-wide text-[#FFE898] tabular-nums backdrop-blur-xs">
+                <span
+                  data-testid="calendar-turning-badge"
+                  className="inline-flex items-center rounded-full border border-[#E5CCA0]/80 bg-[#FDF6E7] px-3 py-1 text-[11px] font-semibold tracking-[0.02em] text-[#7D5524] tabular-nums whitespace-nowrap"
+                >
                   Turning 17 &middot; 03 Dec 2026
                 </span>
               </div>
@@ -106,21 +143,17 @@ export function CalendarAndCounterSection({
 
             {/* Calendar Body */}
             <div className="flex-1 px-4 pt-4 pb-5 sm:px-6 sm:pt-5">
-              {/* Weekday Headers */}
+              {/* Clean Editorial Weekday Headers (No Loud Pink Boxes) */}
               <div
                 aria-hidden="true"
-                className="grid grid-cols-7 gap-1.5 text-center text-[11px] font-bold tracking-wide sm:gap-2 sm:text-xs"
+                className="grid grid-cols-7 gap-[6px] text-center text-[11px] font-semibold tracking-[0.06em] uppercase sm:gap-2"
               >
                 {WEEKDAYS.map((wd, idx) => {
                   const isWeekend = idx === 0 || idx === 6;
                   return (
                     <div
                       key={wd}
-                      className={`rounded-lg py-1.5 ${
-                        isWeekend
-                          ? 'bg-[#FFE8F3]/75 text-[#B5377B]'
-                          : 'text-[#7A4B73]'
-                      }`}
+                      className={`py-1 ${isWeekend ? 'text-[#D94B7D]' : 'text-[#7A4A63]'}`}
                     >
                       {wd}
                     </div>
@@ -131,7 +164,7 @@ export function CalendarAndCounterSection({
               {/* 5-Row Structured Calendar Grid (Nov 29-30, Dec 1-31, Jan 1-2) */}
               <div
                 data-testid="dec-2026-calendar"
-                className="mt-3 grid grid-cols-7 gap-1.5 sm:gap-2"
+                className="mt-2.5 grid grid-cols-7 gap-[6px] sm:gap-2"
               >
                 {DEC_2026_CELLS.map((cell) => {
                   if (!cell.isCurrentMonth) {
@@ -139,11 +172,7 @@ export function CalendarAndCounterSection({
                       <div
                         key={cell.key}
                         aria-hidden="true"
-                        className={`flex h-12 items-center justify-center rounded-xl border text-xs font-medium tabular-nums select-none sm:h-[52px] sm:text-sm ${
-                          cell.isWeekend
-                            ? 'border-[#F3D9E7]/80 bg-[#FFF2F8]/80 text-[#C19BB8]'
-                            : 'border-[#F1E3EE]/85 bg-[#FAF4F8]/85 text-[#C3A7BE]'
-                        }`}
+                        className="flex h-11 items-center justify-center rounded-xl border border-[#3A1233]/[0.05] bg-[#FAF4F7]/65 text-xs font-medium text-[#C5A9BC] tabular-nums select-none sm:h-[50px] sm:text-sm"
                       >
                         {cell.day}
                       </div>
@@ -155,25 +184,19 @@ export function CalendarAndCounterSection({
                       <button
                         key={cell.key}
                         type="button"
+                        data-testid="calendar-day-3"
                         onClick={handleTapDec3}
                         aria-expanded={showBirthdayPopup}
-                        aria-label="December 3, 2026 — Anamika's 17th Birthday, tap for surprise note"
-                        className="animate-calendar-glow relative flex h-12 flex-col items-center justify-center rounded-2xl border-2 border-[#3B1535] bg-gradient-to-br from-[#FF84BC] via-[#E14A92] to-[#9E286B] font-bold text-[#FFFDF8] shadow-[0_8px_18px_-6px_rgba(194,55,126,0.65)] transition-transform duration-200 hover:scale-105 active:scale-95 sm:h-[52px] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2377E]"
+                        aria-label="December 3, 2026, Anamika's 17th Birthday, tap for surprise note"
+                        className="animate-calendar-glow relative flex h-11 flex-col items-center justify-center rounded-[14px] bg-[#D94B7D] font-bold text-[#FFFFFF] shadow-[0_8px_18px_-6px_rgba(217,75,125,0.52)] ring-[3px] ring-[#D94B7D]/20 transition-transform duration-200 hover:scale-[1.04] hover:bg-[#C83E6F] active:scale-95 sm:h-[50px] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3A1233]"
                       >
-                        {/* Tiny floating Bday! micro-tag perched cleanly on top */}
+                        <span className="text-[15px] leading-none font-bold tabular-nums sm:text-base">
+                          3
+                        </span>
                         <span
                           aria-hidden="true"
-                          className="pointer-events-none absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full border border-[#3B1535]/25 bg-[#FFE898] px-1.5 py-[1px] text-[9px] leading-tight font-black tracking-tight text-[#3B1535] shadow-xs whitespace-nowrap"
-                        >
-                          Bday!
-                        </span>
-                        <span className="mt-0.5 flex items-center gap-0.5 text-base leading-none font-extrabold tabular-nums">
-                          <span>3</span>
-                          <Crown
-                            aria-hidden="true"
-                            className="h-3 w-3 text-[#FFE898]"
-                          />
-                        </span>
+                          className="mt-1 h-[4.5px] w-[4.5px] rounded-full bg-[#FFE299]"
+                        />
                       </button>
                     );
                   }
@@ -186,12 +209,12 @@ export function CalendarAndCounterSection({
                       type="button"
                       onClick={() => handleTapOtherDate(cell.day)}
                       aria-label={`December ${cell.day}, 2026`}
-                      className={`flex h-12 items-center justify-center rounded-xl border text-sm font-semibold tabular-nums transition-all duration-150 active:scale-95 sm:h-[52px] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2377E] ${
+                      className={`flex h-11 items-center justify-center rounded-xl border text-sm font-semibold tabular-nums transition-all duration-150 active:scale-95 sm:h-[50px] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] ${
                         isSelectedOther
-                          ? 'border-[#D969A4] bg-[#FFE4F0] text-[#3B1535] shadow-xs'
+                          ? 'border-[#D94B7D]/45 bg-[#FFEBF3] text-[#3A1233] shadow-2xs'
                           : cell.isWeekend
-                            ? 'border-[#F3CDE1] bg-[#FFF0F7]/90 text-[#6B2B5C] hover:border-[#E49CC3] hover:bg-[#FFE4F0]'
-                            : 'border-[#EFE0EC] bg-[#FFFDF8] text-[#4C2447] hover:border-[#E4B8D5] hover:bg-[#FFF5FA]'
+                            ? 'border-[#3A1233]/[0.08] bg-[#FFF8FB] text-[#A23B67] hover:border-[#D94B7D]/30 hover:bg-[#FFF0F6]'
+                            : 'border-[#3A1233]/[0.08] bg-[#FFFFFF] text-[#4C2447] hover:border-[#D94B7D]/25 hover:bg-[#FFF7FA]'
                       }`}
                     >
                       {cell.day}
@@ -207,10 +230,10 @@ export function CalendarAndCounterSection({
                   role="status"
                   aria-live="polite"
                   data-testid="calendar-date-toast"
-                  className="animate-pop-in mt-3.5 flex items-center justify-between gap-3 rounded-2xl border border-[#ECC3DD] bg-[#FFF1F8] px-4 py-2.5 text-xs font-semibold text-[#5E2354] shadow-2xs"
+                  className="animate-pop-in mt-3.5 flex items-center justify-between gap-3 rounded-2xl border border-[#ECC3DD] bg-[#FFF4F8] px-4 py-2.5 text-xs font-semibold text-[#5E2354] shadow-2xs"
                 >
                   <span>
-                    <strong className="text-[#C2377E]">Dec {dateToast.day}:</strong>{' '}
+                    <strong className="text-[#D94B7D]">Dec {dateToast.day}:</strong>{' '}
                     {dateToast.message}
                   </span>
                   <button
@@ -224,29 +247,43 @@ export function CalendarAndCounterSection({
                 </div>
               )}
 
-              {/* Playful Popup Card when Dec 3 is tapped */}
+              {/* Warm Ivory & Blush Editorial Tear-Off Note Slip when Dec 3 is tapped */}
               {showBirthdayPopup && (
                 <div
                   role="dialog"
                   aria-label="Anamika birthday milestone card"
-                  className="animate-pop-in mt-4 rounded-2xl border border-[#F2C3DA] bg-[#3B1535] p-5 text-[#FFFDF8] shadow-lg"
+                  data-testid="calendar-birthday-note"
+                  className="animate-pop-in relative mt-4 overflow-hidden rounded-2xl bg-[#FFF9FB] py-4 pr-4 pl-5 text-left shadow-[0_12px_28px_-14px_rgba(58,18,51,0.16),0_2px_6px_-2px_rgba(217,75,125,0.08)] sm:py-5 sm:pr-5 sm:pl-6"
+                  style={{ border: '1px solid rgba(217, 75, 125, 0.25)' }}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2 text-[#FFE898]">
-                      <Cake className="h-4 w-4 shrink-0" aria-hidden="true" />
-                      <span className="text-xs font-bold">03 Dec 2009 → 03 Dec 2026</span>
+                  {/* Sleek 3px Warm Rose Berry left accent bar */}
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-3 bottom-3 left-[6px] w-[3px] rounded-full bg-[#D94B7D]"
+                  />
+
+                  <div className="flex items-center justify-between gap-3">
+                    <div
+                      data-testid="calendar-note-date-range"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.02em] text-[#8C5873] tabular-nums"
+                    >
+                      <span>03 Dec 2009</span>
+                      <CalendarArrowSvg className="h-3 w-3 shrink-0 text-[#D94B7D]" />
+                      <span>03 Dec 2026</span>
                     </div>
                     <button
                       type="button"
+                      data-testid="calendar-note-close"
                       onClick={() => setShowBirthdayPopup(false)}
                       aria-label="Close birthday date note"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#FFE4F0] transition-colors hover:bg-[#FFFDF8]/15 cursor-pointer"
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#8C5873] transition-colors hover:bg-[#FCE8F0] hover:text-[#3A1233] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
                     >
-                      <X className="h-4 w-4" aria-hidden="true" />
+                      <X className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
                   </div>
-                  <p className="font-display mt-2 text-lg leading-snug text-[#FFFDF8] sm:text-xl">
-                    03 Dec 2009 — the day Anamika (aka Morgan) was born. Happy 17th, bauni!
+
+                  <p className="font-display mt-2 text-[17px] leading-snug font-medium text-[#3A1233] sm:text-[19px]">
+                    03 Dec 2009, the day Anamika (aka Morgan) was born. Happy 17th, bauni!
                   </p>
                 </div>
               )}
@@ -255,14 +292,13 @@ export function CalendarAndCounterSection({
             {/* Slim Pastel Live Countdown Footer Bar */}
             <div
               data-testid="calendar-countdown-strip"
-              className="flex items-center justify-center gap-2 border-t border-[#EBC6DF] bg-gradient-to-r from-[#FFE8F3] via-[#F5EEFF] to-[#FFF4D6] px-5 py-3 text-center text-xs font-bold text-[#4A1C43] sm:text-[13px]"
+              className="flex items-center justify-center gap-2 border-t border-[#EED3E2] bg-[#FFF4F8]/75 px-5 py-3 text-center text-xs font-semibold text-[#4A1C43] sm:text-[13px]"
             >
-              <span aria-hidden="true">⏳</span>
               <span className="tabular-nums">{countdown.label}</span>
             </div>
           </div>
 
-          {/* Right Card: Live Milestone Tracker since 22 July 2026 */}
+          {/* Right Card: Live Milestone Tracker since 21 July 2026, 12:29 AM */}
           <div
             data-testid="friendship-counter"
             className="flex flex-col justify-between rounded-[28px] border-[1.5px] border-[#D7C1F4] bg-gradient-to-br from-[#F3ECFF] via-[#FFFDF8] to-[#FFEAF4] p-6 shadow-[0_18px_42px_-20px_rgba(59,21,53,0.22),0_4px_14px_-4px_rgba(148,104,226,0.12)] sm:p-7 lg:col-span-5"
@@ -278,7 +314,7 @@ export function CalendarAndCounterSection({
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-[#E04D92]" />
                 </span>
                 <span className="text-xs font-bold text-[#5C2454]">
-                  22 July 2026 &bull; First DM
+                  21 July 2026 &bull; 12:29 AM
                 </span>
               </div>
 
@@ -288,8 +324,9 @@ export function CalendarAndCounterSection({
               </h3>
 
               <p className="mt-1.5 text-sm leading-relaxed text-[#65355F]">
-                Counting since <span className="font-semibold text-[#3B1535]">22 July 2026</span>{' '}
-                &mdash; the day you texted first.
+                Counting since{' '}
+                <span className="font-semibold text-[#3B1535]">21 July 2026, 12:29 AM</span>, the
+                night I texted first.
               </p>
 
               {/* Big Days Display + Flip-Clock Style Mini Tiles */}
@@ -371,7 +408,7 @@ export function CalendarAndCounterSection({
 
             {/* Centered bottom caption with clear breathing room so floating confetti button never overlaps */}
             <p className="mt-5 px-4 pb-1 text-center text-xs font-medium text-[#65355F]">
-              Still talking non-stop since that first DM.
+              Still talking nonstop since that first DM.
             </p>
           </div>
         </div>

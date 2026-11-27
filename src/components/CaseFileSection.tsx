@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import { SparkleStarSvg } from './DoodleSvgs';
 import {
@@ -269,6 +270,7 @@ export function CaseFileSection() {
 
   const handleOpenFolder = useCallback(() => {
     if (phaseRef.current !== 'closed') return;
+    trackEvent('case_file_opened', 'Case File #0721 Folder');
     cancelAnimationLoop();
     setShowStampSparkles(false);
     setPhaseSync('opening');
@@ -420,6 +422,7 @@ export function CaseFileSection() {
 
   const handleTuckBack = useCallback(() => {
     if (phaseRef.current !== 'open') return;
+    trackEvent('case_file_tucked_back', 'Case File #0721 Tuck Back');
     cancelAnimationLoop();
     setIsZoomed(false);
     setShowStampSparkles(false);
@@ -525,6 +528,7 @@ export function CaseFileSection() {
 
   const handleOpenZoom = useCallback(() => {
     if (phaseRef.current !== 'open') return;
+    trackEvent('case_file_zoomed', 'Case File #0721 Receipt Lightbox');
     soundEngine.playBubbleClick(1.06);
     setIsZoomed(true);
   }, []);
@@ -542,13 +546,13 @@ export function CaseFileSection() {
       id="case-file"
       data-testid="case-file-section"
       data-folder-phase={phase}
-      className="relative z-20 scroll-mt-16 bg-[#FFF6F9] py-16 sm:py-24"
+      className="relative z-[2] scroll-mt-16 bg-transparent py-16 sm:py-24"
     >
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="mx-auto max-w-xl text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FCE7F0] px-3.5 py-1 text-xs font-bold tracking-[0.08em] text-[#D94B7D]">
-            <span>📂 ARCHIVE &bull; 22 JULY</span>
+            <span>📂 ARCHIVE &bull; 21 JULY &bull; 12:29 AM</span>
           </span>
 
           <h2 className="font-display mt-3 text-balance text-3xl font-semibold tracking-tight text-[#3A1233] sm:text-4xl">
@@ -556,7 +560,7 @@ export function CaseFileSection() {
           </h2>
 
           <p className="mt-2 text-sm font-medium text-[#7A4A63] sm:text-base">
-            Yes, I actually saved the receipt from day one.
+            Yes, I messaged first at 12:29 AM, and yes, I still kept the receipt.
           </p>
         </div>
 
@@ -580,7 +584,7 @@ export function CaseFileSection() {
                 transform: `rotate(${FOLDER_IDLE_TILT_DEG}deg) scale(1)`,
               }}
             >
-              {/* 1. Back Folder Panel & Top-Left Index Tab ("CASE #0722") */}
+              {/* 1. Back Folder Panel & Top-Left Index Tab ("CASE #0721") */}
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-x-0 top-0 bottom-0"
@@ -593,7 +597,7 @@ export function CaseFileSection() {
                   }}
                 >
                   <span className="font-mono text-[11px] font-bold tracking-[0.11em] text-[#3A1233]">
-                    CASE #0722
+                    CASE #0721
                   </span>
                 </div>
 
@@ -641,7 +645,7 @@ export function CaseFileSection() {
                   className="relative rounded-[14px] border border-[#F0D4DF] bg-white shadow-[0_18px_36px_-18px_rgba(58,18,51,0.28),0_4px_10px_-4px_rgba(58,18,51,0.08)]"
                   style={{ padding: '10px 10px 44px 10px' }}
                 >
-                  {/* Top-Right VERIFIED • 22 JULY Ink Stamp (impacts at Stage 3) */}
+                  {/* Top-Right VERIFIED • 21 JULY Ink Stamp (impacts at Stage 3) */}
                   <div
                     ref={stampRef}
                     data-testid="case-file-stamp"
@@ -652,7 +656,7 @@ export function CaseFileSection() {
                       transform: 'scale(2.1) rotate(-11deg)',
                     }}
                   >
-                    VERIFIED &bull; 22 JULY
+                    VERIFIED &bull; 21 JULY
                   </div>
 
                   {/* Interactive Tap-to-Zoom button wrapping the archival image */}
@@ -662,7 +666,7 @@ export function CaseFileSection() {
                     onClick={handleOpenZoom}
                     disabled={phase !== 'open'}
                     tabIndex={phase === 'open' ? 0 : -1}
-                    aria-label="Open full-screen view of 22 July first-text chat receipt"
+                    aria-label="Open full-screen view of 21 July 12:29 AM first-text chat receipt"
                     className={`group relative block w-full overflow-hidden rounded-[8px] border border-[rgba(58,18,51,0.08)] bg-[#FFF8FB] text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] ${
                       phase === 'open' ? 'cursor-zoom-in' : 'pointer-events-none'
                     }`}
@@ -670,13 +674,13 @@ export function CaseFileSection() {
                     {!imgFailed ? (
                       <img
                         src={RECEIPT_IMG_SRC}
-                        alt="First Instagram message screenshot from 22 July 2026"
+                        alt="First Instagram message screenshot from 21 July 2026 at 12:29 AM"
                         referrerPolicy="no-referrer"
                         onError={() => setImgFailed(true)}
                         className="block h-[238px] w-full max-h-[360px] object-cover object-top transition-transform duration-200 group-hover:scale-[1.015]"
                       />
                     ) : (
-                      /* Clean archival fallback if local public/first-text-22july.jpg hasn't been added yet */
+                      /* Clean archival fallback */
                       <div
                         data-testid="case-file-fallback"
                         className="flex h-[238px] w-full flex-col items-center justify-center bg-gradient-to-b from-[#FFF7FA] to-[#FCE9F1] px-5 text-center"
@@ -685,20 +689,20 @@ export function CaseFileSection() {
                           💬
                         </div>
                         <p className="mt-3 font-mono text-[11px] font-bold tracking-[0.1em] text-[#D94B7D]">
-                          EXHIBIT A &bull; 22 JULY 2026
+                          EXHIBIT A &bull; 21 JULY 2026 &bull; 12:29 AM
                         </p>
                         <p className="mt-1.5 max-w-[230px] text-xs leading-relaxed font-medium text-[#6B3B64]">
-                          First-text chat receipt archived in{' '}
-                          <span className="font-semibold text-[#3A1233]">Case #0722</span>.
+                          First text chat receipt archived in{' '}
+                          <span className="font-semibold text-[#3A1233]">Case #0721</span>.
                         </p>
                       </div>
                     )}
                   </button>
 
-                  {/* White bottom archival margin caption + subtle zoom hint (clean two-tier layout, zero truncation) */}
-                  <div className="absolute right-[10px] bottom-[6px] left-[10px] flex flex-col items-center text-center">
-                    <p className="text-[11px] leading-snug font-semibold tracking-tight text-[#3A1233]">
-                      22 July &mdash; Exhibit A. No going back after this.
+                  {/* White bottom archival margin caption + subtle zoom hint */}
+                  <div className="absolute right-[10px] bottom-[5px] left-[10px] flex flex-col items-center text-center">
+                    <p className="text-[10.5px] leading-tight font-semibold tracking-tight text-[#3A1233]">
+                      21 July, 12:29 AM &middot; Exhibit A. Technically I texted first, no regrets.
                     </p>
                     <span
                       className={`mt-0.5 text-[10px] leading-none font-semibold text-[#D94B7D] transition-opacity duration-200 ${
@@ -743,7 +747,7 @@ export function CaseFileSection() {
                     {/* Dashed Deep Plum archival label box */}
                     <div className="rounded-lg border border-dashed border-[rgba(58,18,51,0.25)] bg-[#FFF8FB]/60 px-2.5 py-2 text-left">
                       <p className="font-mono text-[10px] leading-tight font-bold tracking-[0.06em] text-[#3A1233]">
-                        DATE: 22 JULY
+                        DATE: 21 JULY &bull; 12:29 AM
                       </p>
                       <p className="mt-1 font-mono text-[9.5px] leading-tight font-semibold tracking-[0.05em] text-[#6B3B64]">
                         STATUS: CLASSIFIED RECEIPT
@@ -841,7 +845,7 @@ export function CaseFileSection() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Full-screen view of 22 July first-text screenshot"
+            aria-label="Full-screen view of 21 July 12:29 AM first-text screenshot"
             data-testid="case-file-lightbox"
             onClick={handleCloseZoom}
             className="animate-pop-in fixed inset-0 z-[9500] flex flex-col items-center justify-center p-4 sm:p-6"
@@ -868,7 +872,7 @@ export function CaseFileSection() {
               {!imgFailed ? (
                 <img
                   src={RECEIPT_IMG_SRC}
-                  alt="Full uncropped 22 July first-text chat screenshot"
+                  alt="Full uncropped 21 July 12:29 AM first-text chat screenshot"
                   referrerPolicy="no-referrer"
                   onError={() => setImgFailed(true)}
                   className="block rounded-[14px] border border-[#FFF6F9]/20 bg-[#1B0918] shadow-2xl"
@@ -884,16 +888,16 @@ export function CaseFileSection() {
                     💬
                   </div>
                   <p className="mt-4 font-mono text-xs font-bold tracking-[0.1em] text-[#D94B7D]">
-                    CASE #0722 &bull; 22 JULY 2026
+                    CASE #0721 &bull; 21 JULY 2026 &bull; 12:29 AM
                   </p>
                   <p className="mt-2 text-sm font-medium text-[#5C2D4F]">
-                    Exhibit A — First-text screenshot from day one.
+                    Exhibit A &middot; First text screenshot from 12:29 AM.
                   </p>
                 </div>
               )}
 
               <p className="mt-3 text-center text-xs font-medium text-[#FCE7F0]/90">
-                22 July &mdash; Exhibit A. No going back after this.
+                21 July, 12:29 AM &middot; Exhibit A. Technically I texted first, no regrets.
               </p>
             </div>
           </div>,

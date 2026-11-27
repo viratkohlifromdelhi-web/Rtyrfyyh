@@ -1,0 +1,228 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 0: Default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Global Hardened Primitives
+    // =========================================================================
+    function isValidId(id) {
+      return id is string && id.size() >= 4 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Bootstrapped verified site owner (verifies email_verified == true to prevent spoofing)
+    function isOwner() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == 'viratkohlifromdelhi@gmail.com';
+    }
+
+    function isOptString(data, key, maxLen) {
+      return !(key in data) || data[key] == null || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    function isOptInt(data, key, minVal, maxVal) {
+      return !(key in data) || data[key] == null || (data[key] is int && data[key] >= minVal && data[key] <= maxVal);
+    }
+
+    function isOptNumber(data, key, minVal, maxVal) {
+      return !(key in data) || data[key] == null || ((data[key] is int || data[key] is float) && data[key] >= minVal && data[key] <= maxVal);
+    }
+
+    function isOptBool(data, key) {
+      return !(key in data) || data[key] == null || data[key] is bool;
+    }
+
+    // =========================================================================
+    // Validation Blueprint: SiteVisit
+    // =========================================================================
+    function siteVisitAllowedKeys() {
+      return [
+        'sessionId', 'visitorId', 'visitNumber',
+        'openedAt', 'openedAtMs', 'openedAtIST',
+        'lastActiveAtMs', 'durationSeconds', 'maxScrollPct', 'totalInteractions',
+        'deviceName', 'deviceType', 'osName', 'osVersion', 'browserName', 'inAppBrowser',
+        'screenResolution', 'viewportSize', 'pixelRatio', 'colorDepth',
+        'cpuCores', 'ramGb', 'gpuRenderer', 'touchPoints',
+        'orientation', 'colorScheme', 'reducedMotion',
+        'language', 'timezone', 'referrer', 'entryUrl', 'userAgent',
+        'batteryLevel', 'batteryCharging', 'batteryChargingTime', 'batteryDischargingTime',
+        'connectionType', 'effectiveType', 'downlinkMbps', 'rttMs', 'saveData',
+        'ipAddress', 'city', 'region', 'postal', 'country', 'approxCoords', 'isp'
+      ];
+    }
+
+    function siteVisitRequiredKeys() {
+      return [
+        'sessionId', 'visitorId', 'visitNumber',
+        'openedAt', 'openedAtMs', 'openedAtIST',
+        'lastActiveAtMs', 'durationSeconds', 'maxScrollPct', 'totalInteractions',
+        'deviceName', 'deviceType', 'osName', 'osVersion', 'browserName', 'inAppBrowser',
+        'screenResolution', 'viewportSize', 'pixelRatio', 'colorDepth',
+        'touchPoints', 'orientation', 'colorScheme', 'reducedMotion',
+        'language', 'timezone', 'referrer', 'entryUrl', 'userAgent'
+      ];
+    }
+
+    function isValidSiteVisitFields(data) {
+      return data.keys().hasAll(siteVisitRequiredKeys())
+        && data.keys().hasOnly(siteVisitAllowedKeys())
+        && isValidId(data.sessionId)
+        && isValidId(data.visitorId)
+        && data.visitNumber is int && data.visitNumber >= 1 && data.visitNumber <= 100000
+        && data.openedAt is timestamp
+        && data.openedAtMs is int && data.openedAtMs > 1700000000000 && data.openedAtMs < 4102444800000
+        && data.openedAtIST is string && data.openedAtIST.size() <= 80
+        && data.lastActiveAtMs is int && data.lastActiveAtMs >= data.openedAtMs && data.lastActiveAtMs < 4102444800000
+        && data.durationSeconds is int && data.durationSeconds >= 0 && data.durationSeconds <= 604800
+        && data.maxScrollPct is int && data.maxScrollPct >= 0 && data.maxScrollPct <= 100
+        && data.totalInteractions is int && data.totalInteractions >= 0 && data.totalInteractions <= 50000
+        && data.deviceName is string && data.deviceName.size() <= 160
+        && data.deviceType in ['Mobile', 'Tablet', 'Desktop']
+        && data.osName is string && data.osName.size() <= 80
+        && data.osVersion is string && data.osVersion.size() <= 80
+        && data.browserName is string && data.browserName.size() <= 80
+        && data.inAppBrowser is string && data.inAppBrowser.size() <= 80
+        && data.screenResolution is string && data.screenResolution.size() <= 40
+        && data.viewportSize is string && data.viewportSize.size() <= 40
+        && (data.pixelRatio is int || data.pixelRatio is float) && data.pixelRatio > 0 && data.pixelRatio <= 16
+        && data.colorDepth is int && data.colorDepth >= 0 && data.colorDepth <= 64
+        && isOptInt(data, 'cpuCores', 0, 256)
+        && isOptNumber(data, 'ramGb', 0, 1024)
+        && isOptString(data, 'gpuRenderer', 240)
+        && data.touchPoints is int && data.touchPoints >= 0 && data.touchPoints <= 64
+        && data.orientation in ['portrait', 'landscape']
+        && data.colorScheme in ['dark', 'light']
+        && data.reducedMotion is bool
+        && data.language is string && data.language.size() <= 40
+        && data.timezone is string && data.timezone.size() <= 80
+        && data.referrer is string && data.referrer.size() <= 512
+        && data.entryUrl is string && data.entryUrl.size() <= 512
+        && data.userAgent is string && data.userAgent.size() <= 600
+        && isOptInt(data, 'batteryLevel', 0, 100)
+        && isOptBool(data, 'batteryCharging')
+        && isOptNumber(data, 'batteryChargingTime', 0, 10000000)
+        && isOptNumber(data, 'batteryDischargingTime', 0, 10000000)
+        && isOptString(data, 'connectionType', 60)
+        && isOptString(data, 'effectiveType', 40)
+        && isOptNumber(data, 'downlinkMbps', 0, 100000)
+        && isOptNumber(data, 'rttMs', 0, 100000)
+        && isOptBool(data, 'saveData')
+        && isOptString(data, 'ipAddress', 80)
+        && isOptString(data, 'city', 120)
+        && isOptString(data, 'region', 120)
+        && isOptString(data, 'postal', 40)
+        && isOptString(data, 'country', 120)
+        && isOptString(data, 'approxCoords', 80)
+        && isOptString(data, 'isp', 180);
+    }
+
+    function isValidSiteVisitCreate(data, sessionId) {
+      return isValidSiteVisitFields(data)
+        && data.sessionId == sessionId
+        && data.openedAt == request.time
+        && data.durationSeconds == 0
+        && data.totalInteractions == 0;
+    }
+
+    function isValidSiteVisitUpdate(data) {
+      return isValidSiteVisitFields(data);
+    }
+
+    function siteVisitImmutableUnchanged() {
+      return incoming().sessionId == existing().sessionId
+        && incoming().visitorId == existing().visitorId
+        && incoming().visitNumber == existing().visitNumber
+        && incoming().openedAt == existing().openedAt
+        && incoming().openedAtMs == existing().openedAtMs
+        && incoming().openedAtIST == existing().openedAtIST;
+    }
+
+    // =========================================================================
+    // Validation Blueprint: VisitEvent
+    // =========================================================================
+    function isValidVisitEvent(data) {
+      return data.keys().hasAll([
+          'eventTime', 'eventTimeMs', 'eventTimeIST',
+          'elapsedSeconds', 'eventType', 'elementName', 'details'
+        ])
+        && data.keys().hasOnly([
+          'eventTime', 'eventTimeMs', 'eventTimeIST',
+          'elapsedSeconds', 'eventType', 'elementName', 'details'
+        ])
+        && data.eventTime is timestamp
+        && data.eventTime == request.time
+        && data.eventTimeMs is int && data.eventTimeMs > 1700000000000 && data.eventTimeMs < 4102444800000
+        && data.eventTimeIST is string && data.eventTimeIST.size() <= 40
+        && data.elapsedSeconds is int && data.elapsedSeconds >= 0 && data.elapsedSeconds <= 604800
+        && data.eventType is string && data.eventType.size() >= 2 && data.eventType.size() <= 64
+        && data.eventType.matches('^[a-z0-9_]+$')
+        && data.elementName is string && data.elementName.size() >= 1 && data.elementName.size() <= 160
+        && data.details is map && data.details.keys().size() <= 20;
+    }
+
+    // =========================================================================
+    // Collection Rules: /site_visits/{sessionId}
+    // =========================================================================
+    match /site_visits/{sessionId} {
+      // PII strictly restricted to verified owner
+      allow get: if isValidId(sessionId) && isOwner();
+      allow list: if isOwner();
+      allow delete: if isValidId(sessionId) && isOwner();
+
+      // Visitors can silently create their own session document
+      allow create: if isValidId(sessionId)
+        && isValidSiteVisitCreate(incoming(), sessionId);
+
+      // Action-based allowlisted updates only (never mutates identity or openedAt)
+      allow update: if isValidId(sessionId)
+        && isValidSiteVisitUpdate(incoming())
+        && siteVisitImmutableUnchanged()
+        && (
+          isOwner()
+          || incoming().diff(existing()).affectedKeys().hasOnly([
+            'lastActiveAtMs', 'durationSeconds', 'maxScrollPct', 'totalInteractions'
+          ])
+          || incoming().diff(existing()).affectedKeys().hasOnly([
+            'ipAddress', 'city', 'region', 'postal', 'country', 'approxCoords', 'isp', 'lastActiveAtMs'
+          ])
+          || incoming().diff(existing()).affectedKeys().hasOnly([
+            'batteryLevel', 'batteryCharging', 'batteryChargingTime', 'batteryDischargingTime',
+            'orientation', 'lastActiveAtMs'
+          ])
+        );
+
+      // =======================================================================
+      // Subcollection Rules: /site_visits/{sessionId}/events/{eventId}
+      // =======================================================================
+      match /events/{eventId} {
+        allow get: if isValidId(sessionId) && isValidId(eventId) && isOwner();
+        allow list: if isValidId(sessionId) && isOwner();
+
+        // Append-only interaction events linked to an existing parent session
+        allow create: if isValidId(sessionId)
+          && isValidId(eventId)
+          && isValidVisitEvent(incoming())
+          && exists(/databases/$(database)/documents/site_visits/$(sessionId));
+
+        allow update, delete: if false;
+      }
+    }
+  }
+}
