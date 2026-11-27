@@ -1810,6 +1810,66 @@ class SoundEffectsEngine {
       // Ignore Web Audio errors
     }
   }
+
+  /**
+   * Playful cartoon buzzer + cheeky spring boing blip for the 0312 Midnight Lock bluff screen (gain 0.11).
+   * Strictly standalone Web Audio oscillators — never interferes with background MP3 playback.
+   */
+  public playBluffBuzzerBoing(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      // Short cheeky cartoon game-show double buzz
+      [0, 0.14].forEach((offset, idx) => {
+        const start = now + offset;
+        const osc = ctx.createOscillator();
+        const filter = ctx.createBiquadFilter();
+        const gain = ctx.createGain();
+
+        osc.type = 'sawtooth';
+        const baseHz = idx === 0 ? 196 : 165;
+        osc.frequency.setValueAtTime(baseHz, start);
+        osc.frequency.exponentialRampToValueAtTime(baseHz * 0.86, start + 0.11);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(760, start);
+        filter.frequency.exponentialRampToValueAtTime(420, start + 0.11);
+
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.linearRampToValueAtTime(0.11, start + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.12);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.135);
+      });
+
+      // Bouncy spring boing tail
+      const boingStart = now + 0.28;
+      const boing = ctx.createOscillator();
+      const bGain = ctx.createGain();
+      boing.type = 'triangle';
+      boing.frequency.setValueAtTime(220, boingStart);
+      boing.frequency.exponentialRampToValueAtTime(520, boingStart + 0.09);
+      boing.frequency.exponentialRampToValueAtTime(260, boingStart + 0.19);
+      boing.frequency.exponentialRampToValueAtTime(380, boingStart + 0.27);
+
+      bGain.gain.setValueAtTime(0.0001, boingStart);
+      bGain.gain.linearRampToValueAtTime(0.11, boingStart + 0.014);
+      bGain.gain.exponentialRampToValueAtTime(0.0001, boingStart + 0.29);
+
+      boing.connect(bGain);
+      bGain.connect(ctx.destination);
+      boing.start(boingStart);
+      boing.stop(boingStart + 0.31);
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
 }
 
 export const soundEngine = new SoundEffectsEngine();

@@ -6,11 +6,36 @@
 export const UNLOCK_TIME_MS = new Date('2026-12-03T00:00:00+05:30').getTime();
 export const MIDNIGHT_BYPASS_STORAGE_KEY = 'morgan_midnight_bypass_v1';
 export const MIDNIGHT_BYPASS_CODE = '9876';
+export const MIDNIGHT_BLUFF_1507_CODE = '1507';
+export const MIDNIGHT_BLUFF_0312_CODE = '0312';
 
 export const MIDNIGHT_CELEBRATION_HOLD_MS = 1200;
 export const MIDNIGHT_FADE_OUT_MS = 450;
 export const BYPASS_TOAST_HOLD_MS = 380;
 export const BYPASS_FADE_OUT_MS = 400;
+
+export type ActiveBluffCode = '1507' | '0312';
+
+export const COUNTDOWN_BLUFF_COPY = {
+  '1507': {
+    eyebrow: 'ACCESS GRANTED',
+    headlineLead: 'Ho gya scam?',
+    headlinePunch: 'No Suprises Ahead!!',
+    headlineFull: 'Ho gya scam? No Suprises Ahead!!',
+    subtext:
+      'Really thought you could peek before 3rd December? Totally zero surprises waiting here.',
+    returnLabel: 'Back to Countdown',
+  },
+  '0312': {
+    eyebrow: 'NICE TRY DETECTIVE',
+    headlineLead: 'You have again',
+    headlinePunch: 'become a stupid.',
+    headlineFull: 'You have again become a stupid.',
+    subtext: "Please don't try again.",
+    footnote: 'Really tried your own birthday date as the password?',
+    returnLabel: 'Back to Countdown',
+  },
+} as const;
 
 export interface SessionStorageLike {
   getItem(key: string): string | null;
@@ -33,7 +58,7 @@ export interface MidnightCountdownParts {
   isUnlocked: boolean;
 }
 
-export type MidnightBypassResult = 'bypass' | 'wrong';
+export type MidnightBypassResult = 'bypass' | 'bluff_1507' | 'bluff_0312' | 'wrong';
 
 export function readMidnightBypass(storage?: SessionStorageLike | null): boolean {
   const store = storage ?? (typeof window !== 'undefined' ? window.sessionStorage : null);
@@ -72,10 +97,24 @@ export function shouldShowMidnightLock(
 }
 
 /**
- * Evaluates a 4-digit secret bypass entry. Only `9876` unlocks early.
+ * Evaluates a 4-digit secret keypad entry on the Midnight Countdown Lock screen:
+ * - `9876` -> real early unlock bypass
+ * - `1507` -> fullscreen Clown Bluff screen
+ * - `0312` -> fullscreen Middle Finger Bluff screen
+ * - anything else -> wrong code
  */
 export function evaluateMidnightBypassCode(rawCode: string): MidnightBypassResult {
-  return rawCode.trim() === MIDNIGHT_BYPASS_CODE ? 'bypass' : 'wrong';
+  const trimmed = rawCode.trim();
+  if (trimmed === MIDNIGHT_BYPASS_CODE) {
+    return 'bypass';
+  }
+  if (trimmed === MIDNIGHT_BLUFF_1507_CODE) {
+    return 'bluff_1507';
+  }
+  if (trimmed === MIDNIGHT_BLUFF_0312_CODE) {
+    return 'bluff_0312';
+  }
+  return 'wrong';
 }
 
 function padTwo(n: number): string {

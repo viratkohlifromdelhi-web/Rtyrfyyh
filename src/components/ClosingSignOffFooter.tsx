@@ -12,6 +12,7 @@ import {
   type ScrollAdvanceDirection,
 } from '../utils/footerChibiChoreography';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { soundEngine } from '../utils/soundEngine';
 import { useInViewAnimation } from '../utils/useInViewAnimation';
 
@@ -343,6 +344,7 @@ export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFo
       // silent fallback
     }
     trackEvent('footer_finale_replayed', 'Footer Characters');
+    emitModinoEvent('ending', { force: true });
     playChoreography();
   }, [playChoreography]);
 

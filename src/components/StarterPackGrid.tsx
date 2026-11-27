@@ -9,6 +9,7 @@ import {
   TrophyDoodle,
 } from './DoodleSvgs';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { soundEngine } from '../utils/soundEngine';
 
 interface SparkleBurstItem {
@@ -50,6 +51,7 @@ function InteractiveStarterCard({ card }: { card: StarterPackCard }) {
   const handleTap = () => {
     haptics.tap();
     soundEngine.playBubbleClick(showBonus ? 0.94 : 1.12);
+    emitModinoEvent('friends_and_banter');
     setShowBonus((prev) => !prev);
     setBouncing(true);
     window.setTimeout(() => setBouncing(false), 260);

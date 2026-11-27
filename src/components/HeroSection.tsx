@@ -9,8 +9,10 @@ import { ANAMIKA, HERO_STICKERS } from '../data/celebrationData';
 import { trackEvent } from '../utils/analytics';
 import { splitHeadlineWords } from '../utils/celebration';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { smoothScrollToTarget } from '../utils/smoothScroll';
 import { soundEngine } from '../utils/soundEngine';
+import { playUiSfx } from '../utils/uiSoundEngine';
 import { useInViewAnimation } from '../utils/useInViewAnimation';
 import { AnamikaEditorialCard } from './AnamikaEditorialCard';
 import { RibbonSquiggleSvg } from './DoodleSvgs';
@@ -254,6 +256,7 @@ export function HeroSection({
   const handlePerimeterEmojiTap = (id: string, idx: number) => {
     soundEngine.playBubbleClick(1.04 + (idx % 4) * 0.05);
     haptics.emojiBounce();
+    emitModinoEvent('cute');
     setEmojiBursts((prev) => ({
       ...prev,
       [id]: (prev[id] ?? 0) + 1,
@@ -272,6 +275,8 @@ export function HeroSection({
 
   const handleConfettiClick = (e: MouseEvent<HTMLButtonElement>) => {
     haptics.heroPopConfetti();
+    playUiSfx('confetti_burst');
+    emitModinoEvent('interaction_hype', { force: true });
     const buttonEl = e.currentTarget;
     const rect = buttonEl.getBoundingClientRect();
     const originX = rect.left + rect.width / 2;
@@ -317,6 +322,8 @@ export function HeroSection({
     e.preventDefault();
     haptics.heroOpenGift();
     soundEngine.playBubbleClick(1.04);
+    playUiSfx('tap');
+    emitModinoEvent('interaction_hype');
     trackEvent('hero_open_gift_clicked', 'Hero Open Your Gift Button');
 
     if (scrollDelayTimerRef.current !== null) {

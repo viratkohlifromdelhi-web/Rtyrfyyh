@@ -71,6 +71,7 @@ export const HAPTIC_PATTERNS = {
   footerChibiReplay: 12,
   coopKissTick: 8,
   coopHatchCelebrate: [18, 45, 28] as const,
+  bluffMiddleFinger: [20, 40, 28] as const,
 } as const;
 
 /**
@@ -256,6 +257,7 @@ export function createHapticsEngine(options?: {
     footerChibiReplay: () => vibrateSafe(HAPTIC_PATTERNS.footerChibiReplay),
     coopKissTick: () => vibrateSafe(HAPTIC_PATTERNS.coopKissTick),
     coopHatchCelebrate: () => vibrateSafe(HAPTIC_PATTERNS.coopHatchCelebrate),
+    bluffMiddleFinger: () => vibrateSafe(HAPTIC_PATTERNS.bluffMiddleFinger),
   };
 }
 

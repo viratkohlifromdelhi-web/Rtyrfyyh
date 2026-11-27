@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type MouseEvent } from 'react';
 import { Gift } from 'lucide-react';
 import { trackEvent } from '../utils/analytics';
 import { haptics, stopHaptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
 import { WrappedGiftBoxSvg } from './DoodleSvgs';
@@ -82,7 +83,10 @@ export function SurpriseGiftSection({ onRevealConfetti }: SurpriseGiftSectionPro
     hapticTimersRef.current.push(
       window.setTimeout(() => haptics.giftBoxRibbonPeel(), 140),
       window.setTimeout(() => haptics.giftBoxLidPop(), 250),
-      window.setTimeout(() => haptics.giftBoxReveal(), 380),
+      window.setTimeout(() => {
+        haptics.giftBoxReveal();
+        emitModinoEvent('gift_ew', { force: true });
+      }, 380),
     );
 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -93,6 +97,7 @@ export function SurpriseGiftSection({ onRevealConfetti }: SurpriseGiftSectionPro
     clearHapticTimers();
     stopHaptics();
     haptics.tap();
+    emitModinoEvent('interaction_hype');
     trackEvent('gift_box_rewrapped', 'Surprise Gift Box Wrap Back');
     soundEngine.playBubbleClick();
     setIsOpened(false);

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { SparkleStarSvg } from './DoodleSvgs';
 import {
   CARD_IDLE_ROT_DEG,
@@ -293,6 +294,7 @@ export function CaseFileSection({ onLightboxChange }: CaseFileSectionProps = {})
     // Stage 1 SFX (t = 0.0s) + smooth music duck (0.45 -> 0.18 over 0.25s)
     soundEngine.playPaperclipUnclip();
     haptics.casePaperclip();
+    emitModinoEvent('backstory', { force: true });
     bgMusicPlayer.beginCaseFileOpen();
 
     const prefersReducedMotion =

@@ -8,7 +8,9 @@ import {
 } from '../utils/birthdayMath';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { soundEngine } from '../utils/soundEngine';
+import { playUiSfx } from '../utils/uiSoundEngine';
 
 function CalendarArrowSvg({ className = 'h-3 w-3' }: { className?: string }) {
   return (
@@ -61,6 +63,8 @@ export function CalendarAndCounterSection({
 
   const handleTapDec3 = (e: MouseEvent<HTMLButtonElement>) => {
     haptics.medium();
+    playUiSfx('surprise_bling');
+    emitModinoEvent('cute', { force: true });
     setDateToast(null);
     setShowBirthdayPopup((prev) => !prev);
     trackEvent('calendar_date_tapped', 'December 3 Birthday Date', {
@@ -74,6 +78,7 @@ export function CalendarAndCounterSection({
   const handleTapOtherDate = (day: number) => {
     haptics.tap();
     soundEngine.playBubbleClick(0.95 + (day % 4) * 0.04);
+    emitModinoEvent('interaction_hype');
     trackEvent('calendar_date_tapped', `December ${day} Calendar Date`, {
       day,
       isBirthday: false,

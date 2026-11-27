@@ -8,6 +8,7 @@ import {
   type ChickenFarmStage,
 } from '../utils/chickenFarmTimeline';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { soundEngine } from '../utils/soundEngine';
 import { useInViewAnimation } from '../utils/useInViewAnimation';
 
@@ -125,6 +126,7 @@ export function ChickenFarmSection({ isSiteRevealed = true }: ChickenFarmSection
             setShellCracked(true);
             soundEngine.playCoopBabyChirp();
             haptics.coopHatchCelebrate();
+            emitModinoEvent('last_playback', { force: true });
           }
         }, step.atMs);
         timersRef.current.push(timerId);
@@ -200,6 +202,7 @@ export function ChickenFarmSection({ isSiteRevealed = true }: ChickenFarmSection
   const handleReplay = useCallback(() => {
     hasAutoPlayedRef.current = true;
     haptics.tap();
+    emitModinoEvent('last_playback', { force: true });
     startSequence('replay');
   }, [startSequence]);
 

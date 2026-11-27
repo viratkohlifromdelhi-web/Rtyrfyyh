@@ -5,6 +5,7 @@ import {
   WaxSealStampSvg,
 } from './DoodleSvgs';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { soundEngine } from '../utils/soundEngine';
 
 interface AdoptionCertificateSectionProps {
@@ -37,6 +38,7 @@ export function AdoptionCertificateSection({ onStampConfetti }: AdoptionCertific
 
   const handleStamp = (e: MouseEvent<HTMLButtonElement>) => {
     haptics.celebrate();
+    emitModinoEvent('cute', { force: true });
     const nextCount = stampCount + 1;
     setStampCount(nextCount);
     soundEngine.playWaxStamp();

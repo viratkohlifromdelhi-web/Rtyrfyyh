@@ -1681,7 +1681,9 @@
   .animate-coop-ayush-label,
   .animate-bluff-shake,
   .animate-bluff-reveal,
-  .animate-bluff-clown-nod {
+  .animate-bluff-clown-nod,
+  .animate-bluff-hand-pop,
+  .animate-bluff-hand-wag {
     animation: none !important;
   }
 
@@ -1728,7 +1730,7 @@
 @keyframes bluff-reveal {
   0% {
     opacity: 0;
-    transform: scale(0.95) translate3d(0, 6px, 0);
+    transform: scale(0.94) translate3d(0, 6px, 0);
   }
   100% {
     opacity: 1;
@@ -1745,14 +1747,530 @@
     transform: translate3d(0, 0, 0) rotate(0deg);
   }
   35% {
-    transform: translate3d(0, -3px, 0) rotate(-2.2deg);
+    transform: translate3d(0, -3px, 0) rotate(-3deg);
   }
   70% {
-    transform: translate3d(0, -1.5px, 0) rotate(2.2deg);
+    transform: translate3d(0, -1.5px, 0) rotate(3deg);
   }
 }
 
 .animate-bluff-clown-nod {
-  animation: bluff-clown-nod 2.8s ease-in-out infinite;
+  animation: bluff-clown-nod 2.6s ease-in-out infinite;
   will-change: transform;
+}
+
+@keyframes bluff-hand-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translate3d(0, 12px, 0);
+  }
+  68% {
+    opacity: 1;
+    transform: scale(1.12) translate3d(0, -3px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+.animate-bluff-hand-pop {
+  animation: bluff-hand-pop 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+@keyframes bluff-hand-wag {
+  0%, 100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+
+.animate-bluff-hand-wag {
+  transform-origin: 110px 134px;
+  animation: bluff-hand-wag 1.45s ease-in-out 420ms infinite;
+  will-change: transform;
+}
+
+/* ===== Modino Interactive Companion Pet GPU-Composited Animations ===== */
+@keyframes modino-idle {
+  0%, 100% {
+    transform: scale3d(1, 1, 1) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale3d(0.975, 1.035, 1) translate3d(0, -1px, 0);
+  }
+}
+
+@keyframes modino-greeting {
+  0% {
+    transform: translate3d(0, 0, 0) scale3d(1.06, 0.92, 1);
+  }
+  32% {
+    transform: translate3d(0, -18px, 0) scale3d(0.94, 1.09, 1) rotate(-3deg);
+  }
+  60% {
+    transform: translate3d(0, 0, 0) scale3d(1.07, 0.91, 1) rotate(2deg);
+  }
+  82% {
+    transform: translate3d(0, -6px, 0) scale3d(0.98, 1.04, 1);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+}
+
+@keyframes modino-jump {
+  0% {
+    transform: translate3d(0, 0, 0) scale3d(1.12, 0.86, 1);
+  }
+  35% {
+    transform: translate3d(0, -22px, 0) scale3d(0.92, 1.12, 1) rotate(-5deg);
+  }
+  70% {
+    transform: translate3d(0, 0, 0) scale3d(1.08, 0.9, 1) rotate(2deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1) rotate(0deg);
+  }
+}
+
+@keyframes modino-happy {
+  0%, 100% {
+    transform: rotate(-6deg) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: rotate(6deg) translate3d(0, -3px, 0);
+  }
+}
+
+@keyframes modino-surprised {
+  0% {
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+  35% {
+    transform: translate3d(0, -14px, 0) scale3d(1.08, 1.08, 1);
+  }
+  70% {
+    transform: translate3d(0, 0, 0) scale3d(1.04, 0.94, 1);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+}
+
+@keyframes modino-laugh {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  16% {
+    transform: translate3d(0, -6px, 0) rotate(-3deg);
+  }
+  32% {
+    transform: translate3d(0, 0, 0) rotate(3deg);
+  }
+  48% {
+    transform: translate3d(0, -6px, 0) rotate(-3deg);
+  }
+  64% {
+    transform: translate3d(0, 0, 0) rotate(2.5deg);
+  }
+  80% {
+    transform: translate3d(0, -5px, 0) rotate(-2deg);
+  }
+}
+
+@keyframes modino-shy {
+  0%, 100% {
+    transform: rotate(-9deg) translate3d(-1px, 0, 0);
+  }
+  50% {
+    transform: rotate(-4deg) translate3d(1px, 1px, 0);
+  }
+}
+
+@keyframes modino-kiss {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  38% {
+    transform: translate3d(-6px, -4px, 0) rotate(-7deg) scale3d(1.04, 1.02, 1);
+  }
+  75% {
+    transform: translate3d(-5px, -3px, 0) rotate(-6deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+@keyframes modino-ew {
+  0%, 100% {
+    transform: translate3d(4px, 0, 0) rotate(6deg);
+  }
+  35% {
+    transform: translate3d(5px, 1px, 0) rotate(8deg);
+  }
+  70% {
+    transform: translate3d(3px, 0, 0) rotate(5deg);
+  }
+}
+
+@keyframes modino-sleep {
+  0%, 100% {
+    transform: translate3d(0, 4px, 0) scale3d(1.06, 0.9, 1);
+  }
+  50% {
+    transform: translate3d(0, 3px, 0) scale3d(1.08, 0.935, 1);
+  }
+}
+
+@keyframes modino-shadow-jump {
+  0%, 100% {
+    transform: scaleX(1);
+    opacity: 0.95;
+  }
+  35% {
+    transform: scaleX(0.65);
+    opacity: 0.55;
+  }
+  70% {
+    transform: scaleX(1.06);
+    opacity: 1;
+  }
+}
+
+@keyframes modino-shadow-idle {
+  0%, 100% {
+    transform: scaleX(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scaleX(0.94);
+    opacity: 0.72;
+  }
+}
+
+@keyframes modino-shadow-sleep {
+  0%, 100% {
+    transform: scaleX(1.08);
+    opacity: 0.95;
+  }
+  50% {
+    transform: scaleX(1.12);
+    opacity: 0.85;
+  }
+}
+
+@keyframes modino-blink {
+  0%, 92%, 100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.08);
+  }
+}
+
+@keyframes modino-arm-wave {
+  0%, 100% {
+    transform: rotate(-18deg);
+  }
+  50% {
+    transform: rotate(22deg);
+  }
+}
+
+@keyframes modino-ear-left-idle {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-4deg);
+  }
+}
+
+@keyframes modino-ear-right-idle {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes modino-ear-left-flop {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  40% {
+    transform: rotate(-18deg);
+  }
+  75% {
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes modino-ear-right-flop {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  40% {
+    transform: rotate(18deg);
+  }
+  75% {
+    transform: rotate(-8deg);
+  }
+}
+
+@keyframes modino-zzz-float {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.75);
+  }
+  25% {
+    opacity: 0.95;
+  }
+  80% {
+    opacity: 0.65;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(8px, -16px, 0) scale(1.08);
+  }
+}
+
+@keyframes modino-kiss-heart {
+  0% {
+    opacity: 0;
+    transform: translate3d(6px, 6px, 0) scale(0.5);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-18px, -16px, 0) scale(1.12);
+  }
+}
+
+@keyframes modino-sparkle {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes modino-sweat {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0);
+  }
+  25% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+@keyframes modino-badge-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) translate3d(0, 6px, 0);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.16) translate3d(0, -2px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes modino-tap-ripple {
+  0% {
+    opacity: 0.65;
+    transform: scale(0.72);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.42);
+  }
+}
+
+@keyframes modino-bubble-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.84) translate3d(0, 8px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+.animate-modino-idle {
+  animation: modino-idle 2.8s ease-in-out infinite;
+}
+.animate-modino-greeting {
+  animation: modino-greeting 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-modino-jump {
+  animation: modino-jump 0.56s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-modino-happy {
+  animation: modino-happy 1.05s ease-in-out infinite;
+}
+.animate-modino-surprised {
+  animation: modino-surprised 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-modino-laugh {
+  animation: modino-laugh 0.82s ease-in-out infinite;
+}
+.animate-modino-shy {
+  animation: modino-shy 1.4s ease-in-out infinite;
+}
+.animate-modino-kiss {
+  animation: modino-kiss 0.95s ease-in-out both;
+}
+.animate-modino-ew {
+  animation: modino-ew 0.9s ease-in-out infinite;
+}
+.animate-modino-sleep {
+  animation: modino-sleep 3.6s ease-in-out infinite;
+}
+.animate-modino-shadow-jump {
+  animation: modino-shadow-jump 0.56s ease-in-out both;
+}
+.animate-modino-shadow-idle {
+  animation: modino-shadow-idle 2.8s ease-in-out infinite;
+}
+.animate-modino-shadow-sleep {
+  animation: modino-shadow-sleep 3.6s ease-in-out infinite;
+}
+.animate-modino-blink {
+  animation: modino-blink 3.8s ease-in-out infinite;
+}
+.animate-modino-arm-wave {
+  animation: modino-arm-wave 0.48s ease-in-out infinite;
+}
+.animate-modino-ear-left-idle {
+  animation: modino-ear-left-idle 3.2s ease-in-out infinite;
+}
+.animate-modino-ear-right-idle {
+  animation: modino-ear-right-idle 3.2s ease-in-out infinite;
+}
+.animate-modino-ear-left-flop {
+  animation: modino-ear-left-flop 0.56s ease-in-out both;
+}
+.animate-modino-ear-right-flop {
+  animation: modino-ear-right-flop 0.56s ease-in-out both;
+}
+.modino-ear-left-sleep {
+  transform: rotate(-28deg);
+  transition: transform 350ms ease;
+}
+.modino-ear-right-sleep {
+  transform: rotate(28deg);
+  transition: transform 350ms ease;
+}
+.modino-ear-left-perk {
+  transform: rotate(12deg);
+  transition: transform 180ms ease;
+}
+.modino-ear-right-perk {
+  transform: rotate(-12deg);
+  transition: transform 180ms ease;
+}
+.modino-arm-left-shy {
+  transform: translate3d(8px, -10px, 0) rotate(-32deg);
+  transition: transform 220ms ease;
+}
+.modino-arm-right-shy {
+  transform: translate3d(-8px, -10px, 0) rotate(32deg);
+  transition: transform 220ms ease;
+}
+.modino-arm-left-cheer {
+  transform: translate3d(-2px, -10px, 0) rotate(38deg);
+  transition: transform 180ms ease;
+}
+.modino-arm-right-cheer {
+  transform: translate3d(2px, -10px, 0) rotate(-38deg);
+  transition: transform 180ms ease;
+}
+.animate-modino-zzz-1 {
+  animation: modino-zzz-float 2.4s ease-in-out infinite;
+}
+.animate-modino-zzz-2 {
+  animation: modino-zzz-float 2.4s ease-in-out 0.7s infinite;
+}
+.animate-modino-zzz-3 {
+  animation: modino-zzz-float 2.4s ease-in-out 1.4s infinite;
+}
+.animate-modino-kiss-heart-a {
+  animation: modino-kiss-heart 1.2s ease-out infinite;
+}
+.animate-modino-kiss-heart-b {
+  animation: modino-kiss-heart 1.2s ease-out 0.35s infinite;
+}
+.animate-modino-sparkle {
+  animation: modino-sparkle 1.3s ease-in-out infinite;
+}
+.animate-modino-sparkle-delay {
+  animation: modino-sparkle 1.3s ease-in-out 0.45s infinite;
+}
+.animate-modino-sweat {
+  animation: modino-sweat 1.1s ease-in infinite;
+}
+.animate-modino-badge-pop {
+  animation: modino-badge-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.animate-modino-tap-ripple {
+  animation: modino-tap-ripple 0.45s ease-out forwards;
+}
+.animate-modino-bubble {
+  animation: modino-bubble-pop 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-modino-idle,
+  .animate-modino-greeting,
+  .animate-modino-jump,
+  .animate-modino-happy,
+  .animate-modino-surprised,
+  .animate-modino-laugh,
+  .animate-modino-shy,
+  .animate-modino-kiss,
+  .animate-modino-ew,
+  .animate-modino-sleep,
+  .animate-modino-shadow-jump,
+  .animate-modino-shadow-idle,
+  .animate-modino-shadow-sleep,
+  .animate-modino-blink,
+  .animate-modino-arm-wave,
+  .animate-modino-ear-left-idle,
+  .animate-modino-ear-right-idle,
+  .animate-modino-ear-left-flop,
+  .animate-modino-ear-right-flop,
+  .animate-modino-zzz-1,
+  .animate-modino-zzz-2,
+  .animate-modino-zzz-3,
+  .animate-modino-kiss-heart-a,
+  .animate-modino-kiss-heart-b,
+  .animate-modino-sparkle,
+  .animate-modino-sparkle-delay,
+  .animate-modino-sweat,
+  .animate-modino-badge-pop,
+  .animate-modino-tap-ripple,
+  .animate-modino-bubble {
+    animation: none !important;
+  }
 }

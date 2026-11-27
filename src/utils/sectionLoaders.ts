@@ -38,12 +38,11 @@ export const loadMakeAWishCake = () => import('../components/MakeAWishCake');
 
 export const loadBirthdaySummaryCard = () => import('../components/BirthdaySummaryCard');
 
-export const loadSecretBluffGateSection = () =>
-  import('../components/SecretBluffGateSection');
-
 export const loadChickenFarmSection = () => import('../components/ChickenFarmSection');
 
 export const loadClosingSignOffFooter = () => import('../components/ClosingSignOffFooter');
+
+export const loadModinoPet = () => import('../components/ModinoPet');
 
 /**
  * Isolated owner-only secret analytics dashboard (?insights=9876).
@@ -77,7 +76,7 @@ export const BACKGROUND_SECTION_LOADERS: ReadonlyArray<() => Promise<unknown>> =
   loadSurpriseGiftSection,
   loadMakeAWishCake,
   loadBirthdaySummaryCard,
-  loadSecretBluffGateSection,
   loadChickenFarmSection,
   loadClosingSignOffFooter,
+  loadModinoPet,
 ];

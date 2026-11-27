@@ -33,14 +33,16 @@ import {
   loadKeepsakePreviewModal,
   loadLifeStatsSection,
   loadMakeAWishCake,
+  loadModinoPet,
   loadOwnerAnalyticsDashboard,
   loadRunawayAgreementSection,
   loadScratchCouponsSection,
-  loadSecretBluffGateSection,
   loadSpinWheelSection,
   loadStarterPackGrid,
   loadSurpriseGiftSection,
 } from './utils/sectionLoaders';
+import { emitModinoEvent } from './utils/modinoBus';
+import { playUiSfx } from './utils/uiSoundEngine';
 import { soundEngine } from './utils/soundEngine';
 import { BG_MUSIC_AUTOPLAY_FADE_MS } from './utils/theatrePhysics';
 
@@ -102,8 +104,8 @@ const OwnerAnalyticsDashboard = lazy(() =>
 const KeepsakePreviewModal = lazy(() =>
   loadKeepsakePreviewModal().then((m) => ({ default: m.KeepsakePreviewModal })),
 );
-const SecretBluffGateSection = lazy(() =>
-  loadSecretBluffGateSection().then((m) => ({ default: m.SecretBluffGateSection })),
+const ModinoPet = lazy(() =>
+  loadModinoPet().then((m) => ({ default: m.ModinoPet })),
 );
 
 function SectionPlaceholder({ id, minHeight }: { id?: string; minHeight: number }) {
@@ -238,9 +240,12 @@ function BirthdayWebsiteShell() {
 
   const handleHeaderEasterEgg = useCallback((originX: number, originY: number) => {
     confettiRef.current?.pop(originX, originY, 34);
+    emitModinoEvent('friends_and_banter', { force: true, source: 'header-easter-egg' });
   }, []);
 
   const handleOpenKeepsakeModal = useCallback(() => {
+    playUiSfx('tap');
+    emitModinoEvent('cute', { force: true, source: 'keepsake-modal' });
     setIsKeepsakeModalOpen(true);
   }, []);
 
@@ -300,6 +305,8 @@ function BirthdayWebsiteShell() {
       if (isBirthdayTruce === next) return;
       haptics.modeSwitch();
       soundEngine.playModeChime(next);
+      playUiSfx('toggle_click');
+      emitModinoEvent('friends_and_banter', { source: 'note-deck-mode' });
       trackEvent(
         'note_mode_switched',
         next ? 'Birthday Truce Mode' : 'No Filter Mode',
@@ -316,6 +323,8 @@ function BirthdayWebsiteShell() {
     const next = !isBirthdayTruce;
     haptics.modeSwitch();
     soundEngine.playModeChime(next);
+    playUiSfx('toggle_click');
+    emitModinoEvent('friends_and_banter', { source: 'truce-toggle' });
     trackEvent(
       'note_mode_switched',
       next ? 'Birthday Truce Mode' : 'No Filter Mode',
@@ -328,6 +337,8 @@ function BirthdayWebsiteShell() {
   const handleToggleSparkleRain = useCallback(() => {
     const next = !isSparkleRainOn;
     haptics.sparkleToggle();
+    playUiSfx('toggle_click');
+    emitModinoEvent('interaction_hype', { source: 'sparkle-toggle' });
     if (next) {
       soundEngine.playSparkleTwinkle();
     } else {
@@ -346,6 +357,8 @@ function BirthdayWebsiteShell() {
     setFriendOverride(next);
     haptics.rankSlide();
     soundEngine.playPaperSlideTick(next);
+    playUiSfx('toggle_click');
+    emitModinoEvent('friends_and_banter', { source: 'friend-override' });
     if (next) {
       confettiRef.current?.pop(window.innerWidth * 0.65, window.innerHeight * 0.45, 52);
     }
@@ -541,11 +554,6 @@ function BirthdayWebsiteShell() {
           )}
         </div>
 
-        {/* Compact Pastel Stationery Secret Passcode 1507 Bluff Gate */}
-        <Suspense fallback={<SectionPlaceholder id="secret-bluff-gate" minHeight={210} />}>
-          <SecretBluffGateSection />
-        </Suspense>
-
         {/* Bonus Canon Lore Mini Pastel Chicken Farm Comic Card (directly above Closing Sign-Off Footer) */}
         <Suspense fallback={<SectionPlaceholder id="little-coop" minHeight={360} />}>
           <ChickenFarmSection isSiteRevealed={siteRevealed} />
@@ -557,6 +565,15 @@ function BirthdayWebsiteShell() {
       </div>
 
       <FloatingConfettiButton onPop={handleBurstConfetti} />
+
+      <Suspense fallback={null}>
+        <ModinoPet
+          isSiteRevealed={siteRevealed}
+          isBlockedByOverlay={
+            showIntro || isPhotoLightboxOpen || isCaseFileLightboxOpen || isKeepsakeModalOpen
+          }
+        />
+      </Suspense>
 
       {isKeepsakeModalOpen && (
         <Suspense fallback={null}>

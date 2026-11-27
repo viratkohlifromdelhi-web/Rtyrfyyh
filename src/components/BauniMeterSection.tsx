@@ -9,6 +9,7 @@ import {
 } from '../utils/interactiveFun';
 import { trackEvent } from '../utils/analytics';
 import { getScannerHapticStep, haptics, stopHaptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
 import { FingerprintSparkleSvg, SparkleStarSvg, WavyDivider } from './DoodleSvgs';
@@ -91,6 +92,7 @@ export function BauniMeterSection() {
           soundEngine.playScannerComplete();
           bgMusicPlayer.endScannerVerdict();
           haptics.scannerVerdict();
+          emitModinoEvent('friends_and_banter', { force: true });
           trackEvent('bauni_scan_completed', 'Bauni-Meter Scanner', { result: '99%' });
           return;
         }

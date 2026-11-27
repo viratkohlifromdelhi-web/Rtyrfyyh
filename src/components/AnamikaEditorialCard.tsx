@@ -18,6 +18,7 @@ import {
   type CardTiltTarget,
 } from '../utils/editorialCard';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { soundEngine } from '../utils/soundEngine';
 
 const ANAMIKA_PHOTO_SRC = `${import.meta.env.BASE_URL}${encodeURIComponent('IMG_20261126_131911_725.jpg')}`;
@@ -282,6 +283,7 @@ export function AnamikaEditorialCard({ onLightboxChange }: AnamikaEditorialCardP
     const next = !isFlipped;
     haptics.cardFlip();
     soundEngine.playEditorialCardFlip();
+    emitModinoEvent('cute', { force: true });
     trackEvent('photo_card_flipped', 'Anamika Printed Photo Card', {
       side: next ? 'back' : 'front',
     });
@@ -303,6 +305,7 @@ export function AnamikaEditorialCard({ onLightboxChange }: AnamikaEditorialCardP
     e.stopPropagation();
     haptics.tap();
     soundEngine.playBubbleClick(1.06);
+    emitModinoEvent('cute');
     trackEvent('photo_card_zoomed', 'Anamika Photo Lightbox');
     setLightboxOpen(true);
   }, []);

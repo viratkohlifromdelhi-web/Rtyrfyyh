@@ -16,6 +16,7 @@ import {
 import { SparkleStarSvg } from './DoodleSvgs';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { soundEngine } from '../utils/soundEngine';
 
 interface RunawayAgreementSectionProps {
@@ -125,10 +126,12 @@ export function RunawayAgreementSection({ onAcceptConfetti }: RunawayAgreementSe
     });
     soundEngine.playDodgeZip();
     haptics.dodgeTap();
+    emitModinoEvent('friends_and_banter');
   }, [noPos]);
 
   const handleAccept = (e: MouseEvent<HTMLButtonElement>) => {
     haptics.celebrate();
+    emitModinoEvent('interaction_hype', { force: true });
     setAccepted(true);
     trackEvent('yes_button_clicked', 'Best-Friend Agreement Yes Button');
     const rect = e.currentTarget.getBoundingClientRect();

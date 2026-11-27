@@ -12,8 +12,10 @@ import {
 } from '../utils/celebration';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
+import { playUiSfx } from '../utils/uiSoundEngine';
 import { useInViewAnimation } from '../utils/useInViewAnimation';
 
 interface MakeAWishCakeProps {
@@ -155,6 +157,8 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
     const rect = e.currentTarget.getBoundingClientRect();
     soundEngine.playCakeBlowout();
     haptics.cakeBlowout();
+    playUiSfx('awww_chime');
+    emitModinoEvent('cute', { force: true });
     bgMusicPlayer.triggerCelebrationSwell();
     trackEvent('cake_candles_blown', 'Make a Wish Cake');
     setSeqId((s) => s + 1);
@@ -174,6 +178,7 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
     clearPendingTimer();
     haptics.tap();
     soundEngine.playBubbleClick(1.12);
+    emitModinoEvent('interaction_hype');
     setCake((prev) => relightCandles(prev));
     setSeqId((s) => s + 1);
     setAnimPhase('relighting');

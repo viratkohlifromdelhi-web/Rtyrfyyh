@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { SparkleStarSvg } from './DoodleSvgs';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { useInViewAnimation } from '../utils/useInViewAnimation';
 import { WheelAudioEngine } from '../utils/wheelAudio';
@@ -165,6 +166,7 @@ export function SpinWheelSection() {
 
     // Immediate tactile feedback + unlock Web Audio cleanly on user tap & duck background music
     haptics.wheelSpinStart();
+    emitModinoEvent('spin', { force: true });
     audioRef.current?.unlock();
     bgMusicPlayer.beginWheelSpin();
     trackEvent('wheel_spun', 'Spin the Wheel');
@@ -254,6 +256,7 @@ export function SpinWheelSection() {
 
       audioRef.current?.playWompBoing();
       haptics.wheelLand();
+      emitModinoEvent('spin', { force: true });
       bgMusicPlayer.endWheelSpin();
       trackEvent('wheel_landed', 'Spin the Wheel Result', {
         result: winningSlice.label,

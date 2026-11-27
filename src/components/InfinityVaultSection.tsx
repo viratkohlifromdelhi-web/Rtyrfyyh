@@ -29,8 +29,10 @@ import {
 } from '../utils/infinityVault';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
+import { playUiSfx } from '../utils/uiSoundEngine';
 import { useInViewAnimation } from '../utils/useInViewAnimation';
 import { InfinityStoneSvg } from './InfinityStoneSvg';
 
@@ -447,6 +449,8 @@ export function InfinityVaultSection({
       if (resolution === 'alreadyClaimed') {
         soundEngine.playVaultUnlock();
         haptics.vaultUnlock();
+        playUiSfx('surprise_bling');
+        emitModinoEvent('interaction_hype', { force: true });
         setCodeDigits('');
         setCodeError(null);
         setVaultPhase('alreadyClaimed');
@@ -456,6 +460,8 @@ export function InfinityVaultSection({
       if (resolution === 'unlock') {
         soundEngine.playVaultUnlock();
         haptics.vaultUnlock();
+        playUiSfx('surprise_bling');
+        emitModinoEvent('interaction_hype', { force: true });
         bgMusicPlayer.beginVaultSequence();
         pickedGuardRef.current = false;
         setCodeDigits('');
@@ -473,6 +479,7 @@ export function InfinityVaultSection({
       // Wrong passcode
       soundEngine.playVaultWrongCode();
       haptics.vaultWrongCode();
+      emitModinoEvent('gift_ew', { force: true });
       setCodeError('Wrong passcode, try again.');
       setShakeCount((c) => c + 1);
       scheduleTimer(() => {

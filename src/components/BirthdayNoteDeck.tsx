@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import {
   formatCardCounter,
   getModeLabel,
@@ -89,6 +90,7 @@ export function BirthdayNoteDeck({
       const nextIndex = getNextCardIndex(currentIndex, notes.length);
       soundEngine.playPaperFlick();
       haptics.noteCardFlick();
+      emitModinoEvent('friends_and_banter');
       trackEvent('note_card_cycled', `${getModeLabel(mode)} Note Deck`, {
         mode: getModeLabel(mode),
         fromIndex: currentIndex + 1,

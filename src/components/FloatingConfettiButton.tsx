@@ -1,5 +1,7 @@
 import type { MouseEvent } from 'react';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
+import { playUiSfx } from '../utils/uiSoundEngine';
 import { ConfettiSparkleMinimalSvg } from './DoodleSvgs';
 
 interface FloatingConfettiButtonProps {
@@ -9,6 +11,8 @@ interface FloatingConfettiButtonProps {
 export function FloatingConfettiButton({ onPop }: FloatingConfettiButtonProps) {
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     haptics.tap();
+    playUiSfx('confetti_burst');
+    emitModinoEvent('interaction_hype');
     const rect = e.currentTarget.getBoundingClientRect();
     onPop(rect.left + rect.width / 2, rect.top);
   };

@@ -19,6 +19,7 @@ import {
 } from './DoodleSvgs';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
 
@@ -512,8 +513,10 @@ export function ScratchCouponsSection({
       });
       if (id === 'troll' || id === 'nothing') {
         soundEngine.playScratchExpired();
+        emitModinoEvent('gift_ew', { force: true });
       } else {
         soundEngine.playScratchSparkle();
+        emitModinoEvent('interaction_hype', { force: true });
       }
       haptics.scratchReveal();
       bgMusicPlayer.triggerScratchReveal();
@@ -532,6 +535,7 @@ export function ScratchCouponsSection({
   const handleRevealAll = () => {
     soundEngine.playScratchSparkle();
     haptics.scratchReveal();
+    emitModinoEvent('interaction_hype', { force: true });
     bgMusicPlayer.triggerScratchReveal();
     COUPONS.forEach((coupon, idx) => {
       if (!revealedMap[coupon.id]) {

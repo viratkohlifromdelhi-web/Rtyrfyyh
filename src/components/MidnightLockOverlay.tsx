@@ -9,11 +9,13 @@ import {
   computeCountdownParts,
   evaluateMidnightBypassCode,
   writeMidnightBypass,
+  type ActiveBluffCode,
   type MidnightCountdownParts,
 } from '../utils/midnightLock';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import { soundEngine } from '../utils/soundEngine';
+import { CountdownBluffView } from './CountdownBluffView';
 
 interface MidnightLockOverlayProps {
   onUnlock: () => void;
@@ -44,8 +46,9 @@ export function MidnightLockOverlay({
   const [exitMode, setExitMode] = useState<'none' | 'midnight' | 'bypass'>('none');
   const [bypassToastVisible, setBypassToastVisible] = useState(false);
 
-  // Discreet bottom-right key bypass modal state
+  // Discreet bottom-right key bypass modal & fullscreen bluff state
   const [modalOpen, setModalOpen] = useState(false);
+  const [activeBluff, setActiveBluff] = useState<ActiveBluffCode | null>(null);
   const [digits, setDigits] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [shakeCount, setShakeCount] = useState(0);
@@ -89,6 +92,7 @@ export function MidnightLockOverlay({
     if (unlockTriggeredRef.current) return;
     unlockTriggeredRef.current = true;
     trackEvent('midnight_auto_unlocked', 'Midnight Countdown Auto Unlock');
+    setActiveBluff(null);
     setModalOpen(false);
     setIsCelebrating(true);
     soundEngine.playVaultUnlock();
@@ -126,6 +130,7 @@ export function MidnightLockOverlay({
     haptics.success();
     soundEngine.playVaultUnlock();
 
+    setActiveBluff(null);
     setModalOpen(false);
     setDigits('');
     setErrorMsg(null);
@@ -139,20 +144,103 @@ export function MidnightLockOverlay({
     }, BYPASS_TOAST_HOLD_MS);
   }, [onUnlock, scheduleTimer]);
 
+  const handleCloseBluff = useCallback(() => {
+    try {
+      haptics.tap();
+    } catch {
+      // silent
+    }
+    try {
+      soundEngine.playBubbleClick(0.95);
+    } catch {
+      // silent
+    }
+    setActiveBluff(null);
+    setDigits('');
+    setErrorMsg(null);
+  }, []);
+
   const submitBypassCode = useCallback(
     (fourDigits: string) => {
       const result = evaluateMidnightBypassCode(fourDigits);
-      trackEvent('midnight_bypass_attempt', 'Midnight Bypass Keypad', {
-        codeEntered: fourDigits,
-        success: result === 'bypass',
-      });
+
       if (result === 'bypass') {
+        try {
+          trackEvent('midnight_bypass_attempt', 'Midnight Bypass Keypad', {
+            codeEntered: fourDigits,
+            success: true,
+          });
+        } catch {
+          // silent
+        }
         triggerSecretBypass();
         return;
       }
 
-      haptics.error();
-      soundEngine.playVaultWrongCode();
+      if (result === 'bluff_1507') {
+        try {
+          haptics.celebrate();
+        } catch {
+          // silent
+        }
+        try {
+          soundEngine.playBluffClownTrombone();
+        } catch {
+          // silent
+        }
+        try {
+          trackEvent('bluff_passcode_1507_unlocked', 'Midnight Lock Bluff');
+        } catch {
+          // silent
+        }
+        setModalOpen(false);
+        setDigits('');
+        setErrorMsg(null);
+        setActiveBluff('1507');
+        return;
+      }
+
+      if (result === 'bluff_0312') {
+        try {
+          haptics.bluffMiddleFinger();
+        } catch {
+          // silent
+        }
+        try {
+          soundEngine.playBluffBuzzerBoing();
+        } catch {
+          // silent
+        }
+        try {
+          trackEvent('bluff_passcode_0312_unlocked', 'Midnight Lock Bluff');
+        } catch {
+          // silent
+        }
+        setModalOpen(false);
+        setDigits('');
+        setErrorMsg(null);
+        setActiveBluff('0312');
+        return;
+      }
+
+      try {
+        trackEvent('midnight_bypass_attempt', 'Midnight Bypass Keypad', {
+          codeEntered: fourDigits,
+          success: false,
+        });
+      } catch {
+        // silent
+      }
+      try {
+        haptics.error();
+      } catch {
+        // silent
+      }
+      try {
+        soundEngine.playVaultWrongCode();
+      } catch {
+        // silent
+      }
       setErrorMsg('Wait for midnight 👀');
       setShakeCount((c) => c + 1);
       scheduleTimer(() => {
@@ -481,6 +569,13 @@ export function MidnightLockOverlay({
             </div>
           </div>
         </div>
+      )}
+      {/* Fullscreen Countdown Bluff Overlay for Passcodes 1507 and 0312 */}
+      {activeBluff && (
+        <CountdownBluffView
+          variant={activeBluff}
+          onBackToCountdown={handleCloseBluff}
+        />
       )}
     </div>
   );

@@ -2,8 +2,10 @@ import { Fragment, useEffect, useRef, useState, type CSSProperties } from 'react
 import { BACKSTORY_CHAPTERS, type BackstoryChapter } from '../data/celebrationData';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
+import { emitModinoEvent } from '../utils/modinoBus';
 import { smoothScrollToTarget } from '../utils/smoothScroll';
 import { soundEngine } from '../utils/soundEngine';
+import { playUiSfx } from '../utils/uiSoundEngine';
 import { computeStickyCardScale } from '../utils/timelineProgress';
 
 function DownwardReceiptArrowSvg({ className = 'h-[13px] w-[13px]' }: { className?: string }) {
@@ -219,6 +221,8 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
   const handleTabJump = (index: number, chapter: BackstoryChapter) => {
     haptics.timelineReceiptJump();
     soundEngine.playNotebookTabTurn();
+    playUiSfx('tap');
+    emitModinoEvent('backstory', { force: true });
     trackEvent('timeline_chapter_viewed', 'Backstory Notebook Tab Tap', {
       chapter: chapter.numeral,
     });
@@ -235,6 +239,8 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
   const handleJumpToReceipt = () => {
     haptics.timelineReceiptJump();
     soundEngine.playBubbleClick(1.04);
+    playUiSfx('tap');
+    emitModinoEvent('backstory', { force: true });
     trackEvent('timeline_receipt_clicked', 'Chapter 3 Jump');
 
     const caseFileSection = document.getElementById('case-file');
