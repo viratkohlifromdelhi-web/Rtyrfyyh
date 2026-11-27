@@ -37,6 +37,7 @@ import {
   auth,
   buildFirestoreErrorInfo,
   db,
+  firebaseProjectId,
   googleProvider,
   OperationType,
 } from '../firebase';
@@ -393,6 +394,8 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
   const [authUser, setAuthUser] = useState<User | null>(() => auth?.currentUser ?? null);
   const [authReady, setAuthReady] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [unauthorizedHost, setUnauthorizedHost] = useState<string | null>(null);
+  const [copiedDomain, setCopiedDomain] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
 
   const [ignoreMyDevice, setIgnoreMyDevice] = useState<boolean>(() =>
@@ -594,14 +597,32 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
     }
     setSigningIn(true);
     setAuthError(null);
+    setUnauthorizedHost(null);
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Sign-in cancelled or failed.');
+      const msg = error instanceof Error ? error.message : 'Sign-in cancelled or failed.';
+      const code =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? String((error as { code?: unknown }).code ?? '')
+          : '';
+      if (code === 'auth/unauthorized-domain' || msg.includes('auth/unauthorized-domain')) {
+        const host = typeof window !== 'undefined' ? window.location.hostname : '';
+        setUnauthorizedHost(host || 'current domain');
+      }
+      setAuthError(msg);
     } finally {
       setSigningIn(false);
     }
   }, []);
+
+  const handleCopyUnauthorizedHost = useCallback(() => {
+    if (!unauthorizedHost || typeof navigator === 'undefined' || !navigator.clipboard) return;
+    void navigator.clipboard.writeText(unauthorizedHost).then(() => {
+      setCopiedDomain(true);
+      window.setTimeout(() => setCopiedDomain(false), 2000);
+    });
+  }, [unauthorizedHost]);
 
   const handleSwitchAccount = useCallback(async () => {
     if (!auth) return;
@@ -801,7 +822,35 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
             )}
 
             {authError && (
-              <p className="mt-3 text-xs font-medium text-rose-300">{authError}</p>
+              <div className="mt-3 w-full space-y-2 rounded-xl border border-rose-400/30 bg-rose-500/10 px-3.5 py-2.5 text-left text-xs text-rose-200">
+                <p className="font-medium">{authError}</p>
+                {unauthorizedHost && (
+                  <div className="space-y-2 border-t border-rose-300/20 pt-2 text-[11px] leading-relaxed text-[#E6D9EA]">
+                    <p>
+                      Domain <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-[#E6C690]">{unauthorizedHost}</code>{' '}
+                      is not yet in Authorized Domains for project{' '}
+                      <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-[#E6C690]">{firebaseProjectId}</code>.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCopyUnauthorizedHost}
+                        className="cursor-pointer rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold text-[#FAF3EA] hover:bg-white/15"
+                      >
+                        {copiedDomain ? 'Copied Domain' : 'Copy Domain'}
+                      </button>
+                      <a
+                        href={`https://console.firebase.google.com/project/${firebaseProjectId}/authentication/settings`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full border border-[#E6C690]/40 bg-[#E6C690]/15 px-3 py-1 text-[11px] font-semibold text-[#F0D5A0] hover:bg-[#E6C690]/25"
+                      >
+                        Open Authorized Domains &rarr;
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
             <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">

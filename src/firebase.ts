@@ -53,7 +53,9 @@ try {
 export const app = appInstance;
 export const db = dbInstance;
 export const auth = authInstance;
+export const firebaseProjectId = firebaseConfig.projectId;
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export function buildFirestoreErrorInfo(
   error: unknown,
