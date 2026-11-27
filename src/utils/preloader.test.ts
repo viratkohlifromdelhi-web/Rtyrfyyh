@@ -160,3 +160,45 @@ test('startBackgroundWarmup is idempotent within a session and cancellation halt
 
   resetBackgroundWarmupForTesting();
 });
+
+test('preloadOriginStoryStageAssets warms chunk and kiss audio once on idle and stays resilient to errors', async () => {
+  const { preloadOriginStoryStageAssets, resetOriginStoryPreloadForTesting } = await import(
+    './preloader'
+  );
+  resetOriginStoryPreloadForTesting();
+
+  const events: string[] = [];
+  const scheduler = createImmediateTestScheduler([]);
+
+  preloadOriginStoryStageAssets({
+    loadOriginStoryChunk: async () => {
+      events.push('chunk:originStory');
+      throw new Error('transient fetch error');
+    },
+    preloadAudio: (src) => {
+      events.push(`audio:${src}`);
+    },
+    scheduler,
+  });
+
+  // Second call in same session should be idempotent no-op
+  preloadOriginStoryStageAssets({
+    loadOriginStoryChunk: async () => {
+      events.push('chunk:duplicate');
+    },
+    preloadAudio: () => {
+      events.push('audio:duplicate');
+    },
+    scheduler,
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  assert.deepEqual(events, [
+    'chunk:originStory',
+    'audio:/In_The_Night_No_Control_Song_Lyrics_Status_shorts_lyrics_128kbps_1791591_cut%20(1).mp3',
+  ]);
+
+  resetOriginStoryPreloadForTesting();
+});
+

@@ -14,6 +14,8 @@
  *   3. Gentle background MP3 preload upgrade (`preload="metadata"` -> `preload="auto"`)
  */
 
+import { ORIGIN_AUDIO_CONFIG } from '../components/originStory/originScript';
+
 export const PRELOAD_GAP_MS = 120;
 export const PRELOAD_IDLE_TIMEOUT_MS = 1200;
 
@@ -265,3 +267,90 @@ export function resetBackgroundWarmupForTesting(): void {
   }
   sessionWarmupStarted = false;
 }
+
+export interface OriginStoryPreloadOptions {
+  loadOriginStoryChunk: () => Promise<unknown>;
+  kissAudioSrc?: string;
+  preloadAudio?: (src: string) => void;
+  scheduler?: WarmupScheduler;
+  idleTimeoutMs?: number;
+}
+
+let originStoryPreloadStarted = false;
+let activeCancelOriginPreload: (() => void) | null = null;
+
+function quietPreloadAudioAsset(src: string): void {
+  if (typeof window === 'undefined' || typeof Audio === 'undefined') return;
+  try {
+    const audio = new Audio();
+    audio.preload = 'auto';
+    audio.volume = 0;
+    audio.onerror = () => {
+      // Silently ignore missing optional MP3 so zero console noise occurs
+    };
+    audio.src = src;
+    audio.load();
+  } catch {
+    // Silently ignore in restricted environments
+  }
+}
+
+/**
+ * Stage 2 -> Stage 3 silent background preloader.
+ * Runs inside requestIdleCallback (with setTimeout fallback) while the Opening
+ * Curtain / Intro Video plays, warming up the lazy OriginStoryPlay JS chunk and
+ * quietly preloading the Scene 5 kissing MP3 with zero console errors.
+ */
+export function preloadOriginStoryStageAssets(
+  options: OriginStoryPreloadOptions,
+): () => void {
+  if (originStoryPreloadStarted) {
+    return () => {};
+  }
+  originStoryPreloadStarted = true;
+
+  const scheduler = options.scheduler ?? createBrowserWarmupScheduler();
+  const idleTimeoutMs = options.idleTimeoutMs ?? PRELOAD_IDLE_TIMEOUT_MS;
+  const kissAudioSrc = options.kissAudioSrc ?? ORIGIN_AUDIO_CONFIG.kissTrackSrc;
+  const preloadAudio = options.preloadAudio ?? quietPreloadAudioAsset;
+
+  let cancelled = false;
+  const cancelIdle = scheduler.scheduleIdle(() => {
+    activeCancelOriginPreload = null;
+    if (cancelled) return;
+
+    try {
+      void Promise.resolve(options.loadOriginStoryChunk()).catch(() => {
+        // React.lazy will retry naturally on mount
+      });
+    } catch {
+      // React.lazy will retry naturally on mount
+    }
+
+    try {
+      preloadAudio(kissAudioSrc);
+    } catch {
+      // Non-fatal
+    }
+  }, idleTimeoutMs);
+
+  const cancel = () => {
+    cancelled = true;
+    cancelIdle();
+    if (activeCancelOriginPreload === cancel) {
+      activeCancelOriginPreload = null;
+    }
+  };
+  activeCancelOriginPreload = cancel;
+
+  return cancel;
+}
+
+export function resetOriginStoryPreloadForTesting(): void {
+  if (activeCancelOriginPreload) {
+    activeCancelOriginPreload();
+    activeCancelOriginPreload = null;
+  }
+  originStoryPreloadStarted = false;
+}
+

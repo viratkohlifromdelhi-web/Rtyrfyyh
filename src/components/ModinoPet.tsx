@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Volume2, VolumeX, X } from 'lucide-react';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
@@ -8,7 +8,11 @@ import {
   type ModinoReactionCategory,
 } from '../utils/modinoBus';
 import {
+  MODINO_MAX_ACTIVE_HEARTS,
+  createModinoMicroHearts,
+  getModinoMicroHeartCount,
   modinoReactionEngine,
+  type ModinoMicroHeart,
   type ModinoMood,
   type ModinoReaction,
 } from '../utils/modinoReactions';
@@ -20,9 +24,21 @@ import {
 } from '../utils/uiSoundEngine';
 import { ModinoAvatarSvg } from './ModinoAvatarSvg';
 
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
 export const MODINO_INACTIVITY_SLEEP_MS = 3500;
 const BUBBLE_DURATION_MS = 3400;
 const SLEEP_BUBBLE_DURATION_MS = 1800;
+const SLEEP_MUTTER_CYCLE_MS = 4600;
+const WAKE_BUBBLE_DURATION_MS = 2400;
+const WAKE_FOLLOWUP_DELAY_MS = 650;
 const ANALYTICS_THROTTLE_MS = 4000;
 
 interface ModinoPetProps {
@@ -54,9 +70,15 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
     () => typeof document !== 'undefined' && document.hidden,
   );
   const [sfxMuted, setSfxMuted] = useState(() => isUiSfxMuted());
+  const [microHearts, setMicroHearts] = useState<ModinoMicroHeart[]>([]);
 
+  const dockRef = useRef<HTMLDivElement | null>(null);
   const moodRef = useRef<ModinoMood>('idle');
-  moodRef.current = mood;
+
+  const applyMood = useCallback((nextMood: ModinoMood) => {
+    moodRef.current = nextMood;
+    setMood(nextMood);
+  }, []);
 
   const isActive = isSiteRevealed && !isBlockedByOverlay && !isTabHidden;
   const isActiveRef = useRef(isActive);
@@ -69,10 +91,15 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
   bubbleVisibleRef.current = Boolean(bubbleText && !isBubbleSleepy);
 
   const sleepTimerRef = useRef<number | null>(null);
+  const sleepMutterTimerRef = useRef<number | null>(null);
   const bubbleTimerRef = useRef<number | null>(null);
   const moodResetTimerRef = useRef<number | null>(null);
   const wakeFollowupTimerRef = useRef<number | null>(null);
   const greetingTimerRef = useRef<number | null>(null);
+  const untuckTimerRef = useRef<number | null>(null);
+  const heartTimersRef = useRef<Map<number, number>>(new Map());
+  const heartIdCounterRef = useRef(1);
+  const heartColorCursorRef = useRef(0);
   const hasGreetedRef = useRef(false);
   const lastScrollActivityRef = useRef(0);
   const lastAnalyticsRef = useRef(-Infinity);
@@ -85,13 +112,86 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
     }
   };
 
+  const clearAllHeartTimers = useCallback(() => {
+    for (const timerId of heartTimersRef.current.values()) {
+      window.clearTimeout(timerId);
+    }
+    heartTimersRef.current.clear();
+    setMicroHearts([]);
+  }, []);
+
   const clearAllTimers = useCallback(() => {
     clearTimer(sleepTimerRef);
+    clearTimer(sleepMutterTimerRef);
     clearTimer(bubbleTimerRef);
     clearTimer(moodResetTimerRef);
     clearTimer(wakeFollowupTimerRef);
     clearTimer(greetingTimerRef);
-  }, []);
+    clearTimer(untuckTimerRef);
+    clearAllHeartTimers();
+  }, [clearAllHeartTimers]);
+
+  const emitMicroHearts = useCallback(
+    (params: {
+      trigger: 'direct_tap' | 'category';
+      mood: ModinoMood;
+      category?: ModinoReactionCategory;
+    }) => {
+      if (!isActiveRef.current || isTuckedRef.current) return;
+
+      const reduced = prefersReducedMotion();
+      const count = getModinoMicroHeartCount({
+        trigger: params.trigger,
+        mood: params.mood,
+        category: params.category,
+        reducedMotion: reduced,
+      });
+
+      if (count <= 0) return;
+
+      const colorOffset = heartColorCursorRef.current;
+      heartColorCursorRef.current = (heartColorCursorRef.current + count) % 4;
+
+      const spawned = createModinoMicroHearts(
+        count,
+        () => {
+          const next = heartIdCounterRef.current;
+          heartIdCounterRef.current += 1;
+          return next;
+        },
+        { reducedMotion: reduced, colorOffset },
+      );
+
+      if (spawned.length === 0) return;
+
+      setMicroHearts((prev) => {
+        const combined = [...prev, ...spawned];
+        if (combined.length > MODINO_MAX_ACTIVE_HEARTS) {
+          const overflowCount = combined.length - MODINO_MAX_ACTIVE_HEARTS;
+          const dropped = combined.slice(0, overflowCount);
+          for (const d of dropped) {
+            const existingTimer = heartTimersRef.current.get(d.id);
+            if (existingTimer !== undefined) {
+              window.clearTimeout(existingTimer);
+              heartTimersRef.current.delete(d.id);
+            }
+          }
+          return combined.slice(overflowCount);
+        }
+        return combined;
+      });
+
+      for (const heart of spawned) {
+        const lifetimeMs = heart.delayMs + heart.durationMs + 90;
+        const timerId = window.setTimeout(() => {
+          heartTimersRef.current.delete(heart.id);
+          setMicroHearts((prev) => prev.filter((item) => item.id !== heart.id));
+        }, lifetimeMs);
+        heartTimersRef.current.set(heart.id, timerId);
+      }
+    },
+    [],
+  );
 
   const logModinoAnalytics = useCallback((reaction: ModinoReaction) => {
     const now = Date.now();
@@ -107,9 +207,46 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
     }
   }, []);
 
+  /**
+   * Displays the next non-repeating sleepy mutter while Modino stays in `sleepy_zzz`,
+   * then schedules the next periodic mutter until user activity wakes Modino up.
+   */
+  const showNextSleepMutter = useCallback((playSigh: boolean) => {
+    clearTimer(sleepMutterTimerRef);
+    clearTimer(bubbleTimerRef);
+    if (!isActiveRef.current || isTuckedRef.current || moodRef.current !== 'sleepy_zzz') {
+      return;
+    }
+
+    if (playSigh) {
+      playUiSfx('sleep_sigh');
+    }
+
+    const mutter = modinoReactionEngine.nextSleepMutter();
+    setIsBubbleSleepy(true);
+    setBubbleText(mutter);
+    setBubbleKey((k) => k + 1);
+
+    bubbleTimerRef.current = window.setTimeout(() => {
+      bubbleTimerRef.current = null;
+      setBubbleText(null);
+      setIsBubbleSleepy(false);
+
+      // Keep cycling through sleepy mutters gently while Modino stays asleep
+      if (isActiveRef.current && !isTuckedRef.current && moodRef.current === 'sleepy_zzz') {
+        sleepMutterTimerRef.current = window.setTimeout(() => {
+          sleepMutterTimerRef.current = null;
+          showNextSleepMutter(false);
+        }, SLEEP_MUTTER_CYCLE_MS);
+      }
+    }, SLEEP_BUBBLE_DURATION_MS);
+  }, []);
+
   const scheduleSleepCountdown = useCallback(() => {
     clearTimer(sleepTimerRef);
+    clearTimer(sleepMutterTimerRef);
     if (!isActiveRef.current || isTuckedRef.current) return;
+    if (moodRef.current === 'sleepy_zzz') return;
 
     sleepTimerRef.current = window.setTimeout(() => {
       sleepTimerRef.current = null;
@@ -120,32 +257,33 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
         return;
       }
 
-      setMood('sleepy_zzz');
-      playUiSfx('sleep_sigh');
-
-      const mutter = modinoReactionEngine.nextSleepMutter();
-      setIsBubbleSleepy(true);
-      setBubbleText(mutter);
-      setBubbleKey((k) => k + 1);
-
-      clearTimer(bubbleTimerRef);
-      bubbleTimerRef.current = window.setTimeout(() => {
-        setBubbleText(null);
-        setIsBubbleSleepy(false);
-        bubbleTimerRef.current = null;
-      }, SLEEP_BUBBLE_DURATION_MS);
+      clearTimer(moodResetTimerRef);
+      clearTimer(wakeFollowupTimerRef);
+      applyMood('sleepy_zzz');
+      showNextSleepMutter(true);
     }, MODINO_INACTIVITY_SLEEP_MS);
-  }, []);
+  }, [applyMood, showNextSleepMutter]);
 
   const showReaction = useCallback(
-    (reaction: ModinoReaction, options?: { triggerRipple?: boolean; logAnalytics?: boolean }) => {
+    (
+      reaction: ModinoReaction,
+      options?: {
+        triggerRipple?: boolean;
+        logAnalytics?: boolean;
+        heartTrigger?: 'direct_tap' | 'category';
+        heartMood?: ModinoMood;
+        category?: ModinoReactionCategory;
+      },
+    ) => {
       if (!isActiveRef.current) return;
 
+      clearTimer(sleepTimerRef);
+      clearTimer(sleepMutterTimerRef);
       clearTimer(moodResetTimerRef);
       clearTimer(bubbleTimerRef);
       clearTimer(wakeFollowupTimerRef);
 
-      setMood(reaction.mood);
+      applyMood(reaction.mood);
       setIsBubbleSleepy(false);
       setBubbleText(reaction.text);
       setBubbleKey((k) => k + 1);
@@ -153,6 +291,12 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
       if (options?.triggerRipple) {
         setTapRippleKey((k) => k + 1);
       }
+
+      emitMicroHearts({
+        trigger: options?.heartTrigger ?? 'category',
+        mood: options?.heartMood ?? reaction.mood,
+        category: options?.category,
+      });
 
       playUiSfx(reaction.sfx);
 
@@ -162,8 +306,10 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
 
       const settleDelayMs = reaction.mood === 'jump' || reaction.mood === 'surprised' ? 1400 : 2800;
       moodResetTimerRef.current = window.setTimeout(() => {
-        setMood((current) => (current === 'sleepy_zzz' ? current : 'idle'));
         moodResetTimerRef.current = null;
+        if (moodRef.current !== 'sleepy_zzz') {
+          applyMood('idle');
+        }
       }, settleDelayMs);
 
       bubbleTimerRef.current = window.setTimeout(() => {
@@ -175,48 +321,60 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
 
       scheduleSleepCountdown();
     },
-    [logModinoAnalytics, scheduleSleepCountdown],
+    [applyMood, emitMicroHearts, logModinoAnalytics, scheduleSleepCountdown],
   );
 
   const wakeUpStartled = useCallback(
     (followup?: () => void) => {
+      if (!isActiveRef.current || isTuckedRef.current) return;
+      if (moodRef.current !== 'sleepy_zzz') {
+        followup?.();
+        return;
+      }
+
+      clearTimer(sleepTimerRef);
+      clearTimer(sleepMutterTimerRef);
       clearTimer(wakeFollowupTimerRef);
       clearTimer(moodResetTimerRef);
       clearTimer(bubbleTimerRef);
 
-      setMood('surprised');
+      const wakeReaction = modinoReactionEngine.nextWakeUp();
+      applyMood(wakeReaction.mood);
+      setIsBubbleSleepy(false);
+      setBubbleText(wakeReaction.text);
+      setBubbleKey((k) => k + 1);
+
       try {
         haptics.vibrateSafe(10);
       } catch {
         // silent
       }
-      playUiSfx('wake_chirp');
+      playUiSfx(wakeReaction.sfx);
 
       if (followup) {
         wakeFollowupTimerRef.current = window.setTimeout(() => {
           wakeFollowupTimerRef.current = null;
+          if (!isActiveRef.current || isTuckedRef.current) return;
           followup();
-        }, 450);
+        }, WAKE_FOLLOWUP_DELAY_MS);
       } else {
-        const wakeReaction = modinoReactionEngine.nextWakeUp();
-        setIsBubbleSleepy(false);
-        setBubbleText(wakeReaction.text);
-        setBubbleKey((k) => k + 1);
-
+        const wakeSettleMs = wakeReaction.mood === 'jump' ? 1400 : 1200;
         moodResetTimerRef.current = window.setTimeout(() => {
-          setMood('idle');
           moodResetTimerRef.current = null;
-        }, 1200);
+          if (moodRef.current !== 'sleepy_zzz') {
+            applyMood('idle');
+          }
+        }, wakeSettleMs);
 
         bubbleTimerRef.current = window.setTimeout(() => {
           setBubbleText(null);
+          setIsBubbleSleepy(false);
           bubbleTimerRef.current = null;
           scheduleSleepCountdown();
-        }, 2400);
-        scheduleSleepCountdown();
+        }, WAKE_BUBBLE_DURATION_MS);
       }
     },
-    [scheduleSleepCountdown],
+    [applyMood, scheduleSleepCountdown],
   );
 
   const triggerCategoryReaction = useCallback(
@@ -225,7 +383,12 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
 
       const deliver = () => {
         const reaction = modinoReactionEngine.next(category);
-        showReaction(reaction, options);
+        showReaction(reaction, {
+          ...options,
+          heartTrigger: category === 'direct_tap' ? 'direct_tap' : 'category',
+          heartMood: reaction.mood,
+          category,
+        });
       };
 
       if (moodRef.current === 'sleepy_zzz') {
@@ -256,6 +419,9 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
   useEffect(() => {
     if (!isActive) {
       clearAllTimers();
+      applyMood('idle');
+      setBubbleText(null);
+      setIsBubbleSleepy(false);
       return;
     }
 
@@ -267,14 +433,18 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
         greetingTimerRef.current = null;
         if (!isActiveRef.current || isTuckedRef.current) return;
         const greeting = modinoReactionEngine.next('greeting');
-        showReaction(greeting);
+        showReaction(greeting, {
+          heartTrigger: 'category',
+          heartMood: greeting.mood,
+          category: 'greeting',
+        });
       }, 900);
     }
 
     return () => {
       clearAllTimers();
     };
-  }, [isActive, isTucked, clearAllTimers, scheduleSleepCountdown, showReaction]);
+  }, [isActive, isTucked, applyMood, clearAllTimers, scheduleSleepCountdown, showReaction]);
 
   // Listen to global Modino CustomEvent bus
   useEffect(() => {
@@ -297,11 +467,20 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
   useEffect(() => {
     if (!isActive || isTucked) return;
 
-    const handleActivity = (source: 'scroll' | 'input') => {
+    const handleActivity = (source: 'scroll' | 'input', event?: Event) => {
       if (source === 'scroll') {
         const now = performance.now();
         if (now - lastScrollActivityRef.current < 250) return;
         lastScrollActivityRef.current = now;
+      }
+
+      // Let direct interactions on Modino's own controls flow through their dedicated handlers
+      if (
+        source === 'input' &&
+        event?.target instanceof Node &&
+        dockRef.current?.contains(event.target)
+      ) {
+        return;
       }
 
       if (moodRef.current === 'sleepy_zzz') {
@@ -312,10 +491,10 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
       scheduleSleepCountdown();
     };
 
-    const onPointerDown = () => handleActivity('input');
-    const onTouchStart = () => handleActivity('input');
-    const onClick = () => handleActivity('input');
-    const onKeyDown = () => handleActivity('input');
+    const onPointerDown = (e: Event) => handleActivity('input', e);
+    const onTouchStart = (e: Event) => handleActivity('input', e);
+    const onClick = (e: Event) => handleActivity('input', e);
+    const onKeyDown = (e: Event) => handleActivity('input', e);
     const onScroll = () => handleActivity('scroll');
 
     window.addEventListener('pointerdown', onPointerDown, { passive: true });
@@ -389,17 +568,34 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
       const reaction = modinoReactionEngine.next('direct_tap');
       // Always perform a snappy spring jump on direct tap, then settle into reaction mood if different
       if (reaction.mood !== 'jump') {
-        showReaction({ ...reaction, mood: 'jump' }, { triggerRipple: true, logAnalytics: true });
+        showReaction(
+          { ...reaction, mood: 'jump' },
+          {
+            triggerRipple: true,
+            logAnalytics: true,
+            heartTrigger: 'direct_tap',
+            heartMood: reaction.mood,
+            category: 'direct_tap',
+          },
+        );
         clearTimer(moodResetTimerRef);
         moodResetTimerRef.current = window.setTimeout(() => {
-          setMood(reaction.mood);
+          applyMood(reaction.mood);
           moodResetTimerRef.current = window.setTimeout(() => {
-            setMood((curr) => (curr === 'sleepy_zzz' ? curr : 'idle'));
             moodResetTimerRef.current = null;
+            if (moodRef.current !== 'sleepy_zzz') {
+              applyMood('idle');
+            }
           }, 2100);
         }, 420);
       } else {
-        showReaction(reaction, { triggerRipple: true, logAnalytics: true });
+        showReaction(reaction, {
+          triggerRipple: true,
+          logAnalytics: true,
+          heartTrigger: 'direct_tap',
+          heartMood: reaction.mood,
+          category: 'direct_tap',
+        });
       }
     };
 
@@ -409,7 +605,7 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
     }
 
     runDirectTap();
-  }, [showReaction, wakeUpStartled]);
+  }, [applyMood, showReaction, wakeUpStartled]);
 
   const handleToggleMute = useCallback(() => {
     try {
@@ -431,9 +627,11 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
     }
     playUiSfx('toggle_click');
     clearAllTimers();
+    applyMood('idle');
     setBubbleText(null);
+    setIsBubbleSleepy(false);
     setIsTucked(true);
-  }, [clearAllTimers]);
+  }, [applyMood, clearAllTimers]);
 
   const handleUntuck = useCallback(() => {
     try {
@@ -442,9 +640,18 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
       // silent
     }
     setIsTucked(false);
-    window.setTimeout(() => {
+    clearTimer(untuckTimerRef);
+    untuckTimerRef.current = window.setTimeout(() => {
+      untuckTimerRef.current = null;
+      if (!isActiveRef.current || isTuckedRef.current) return;
       const reaction = modinoReactionEngine.next('direct_tap');
-      showReaction(reaction, { triggerRipple: true, logAnalytics: true });
+      showReaction(reaction, {
+        triggerRipple: true,
+        logAnalytics: true,
+        heartTrigger: 'direct_tap',
+        heartMood: reaction.mood,
+        category: 'direct_tap',
+      });
     }, 80);
   }, [showReaction]);
 
@@ -452,8 +659,12 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
     clearTimer(bubbleTimerRef);
     setBubbleText(null);
     setIsBubbleSleepy(false);
+    if (moodRef.current === 'sleepy_zzz') {
+      wakeUpStartled();
+      return;
+    }
     scheduleSleepCountdown();
-  }, [scheduleSleepCountdown]);
+  }, [scheduleSleepCountdown, wakeUpStartled]);
 
   if (!isSiteRevealed || isBlockedByOverlay) {
     return null;
@@ -483,8 +694,10 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
 
   return (
     <div
+      ref={dockRef}
       data-testid="modino-pet-dock"
       data-mood={mood}
+      data-sleep-state={mood === 'sleepy_zzz' ? 'sleeping' : 'awake'}
       className="pointer-events-none fixed right-[12px] bottom-[66px] z-[36] flex flex-col items-end"
     >
       {/* Crisp Pastel Speech Bubble anchored above-left of Modino */}
@@ -493,6 +706,7 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
           key={bubbleKey}
           type="button"
           data-testid="modino-speech-bubble"
+          data-sleepy={isBubbleSleepy ? 'true' : 'false'}
           onClick={handleDismissBubble}
           aria-label="Dismiss Modino speech bubble"
           className={`animate-modino-bubble pointer-events-auto absolute right-[4px] bottom-[92px] w-max max-w-[min(82vw,272px)] rounded-[18px] border-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB] px-3.5 py-2 text-left text-[12.5px] leading-[1.35] font-semibold text-[#3A1233] shadow-[0_10px_26px_-10px_rgba(176,62,106,0.24)] cursor-pointer transition-opacity duration-200 ${
@@ -508,8 +722,53 @@ export function ModinoPet({ isSiteRevealed, isBlockedByOverlay }: ModinoPetProps
         </button>
       )}
 
-      {/* Main Tappable Modino Character */}
+      {/* Main Tappable Modino Character + Floating Micro-Hearts Emitter */}
       <div className="pointer-events-auto relative flex flex-col items-center">
+        {/* 60fps Progressive-Fade Pastel Micro-Hearts Layer above Modino's ears/head */}
+        <div
+          data-testid="modino-micro-hearts"
+          aria-hidden="true"
+          className="pointer-events-none absolute top-[2px] left-1/2 z-[4] h-0 w-0 overflow-visible"
+        >
+          {microHearts.map((heart) => {
+            const style = {
+              left: `${heart.startX}px`,
+              '--dx': `${heart.dx}px`,
+              '--dx-mid': `${heart.dxMid}px`,
+              '--dy': `${heart.dy}px`,
+              '--rot': `${heart.rot}deg`,
+              '--heart-dur': `${heart.durationMs}ms`,
+              '--heart-delay': `${heart.delayMs}ms`,
+            } as CSSProperties;
+
+            return (
+              <span
+                key={heart.id}
+                data-testid="modino-micro-heart"
+                style={style}
+                className={`pointer-events-none absolute -top-[4px] -ml-[6px] inline-flex items-center justify-center opacity-0 ${
+                  heart.reducedMotion
+                    ? 'animate-modino-micro-heart-reduced'
+                    : 'animate-modino-micro-heart'
+                }`}
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  width={heart.size}
+                  height={heart.size}
+                  aria-hidden="true"
+                  className="block overflow-visible"
+                >
+                  <path
+                    d="M8 14.1C7.7 14.1 7.4 14 7.2 13.8C4.4 11.4 1.6 8.8 1.6 5.6C1.6 3.5 3.2 2 5.2 2C6.4 2 7.4 2.6 8 3.5C8.6 2.6 9.6 2 10.8 2C12.8 2 14.4 3.5 14.4 5.6C14.4 8.8 11.6 11.4 8.8 13.8C8.6 14 8.3 14.1 8 14.1Z"
+                    fill={heart.color}
+                  />
+                </svg>
+              </span>
+            );
+          })}
+        </div>
+
         <button
           type="button"
           data-testid="modino-avatar-btn"

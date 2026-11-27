@@ -48,6 +48,7 @@ interface InteractiveTogglesSectionProps {
   onToggleFriendOverride: () => void;
   sparkleRain: boolean;
   onToggleSparkleRain: () => void;
+  onReplayOriginStory?: () => void;
 }
 
 const AVATAR_STYLES: Record<string, string> = {
@@ -66,6 +67,7 @@ export function InteractiveTogglesSection({
   onToggleFriendOverride,
   sparkleRain,
   onToggleSparkleRain,
+  onReplayOriginStory,
 }: InteractiveTogglesSectionProps) {
   const isNoFilterActive = !isBirthdayTruce;
   const orderedFriends = getOrderedFriendList(FRIEND_LEADERBOARD_BASE, friendOverride);
@@ -92,13 +94,29 @@ export function InteractiveTogglesSection({
       className="cv-auto-section relative z-[2] scroll-mt-16 bg-transparent py-14 sm:py-20"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-2 text-center sm:text-left">
-          <p className="text-sm font-semibold text-[#D94B7D]">
-            Quick Switches
-          </p>
-          <h2 className="font-display text-balance text-3xl font-semibold tracking-tight text-[#3A1233] sm:text-4xl">
-            Try flipping these
-          </h2>
+        <div className="flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:items-end sm:text-left">
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-semibold text-[#D94B7D]">
+              Quick Switches
+            </p>
+            <h2 className="font-display text-balance text-3xl font-semibold tracking-tight text-[#3A1233] sm:text-4xl">
+              Try flipping these
+            </h2>
+          </div>
+
+          {onReplayOriginStory && (
+            <button
+              type="button"
+              data-testid="replay-origin-story-btn"
+              onClick={onReplayOriginStory}
+              className="inline-flex min-h-[38px] shrink-0 cursor-pointer items-center gap-2 rounded-full border border-[#E8C5D8] bg-[#FFFDF8] px-4 py-1.5 text-xs font-semibold text-[#3A1233] shadow-[0_6px_16px_-10px_rgba(58,18,51,0.22)] transition-all hover:border-[#D94B7D]/45 hover:bg-[#FFF6F9] active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
+            >
+              <svg viewBox="0 0 14 14" className="h-3 w-3 shrink-0 text-[#D94B7D]" aria-hidden="true">
+                <path d="M3.2 2.2L11.4 7L3.2 11.8V2.2Z" fill="currentColor" />
+              </svg>
+              <span className="whitespace-nowrap">Replay Origin Story</span>
+            </button>
+          )}
         </div>
 
         {/* 3 Cohesive Toggle Switches (Deep Plum / Warm Rose Berry / Soft Blush) */}

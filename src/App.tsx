@@ -17,7 +17,11 @@ import { haptics } from './utils/haptics';
 import type { OneTimeSummaryGiftData } from './utils/infinityVault';
 import { shouldShowMidnightLock } from './utils/midnightLock';
 import { bgMusicPlayer } from './utils/musicSynth';
-import { getDefaultPreloadImageUrls, startBackgroundWarmup } from './utils/preloader';
+import {
+  getDefaultPreloadImageUrls,
+  preloadOriginStoryStageAssets,
+  startBackgroundWarmup,
+} from './utils/preloader';
 import {
   BACKGROUND_SECTION_LOADERS,
   loadAdoptionCertificateSection,
@@ -107,6 +111,10 @@ const KeepsakePreviewModal = lazy(() =>
 const ModinoPet = lazy(() =>
   loadModinoPet().then((m) => ({ default: m.ModinoPet })),
 );
+const loadOriginStoryPlay = () => import('./components/originStory/OriginStoryPlay');
+const OriginStoryPlay = lazy(loadOriginStoryPlay);
+
+type ExperienceStage = 'intro' | 'origin_story' | 'main';
 
 function SectionPlaceholder({ id, minHeight }: { id?: string; minHeight: number }) {
   return (
@@ -130,10 +138,25 @@ function BirthdayWebsiteShell() {
   const theatreOverlayRef = useRef<TheatreIntroOverlayHandle | null>(null);
   const cancelWarmupRef = useRef<(() => void) | null>(null);
 
-  const [showIntro, setShowIntro] = useState<boolean>(() => !shouldSkipIntroFromQuery());
+  const initialBypassIntro = shouldSkipIntroFromQuery();
+  const [stage, setStage] = useState<ExperienceStage>(() =>
+    initialBypassIntro ? 'main' : 'intro',
+  );
+  const stageRef = useRef<ExperienceStage>(initialBypassIntro ? 'main' : 'intro');
+  const [showIntro, setShowIntro] = useState<boolean>(() => !initialBypassIntro);
+  const [showOriginStory, setShowOriginStory] = useState<boolean>(false);
   const [introRunId, setIntroRunId] = useState(0);
-  const [siteRevealed, setSiteRevealed] = useState<boolean>(() => shouldSkipIntroFromQuery());
-  const [visualExitDone, setVisualExitDone] = useState<boolean>(() => shouldSkipIntroFromQuery());
+  const [originStoryRunId, setOriginStoryRunId] = useState(0);
+  const [siteRevealed, setSiteRevealed] = useState<boolean>(() => initialBypassIntro);
+  const [visualExitDone, setVisualExitDone] = useState<boolean>(() => initialBypassIntro);
+  const [hasReachedMainStage, setHasReachedMainStage] = useState<boolean>(
+    () => initialBypassIntro,
+  );
+  const enteredOriginForRunRef = useRef(false);
+  const originExitHandledRef = useRef(false);
+  const originStoryModeRef = useRef<'pipeline' | 'replay'>('pipeline');
+  const wasMusicPlayingBeforeReplayRef = useRef(false);
+
   const [showMusicHint, setShowMusicHint] = useState(false);
   const [isPhotoLightboxOpen, setIsPhotoLightboxOpen] = useState(false);
   const [isCaseFileLightboxOpen, setIsCaseFileLightboxOpen] = useState(false);
@@ -174,6 +197,37 @@ function BirthdayWebsiteShell() {
     };
   }, []);
 
+  // Stage 2 -> Stage 3 silent preload while Opening Curtain / Intro Video plays
+  useEffect(() => {
+    if (!showIntro) return;
+    const cancelOriginPreload = preloadOriginStoryStageAssets({
+      loadOriginStoryChunk: loadOriginStoryPlay,
+    });
+    return () => {
+      cancelOriginPreload();
+    };
+  }, [showIntro]);
+
+  // Stage 3 -> Stage 4 preload: trigger main-page lazy chunks + hero image decode the moment OriginStoryPlay mounts
+  useEffect(() => {
+    if (!showOriginStory) return;
+    triggerBackgroundWarmup();
+  }, [showOriginStory, triggerBackgroundWarmup]);
+
+  // Keep body scroll strictly locked during Stage 3 (including after TheatreIntroOverlay unmounts),
+  // and guarantee clean scroll unlock when Stage 4 activates.
+  useEffect(() => {
+    if (showOriginStory) {
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = '';
+      };
+    }
+    if (!showIntro) {
+      document.body.style.overflow = '';
+    }
+  }, [showOriginStory, showIntro]);
+
   // If the intro is bypassed (?autostart=1) or skipped before smooth playback fired,
   // kick off the staggered background warmup after a 300ms breathing gap.
   useEffect(() => {
@@ -187,8 +241,10 @@ function BirthdayWebsiteShell() {
   }, [siteRevealed, triggerBackgroundWarmup]);
 
   const handleVideoSmoothPlayback = useCallback(() => {
-    triggerBackgroundWarmup();
-  }, [triggerBackgroundWarmup]);
+    preloadOriginStoryStageAssets({
+      loadOriginStoryChunk: loadOriginStoryPlay,
+    });
+  }, []);
 
   const handleVideoPastOneSecond = useCallback(() => {
     bgMusicPlayer.upgradePreloadToAuto();
@@ -253,28 +309,60 @@ function BirthdayWebsiteShell() {
     setIsKeepsakeModalOpen(false);
   }, []);
 
-  // Stage 3 Reveal at 15.35s: reveal main site underneath (scale 0.97 -> 1.0, opacity 0.9 -> 1.0 over 550ms)
-  // Keep local MP3 strictly paused until intro video audio finishes fading to 0 and stops!
+  // Entering Stage 3 (Origin Story Play) the moment Intro Video begins collapsing its curtain:
+  // Mount OriginStoryPlay (z-9500) right behind the collapsing curtain (z-9999) for zero flash,
+  // immediately fade out any intro video audio, and keep Milky strictly paused (volume = 0).
   const handleBeginMainReveal = useCallback(
     (_opts: { audioUnlocked: boolean; willContinueVideoAudio: boolean }) => {
-      setSiteRevealed(true);
+      theatreOverlayRef.current?.fadeOutForMusicTakeover();
+      bgMusicPlayer.resetForReplayIntro(80);
+      if (enteredOriginForRunRef.current) return;
+      enteredOriginForRunRef.current = true;
+      originStoryModeRef.current = 'pipeline';
+      originExitHandledRef.current = false;
+      stageRef.current = 'origin_story';
+      setStage('origin_story');
+      setOriginStoryRunId((n) => n + 1);
+      setShowOriginStory(true);
+      try {
+        trackEvent('origin_story_started', 'Origin Story Play');
+      } catch {
+        // silent analytics fallback
+      }
     },
     [],
   );
 
-  // Fired at 15.60s right as window snaps shut
+  // Only fire reveal cannons when Stage 4 is active (Stage 3 owns the screen during intro exit)
   const handleFireRevealConfetti = useCallback(() => {
-    confettiRef.current?.fireCannons();
+    if (stageRef.current === 'main') {
+      confettiRef.current?.fireCannons();
+    }
   }, []);
 
-  // Fired at 15.90s once visual exit finishes (even if hidden video continues fading in audioOnly)
+  // Once Intro visual exit finishes, cleanly unmount TheatreIntroOverlay so zero hidden video audio lingers
   const handleVisualExitDone = useCallback(() => {
-    setVisualExitDone(true);
+    theatreOverlayRef.current?.fadeOutForMusicTakeover();
+    setShowIntro(false);
+    if (!enteredOriginForRunRef.current) {
+      enteredOriginForRunRef.current = true;
+      originStoryModeRef.current = 'pipeline';
+      originExitHandledRef.current = false;
+      stageRef.current = 'origin_story';
+      setStage('origin_story');
+      setOriginStoryRunId((n) => n + 1);
+      setShowOriginStory(true);
+      try {
+        trackEvent('origin_story_started', 'Origin Story Play');
+      } catch {
+        // silent analytics fallback
+      }
+    }
   }, []);
 
-  // Strictly sequential handoff: fired the exact moment intro video audio finishes fading to 0 & stops
-  // (21.0s natural, after 1.2s Skip Intro fade, or right after 15.9s muted snap-shut unmount)
+  // Guarded so Milky - Just The Way You Are NEVER starts during Stage 2 or Stage 3
   const handleIntroAudioFinished = useCallback((fadeMs = BG_MUSIC_AUTOPLAY_FADE_MS) => {
+    if (stageRef.current !== 'main') return;
     void bgMusicPlayer.autoplayAfterIntro(fadeMs).then((started) => {
       if (started) {
         trackEvent('music_autoplay_started', 'Background Music Autoplay');
@@ -283,8 +371,101 @@ function BirthdayWebsiteShell() {
   }, []);
 
   const handleFinishIntroUnmount = useCallback(() => {
-    setVisualExitDone(true);
     setShowIntro(false);
+  }, []);
+
+  const finishOriginStory = useCallback(
+    (outcome: { kind: 'completed' } | { kind: 'skipped'; skippedAtMs: number }) => {
+      if (originExitHandledRef.current) return;
+      originExitHandledRef.current = true;
+
+      const mode = originStoryModeRef.current;
+      stageRef.current = 'main';
+      setShowOriginStory(false);
+      setStage('main');
+      setSiteRevealed(true);
+      setVisualExitDone(true);
+      setHasReachedMainStage(true);
+
+      try {
+        if (outcome.kind === 'completed') {
+          trackEvent('origin_story_completed', 'Origin Story Play', { durationMs: 36500 });
+        } else {
+          trackEvent('origin_story_skipped', 'Origin Story Play', {
+            skippedAtMs: Math.round(outcome.skippedAtMs),
+          });
+        }
+      } catch {
+        // silent analytics fallback
+      }
+
+      if (mode === 'pipeline') {
+        try {
+          window.scrollTo(0, 0);
+        } catch {
+          // silent
+        }
+        confettiRef.current?.fireCannons();
+        try {
+          void bgMusicPlayer.autoplayAfterIntro(600).then((started) => {
+            if (started) {
+              try {
+                trackEvent('music_autoplay_started', 'Background Music Autoplay');
+              } catch {
+                // silent
+              }
+            }
+          });
+        } catch {
+          // autoplay safety fallback
+        }
+      } else if (wasMusicPlayingBeforeReplayRef.current) {
+        wasMusicPlayingBeforeReplayRef.current = false;
+        try {
+          void bgMusicPlayer.playManual(600);
+        } catch {
+          // silent
+        }
+      }
+    },
+    [],
+  );
+
+  const handleOriginStoryComplete = useCallback(() => {
+    finishOriginStory({ kind: 'completed' });
+  }, [finishOriginStory]);
+
+  const handleOriginStorySkip = useCallback(
+    (skippedAtMs: number) => {
+      finishOriginStory({ kind: 'skipped', skippedAtMs });
+    },
+    [finishOriginStory],
+  );
+
+  const handleReplayOriginStory = useCallback(() => {
+    try {
+      haptics.vibrateSafe(12);
+    } catch {
+      // silent
+    }
+    try {
+      trackEvent('origin_story_replayed', 'Origin Story Play');
+    } catch {
+      // silent
+    }
+
+    const snap = bgMusicPlayer.getSnapshot();
+    wasMusicPlayingBeforeReplayRef.current = Boolean(snap.isPlaying);
+    if (snap.isPlaying) {
+      bgMusicPlayer.pauseManual(250);
+    }
+
+    originStoryModeRef.current = 'replay';
+    originExitHandledRef.current = false;
+    stageRef.current = 'origin_story';
+    setStage('origin_story');
+    setOriginStoryRunId((n) => n + 1);
+    setShowOriginStory(true);
   }, []);
 
   const handleReplayIntro = useCallback(() => {
@@ -294,6 +475,11 @@ function BirthdayWebsiteShell() {
     // Smoothly fade local MP3 down to 0 (0.4s), pause, reset currentTime = 0 & button state
     bgMusicPlayer.resetForReplayIntro();
     window.scrollTo({ top: 0, behavior: 'instant' });
+    enteredOriginForRunRef.current = false;
+    originExitHandledRef.current = false;
+    stageRef.current = 'intro';
+    setStage('intro');
+    setShowOriginStory(false);
     setSiteRevealed(false);
     setVisualExitDone(false);
     setIntroRunId((n) => n + 1);
@@ -364,8 +550,9 @@ function BirthdayWebsiteShell() {
     }
   }, [friendOverride]);
 
-  // Pause background floating sparkles & 1s ticking timers while intro visual stage owns the screen
-  const pauseBackgroundWork = showIntro && !siteRevealed;
+  // Pause background floating sparkles & 1s ticking timers while Stage 2 (Intro) or Stage 3 (Origin Story) owns the screen
+  const isMainStageActive = stage === 'main' && siteRevealed && !showIntro && !showOriginStory;
+  const pauseBackgroundWork = !isMainStageActive;
   const suppressSparkleRain =
     pauseBackgroundWork ||
     isPhotoLightboxOpen ||
@@ -373,7 +560,10 @@ function BirthdayWebsiteShell() {
     isKeepsakeModalOpen;
 
   return (
-    <div className="relative z-0 min-h-screen overflow-x-clip bg-[#FFF8FB] text-[#3A1233]">
+    <div
+      data-stage={stage}
+      className="relative z-0 min-h-screen overflow-x-clip bg-[#FFF8FB] text-[#3A1233]"
+    >
       {showIntro && (
         <TheatreIntroOverlay
           ref={theatreOverlayRef}
@@ -388,6 +578,23 @@ function BirthdayWebsiteShell() {
         />
       )}
 
+      {showOriginStory && (
+        <Suspense
+          fallback={
+            <div
+              aria-hidden="true"
+              className="fixed inset-0 z-[9500] bg-[#FFF8FB]"
+            />
+          }
+        >
+          <OriginStoryPlay
+            key={originStoryRunId}
+            onComplete={handleOriginStoryComplete}
+            onSkip={handleOriginStorySkip}
+          />
+        </Suspense>
+      )}
+
       <SparkleRainCanvas enabled={isSparkleRainOn} suppressed={suppressSparkleRain} />
       <ConfettiCanvas ref={confettiRef} />
 
@@ -400,12 +607,15 @@ function BirthdayWebsiteShell() {
         onHeaderEasterEgg={handleHeaderEasterEgg}
       />
 
-      {/* Pre-rendered main birthday website quietly underneath (scale 0.97 -> 1.0, opacity 0.9 -> 1.0 over 550ms) */}
+      {/* Pre-rendered main birthday website quietly underneath (zero flash & zero layout stutter when Stage 3 exits) */}
       <div
         data-testid="main-site-shell"
         data-revealed={String(siteRevealed)}
         data-bg-paused={String(pauseBackgroundWork)}
+        aria-hidden={!isMainStageActive || undefined}
         className={`transition-[transform,opacity] duration-[550ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          !isMainStageActive ? 'pointer-events-none' : ''
+        } ${
           visualExitDone && siteRevealed
             ? 'opacity-100'
             : siteRevealed
@@ -419,7 +629,7 @@ function BirthdayWebsiteShell() {
           <HeroSection
             isBirthdayTruce={isBirthdayTruce}
             onPopConfetti={handleHeroPopConfetti}
-            isSiteRevealed={siteRevealed}
+            isSiteRevealed={isMainStageActive}
             onPhotoLightboxChange={setIsPhotoLightboxOpen}
           />
 
@@ -433,6 +643,7 @@ function BirthdayWebsiteShell() {
               onToggleFriendOverride={handleToggleFriendOverride}
               sparkleRain={isSparkleRainOn}
               onToggleSparkleRain={handleToggleSparkleRain}
+              onReplayOriginStory={handleReplayOriginStory}
             />
           </Suspense>
 
@@ -566,14 +777,20 @@ function BirthdayWebsiteShell() {
 
       <FloatingConfettiButton onPop={handleBurstConfetti} />
 
-      <Suspense fallback={null}>
-        <ModinoPet
-          isSiteRevealed={siteRevealed}
-          isBlockedByOverlay={
-            showIntro || isPhotoLightboxOpen || isCaseFileLightboxOpen || isKeepsakeModalOpen
-          }
-        />
-      </Suspense>
+      {hasReachedMainStage && (
+        <Suspense fallback={null}>
+          <ModinoPet
+            isSiteRevealed={isMainStageActive}
+            isBlockedByOverlay={
+              showIntro ||
+              showOriginStory ||
+              isPhotoLightboxOpen ||
+              isCaseFileLightboxOpen ||
+              isKeepsakeModalOpen
+            }
+          />
+        </Suspense>
+      )}
 
       {isKeepsakeModalOpen && (
         <Suspense fallback={null}>

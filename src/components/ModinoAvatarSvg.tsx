@@ -143,7 +143,16 @@ export function ModinoAvatarSvg({ mood, tapRippleKey, paused = false }: ModinoAv
         </linearGradient>
       </defs>
 
-      {/* Layer 10: Subtle tap ripple ring behind Modino */}
+      {/* Layer 10: Subtle tap ripple ring & soft warm mood aura behind Modino */}
+      {(isKiss || isShy || isHappy || isGreeting) && !paused && (
+        <circle
+          cx="60"
+          cy="68"
+          r="38"
+          fill="rgba(249, 194, 214, 0.2)"
+          className="transition-opacity duration-300"
+        />
+      )}
       {tapRippleKey > 0 && !paused && (
         <circle
           key={tapRippleKey}
