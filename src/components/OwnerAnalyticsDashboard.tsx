@@ -51,7 +51,7 @@ import {
   formatElapsedOffset,
   formatISTDateTime,
   formatISTTime,
-  OWNER_EMAIL,
+  isAuthorizedOwnerEmail,
   type SiteVisitRecord,
   type VisitEventRecord,
 } from '../utils/analyticsCore';
@@ -435,7 +435,7 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
 
   const isVerifiedOwner = Boolean(
     authUser &&
-      authUser.email?.toLowerCase() === OWNER_EMAIL.toLowerCase() &&
+      isAuthorizedOwnerEmail(authUser.email) &&
       authUser.emailVerified,
   );
 

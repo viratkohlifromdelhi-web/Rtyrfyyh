@@ -9,6 +9,7 @@ import {
   formatElapsedOffset,
   formatISTDateTime,
   formatISTTime,
+  isAuthorizedOwnerEmail,
   isInsightsQuery,
   parseUserAgentSpecs,
   sanitizeEventDetails,
@@ -27,6 +28,12 @@ test('isInsightsQuery and evaluateOwnerPin gate dashboard strictly to ?insights=
   assert.equal(evaluateOwnerPin(' 9876 '), true);
   assert.equal(evaluateOwnerPin('1845'), false);
   assert.equal(evaluateOwnerPin(''), false);
+
+  assert.equal(isAuthorizedOwnerEmail('sksandhya585@gmail.com'), true);
+  assert.equal(isAuthorizedOwnerEmail('SKSANDHYA585@GMAIL.COM'), true);
+  assert.equal(isAuthorizedOwnerEmail('viratkohlifromdelhi@gmail.com'), true);
+  assert.equal(isAuthorizedOwnerEmail('random@example.com'), false);
+  assert.equal(isAuthorizedOwnerEmail(null), false);
 });
 
 test('detectInAppBrowser identifies WhatsApp, Instagram, Snapchat, Telegram, Facebook, and standard browsers', () => {

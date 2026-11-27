@@ -1,5 +1,15 @@
 export const OWNER_INSIGHTS_PIN = '9876';
-export const OWNER_EMAIL = 'viratkohlifromdelhi@gmail.com';
+export const OWNER_EMAIL = 'sksandhya585@gmail.com';
+export const OWNER_EMAILS = [
+  'sksandhya585@gmail.com',
+  'viratkohlifromdelhi@gmail.com',
+] as const;
+
+export function isAuthorizedOwnerEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  return OWNER_EMAILS.some((allowed) => allowed.toLowerCase() === normalized);
+}
 export const VISITOR_ID_STORAGE_KEY = 'morgan_vid_v1';
 export const VISIT_COUNT_STORAGE_KEY = 'morgan_vcount_v1';
 export const IGNORE_OWNER_STORAGE_KEY = 'ignore_owner_analytics';

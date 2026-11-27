@@ -1,7 +1,7 @@
 # Security Specification — Visitor Telemetry & Owner Analytics
 
 ## 1. Data Invariants
-1. **PII Isolation**: `site_visits/{sessionId}` contains visitor IP address, approximate coordinates, city/region/postal, ISP, and device specs. Only the verified owner (`request.auth.token.email == 'viratkohlifromdelhi@gmail.com' && request.auth.token.email_verified == true`) may `get`, `list`, or `delete` any `site_visits` or `events` document.
+1. **PII Isolation**: `site_visits/{sessionId}` contains visitor IP address, approximate coordinates, city/region/postal, ISP, and device specs. Only verified site owners (`request.auth.token.email in ['sksandhya585@gmail.com', 'viratkohlifromdelhi@gmail.com'] && request.auth.token.email_verified == true`) may `get`, `list`, or `delete` any `site_visits` or `events` document.
 2. **Write-Only Telemetry**: Unauthenticated birthday site visitors may create a single session document matching `sessionId`, perform strictly allowlisted action-based updates (`heartbeat`, `geoEnrichment`, `batteryOrOrientation`) without mutating immutable identity/timestamp fields (`sessionId`, `visitorId`, `openedAt`, `openedAtMs`), and append `events` under an existing parent `site_visits/{sessionId}` document.
 3. **Immutable Audit Trail**: Documents in `site_visits/{sessionId}/events/{eventId}` are strictly append-only (`update` and `delete` denied for everyone).
 4. **Temporal & Volumetric Integrity**: `openedAt` and `eventTime` MUST equal `request.time`. Every string field is bounded with explicit `.size()` limits matching `firebase-blueprint.json`, and every document ID is validated with `isValidId()`.
