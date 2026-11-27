@@ -6,8 +6,12 @@
 
 export const VAULT_STORAGE_KEY = 'morgan_infinity_vault_v1';
 export const SUMMARY_CONSUMED_KEY = 'morgan_summary_consumed_v1';
+export const VAULT_CUSTOM_CODE_STORAGE_KEY = 'infinity_vault_custom_code_v1';
 export const VAULT_UNLOCK_CODE = '1845';
 export const VAULT_RESET_CODE = '9876';
+export const VAULT_OWNER_EDIT_CODE = '1507';
+export const VAULT_CUSTOM_CODE_MIN_LEN = 16;
+export const VAULT_CUSTOM_CODE_MAX_LEN = 20;
 export const RIGGED_GIFT_VALUE = 250;
 export const RIGGED_GIFT_DISPLAY = '₹250';
 export const CLAIMED_DATE_LABEL = '3 Dec';
@@ -125,7 +129,7 @@ export interface OneTimeSummaryGiftData {
   stoneGlow: string;
 }
 
-export type PasscodeResolution = 'unlock' | 'alreadyClaimed' | 'reset' | 'wrong';
+export type PasscodeResolution = 'unlock' | 'alreadyClaimed' | 'reset' | 'ownerEdit' | 'wrong';
 
 export interface DustParticle {
   x: number;
@@ -158,6 +162,7 @@ export function clampVaultDt(dtMs: number): number {
 /**
  * Evaluates a 4-digit passcode against the vault rules:
  * - '9876' ALWAYS resets the vault (even if already claimed).
+ * - '1507' ALWAYS opens the discreet Owner Gift Code Editor.
  * - '1845' unlocks if unclaimed, or routes to 'alreadyClaimed' if already claimed.
  * - Any other code returns 'wrong'.
  */
@@ -169,10 +174,93 @@ export function evaluateVaultPasscode(
   if (normalized === VAULT_RESET_CODE) {
     return 'reset';
   }
+  if (normalized === VAULT_OWNER_EDIT_CODE) {
+    return 'ownerEdit';
+  }
   if (normalized === VAULT_UNLOCK_CODE) {
     return existingClaim?.claimed ? 'alreadyClaimed' : 'unlock';
   }
   return 'wrong';
+}
+
+/**
+ * Normalizes owner-entered real gift card codes: uppercase + whitespace stripped.
+ */
+export function sanitizeVaultGiftCode(raw: string): string {
+  return raw.toUpperCase().replace(/\s+/g, '');
+}
+
+/**
+ * Strict validator for real gift card codes: 16 to 20 uppercase alphanumeric characters (A-Z, 0-9).
+ */
+export function isValidVaultGiftCode(raw: string): boolean {
+  const clean = sanitizeVaultGiftCode(raw);
+  return /^[A-Z0-9]{16,20}$/.test(clean);
+}
+
+/**
+ * Formats a real 16-20 char alphanumeric code into clean 4-character space-separated groups
+ * (e.g. "ABCD EFGH IJKL MNOP") with ZERO dashes.
+ * For legacy 12-digit placeholder codes, preserves clean middle-dot grouping with zero dashes.
+ */
+export function formatVaultGiftCodeDisplay(raw: string): string {
+  const clean = sanitizeVaultGiftCode(raw);
+  if (/^[A-Z0-9]{16,20}$/.test(clean)) {
+    const groups: string[] = [];
+    for (let i = 0; i < clean.length; i += 4) {
+      groups.push(clean.slice(i, i + 4));
+    }
+    return groups.join(' ');
+  }
+  return raw.replace(/\s*[-–—]\s*/g, ' · ').trim();
+}
+
+/**
+ * Returns the exact raw string copied to the clipboard:
+ * - For real 16-20 char alphanumeric codes: exact raw uppercase alphanumeric string (zero spaces/dashes).
+ * - For 12-digit placeholder codes: clean formatted code.
+ */
+export function getRawCopyableVaultCode(raw: string): string {
+  const clean = sanitizeVaultGiftCode(raw);
+  if (/^[A-Z0-9]{16,20}$/.test(clean)) {
+    return clean;
+  }
+  return raw.replace(/\s*[-–—]\s*/g, ' · ').trim();
+}
+
+export function readLocalCustomVaultCode(storage?: StorageLike | null): string | null {
+  const store = storage ?? (typeof window !== 'undefined' ? window.localStorage : null);
+  if (!store) return null;
+  try {
+    const raw = store.getItem(VAULT_CUSTOM_CODE_STORAGE_KEY);
+    if (!raw) return null;
+    const clean = sanitizeVaultGiftCode(raw);
+    return isValidVaultGiftCode(clean) ? clean : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeLocalCustomVaultCode(
+  code: string | null,
+  storage?: StorageLike | null,
+): void {
+  const store = storage ?? (typeof window !== 'undefined' ? window.localStorage : null);
+  if (!store) return;
+  try {
+    if (!code) {
+      store.removeItem(VAULT_CUSTOM_CODE_STORAGE_KEY);
+      return;
+    }
+    const clean = sanitizeVaultGiftCode(code);
+    if (isValidVaultGiftCode(clean)) {
+      store.setItem(VAULT_CUSTOM_CODE_STORAGE_KEY, clean);
+    } else {
+      store.removeItem(VAULT_CUSTOM_CODE_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage quota / private mode restrictions
+  }
 }
 
 /**
@@ -189,7 +277,7 @@ export function getStoneById(stoneId: InfinityStoneId): InfinityStoneSpec {
 
 /**
  * Generates a realistic 12-digit gift card code formatted in 3 groups of 4 digits
- * (e.g. "4829 - 7104 - 9362").
+ * (e.g. "4829 · 7104 · 9362").
  */
 export function generateGiftCardCode(rng: () => number = Math.random): string {
   const groups: string[] = [];

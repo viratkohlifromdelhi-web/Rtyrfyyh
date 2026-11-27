@@ -8,6 +8,8 @@ import {
   ORBIT_STOP_DURATION_SEC,
   PRIZE_POOL_TIERS,
   RIGGED_GIFT_DISPLAY,
+  VAULT_CUSTOM_CODE_MAX_LEN,
+  VAULT_CUSTOM_CODE_MIN_LEN,
   clearSummaryConsumed,
   clearVaultClaim,
   clampVaultDt,
@@ -15,10 +17,15 @@ import {
   computeStoppingAngularVelocity,
   consumeOneTimeSummary,
   evaluateVaultPasscode,
+  formatVaultGiftCodeDisplay,
   generateGiftCardCode,
+  getRawCopyableVaultCode,
   getStoneById,
+  isValidVaultGiftCode,
+  readLocalCustomVaultCode,
   readVaultClaim,
   resolveVaultRewardValue,
+  sanitizeVaultGiftCode,
   spawnStoneDustParticles,
   stepDustParticles,
   writeVaultClaim,
@@ -27,6 +34,11 @@ import {
   type OneTimeSummaryGiftData,
   type VaultClaimRecord,
 } from '../utils/infinityVault';
+import {
+  fetchGiftVaultConfig,
+  restoreFakeGiftVaultCode,
+  saveRealGiftVaultCode,
+} from '../utils/giftVaultConfig';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import { emitModinoEvent } from '../utils/modinoBus';
@@ -112,6 +124,33 @@ export function InfinityVaultSection({
   const [modalDigits, setModalDigits] = useState('');
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalShakeCount, setModalShakeCount] = useState(0);
+
+  // Secret 1507 Owner Real Gift Card Editor state (Firestore site_config/gift_vault + localStorage)
+  const [customRealCode, setCustomRealCode] = useState<string | null>(() =>
+    readLocalCustomVaultCode(),
+  );
+  const [ownerEditorOpen, setOwnerEditorOpen] = useState(false);
+  const [ownerDraftCode, setOwnerDraftCode] = useState('');
+  const [ownerSaving, setOwnerSaving] = useState(false);
+  const [ownerStatusMsg, setOwnerStatusMsg] = useState<string | null>(null);
+  const [ownerStatusKind, setOwnerStatusKind] = useState<'idle' | 'success' | 'error'>('idle');
+  const customRealCodeRef = useRef<string | null>(customRealCode);
+
+  useEffect(() => {
+    customRealCodeRef.current = customRealCode;
+  }, [customRealCode]);
+
+  // Non-blockingly fetch live gift_vault real code config from Firestore on mount
+  useEffect(() => {
+    let cancelled = false;
+    void fetchGiftVaultConfig().then((cfg) => {
+      if (cancelled) return;
+      setCustomRealCode(cfg.isRealCode && cfg.code ? cfg.code : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const setVaultPhase = useCallback((next: VaultPhase) => {
     phaseRef.current = next;
@@ -422,6 +461,89 @@ export function InfinityVaultSection({
     }, 1500);
   }, [clearAllTimers, onVaultReset, scheduleTimer, setVaultPhase, stopDustLoop, stopOrbitLoop]);
 
+  const openOwnerCodeEditor = useCallback(() => {
+    try {
+      soundEngine.playBubbleClick(1.08);
+    } catch {
+      // silent
+    }
+    try {
+      haptics.tap();
+    } catch {
+      // silent
+    }
+    setCodeDigits('');
+    setCodeError(null);
+    setModalDigits('');
+    setModalError(null);
+    setResetModalOpen(false);
+    setOwnerDraftCode(customRealCodeRef.current ?? '');
+    setOwnerStatusMsg(null);
+    setOwnerStatusKind('idle');
+    setOwnerEditorOpen(true);
+  }, []);
+
+  const handleSaveRealGiftCode = useCallback(async () => {
+    if (ownerSaving) return;
+    const clean = sanitizeVaultGiftCode(ownerDraftCode);
+    if (!isValidVaultGiftCode(clean)) {
+      try {
+        haptics.error();
+      } catch {
+        // silent
+      }
+      setOwnerStatusKind('error');
+      setOwnerStatusMsg('Enter 16 to 20 letters A to Z or numbers 0 to 9');
+      return;
+    }
+
+    setOwnerSaving(true);
+    setOwnerStatusMsg(null);
+    try {
+      const result = await saveRealGiftVaultCode(clean);
+      if (result.ok && result.code) {
+        setCustomRealCode(result.code);
+        setOwnerDraftCode(result.code);
+        setOwnerStatusKind('success');
+        setOwnerStatusMsg(
+          result.syncedToCloud ? 'Real code synced live' : 'Saved locally on this device',
+        );
+        try {
+          haptics.success();
+          soundEngine.playBubbleClick(1.14);
+        } catch {
+          // silent
+        }
+      } else {
+        setOwnerStatusKind('error');
+        setOwnerStatusMsg('Enter 16 to 20 letters A to Z or numbers 0 to 9');
+      }
+    } finally {
+      setOwnerSaving(false);
+    }
+  }, [ownerDraftCode, ownerSaving]);
+
+  const handleRestoreFakeGiftCode = useCallback(async () => {
+    if (ownerSaving) return;
+    setOwnerSaving(true);
+    setOwnerStatusMsg(null);
+    try {
+      await restoreFakeGiftVaultCode();
+      setCustomRealCode(null);
+      setOwnerDraftCode('');
+      setOwnerStatusKind('success');
+      setOwnerStatusMsg('Restored default 12 digit placeholder code');
+      try {
+        haptics.tap();
+        soundEngine.playBubbleClick(0.96);
+      } catch {
+        // silent
+      }
+    } finally {
+      setOwnerSaving(false);
+    }
+  }, [ownerSaving]);
+
   // Evaluate 4-digit code on the main locked keypad
   const submitMainCode = useCallback(
     (fourDigits: string) => {
@@ -435,7 +557,9 @@ export function InfinityVaultSection({
             ? 'already_claimed'
             : resolution === 'reset'
               ? 'reset'
-              : 'wrong';
+              : resolution === 'ownerEdit'
+                ? 'owner_editor'
+                : 'wrong';
       trackEvent('vault_passcode_attempt', 'Infinity Vault Keypad', {
         codeEntered: fourDigits,
         result: trackedResult,
@@ -443,6 +567,11 @@ export function InfinityVaultSection({
 
       if (resolution === 'reset') {
         executeSecretReset();
+        return;
+      }
+
+      if (resolution === 'ownerEdit') {
+        openOwnerCodeEditor();
         return;
       }
 
@@ -486,7 +615,7 @@ export function InfinityVaultSection({
         setCodeDigits('');
       }, 360);
     },
-    [executeSecretReset, scheduleTimer, setVaultPhase],
+    [executeSecretReset, openOwnerCodeEditor, scheduleTimer, setVaultPhase],
   );
 
   // Append digit to main locked keypad
@@ -534,7 +663,9 @@ export function InfinityVaultSection({
             ? 'already_claimed'
             : resolution === 'reset'
               ? 'reset'
-              : 'wrong';
+              : resolution === 'ownerEdit'
+                ? 'owner_editor'
+                : 'wrong';
       trackEvent('vault_passcode_attempt', 'Infinity Vault Reset Modal', {
         codeEntered: fourDigits,
         result: trackedResult,
@@ -542,6 +673,11 @@ export function InfinityVaultSection({
 
       if (resolution === 'reset') {
         executeSecretReset();
+        return;
+      }
+
+      if (resolution === 'ownerEdit') {
+        openOwnerCodeEditor();
         return;
       }
 
@@ -570,7 +706,7 @@ export function InfinityVaultSection({
         setModalDigits('');
       }, 360);
     },
-    [executeSecretReset, scheduleTimer, setVaultPhase],
+    [executeSecretReset, openOwnerCodeEditor, scheduleTimer, setVaultPhase],
   );
 
   const handleModalDigitInput = useCallback(
@@ -708,7 +844,11 @@ export function InfinityVaultSection({
         // Strict rigged outcome: resolveVaultRewardValue always yields ₹250
         const rewardValue = resolveVaultRewardValue(chosenStone.id);
         void rewardValue;
-        const generatedCode = generateGiftCardCode();
+        const activeCustomCode = customRealCodeRef.current;
+        const generatedCode =
+          activeCustomCode && isValidVaultGiftCode(activeCustomCode)
+            ? activeCustomCode
+            : generateGiftCardCode();
         const nextRecord: VaultClaimRecord = {
           claimed: true,
           code: generatedCode,
@@ -733,7 +873,7 @@ export function InfinityVaultSection({
           if (consumeOneTimeSummary()) {
             onFirstClaimUnlock?.({
               value: RIGGED_GIFT_DISPLAY,
-              code: nextRecord.code,
+              code: formatVaultGiftCodeDisplay(nextRecord.code),
               stoneId: chosenStone.id,
               stoneName: chosenStone.name,
               stoneColor: chosenStone.bodyStart,
@@ -767,42 +907,58 @@ export function InfinityVaultSection({
     ],
   );
 
-  // Copy 12-digit gift code cleanly with clipboard fallback
+  // Copy gift code cleanly (exact raw alphanumeric string for real codes) with in-app browser fallback
   const handleCopyCode = useCallback(() => {
-    const code = claimRecord?.code;
-    if (!code) return;
+    const activeRawSource =
+      customRealCode && isValidVaultGiftCode(customRealCode)
+        ? customRealCode
+        : claimRecord?.code;
+    if (!activeRawSource) return;
+
+    const codeToCopy = getRawCopyableVaultCode(activeRawSource);
     trackEvent('vault_code_copied', 'Infinity Vault Copy Code Button');
-    soundEngine.playBubbleClick(1.1);
+    try {
+      soundEngine.playBubbleClick(1.1);
+      haptics.tap();
+    } catch {
+      // silent
+    }
 
     const markCopied = () => {
       setCopied(true);
       scheduleTimer(() => setCopied(false), 2000);
     };
 
-    if (navigator.clipboard?.writeText) {
-      void navigator.clipboard
-        .writeText(code)
-        .then(markCopied)
-        .catch(() => {
-          try {
-            const ta = document.createElement('textarea');
-            ta.value = code;
-            ta.setAttribute('readonly', '');
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            ta.remove();
-            markCopied();
-          } catch {
-            markCopied();
-          }
-        });
-    } else {
+    const copyViaTextareaFallback = () => {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = codeToCopy;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '0';
+        ta.style.left = '0';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, codeToCopy.length);
+        document.execCommand('copy');
+        ta.remove();
+      } catch {
+        // ignore fallback restrictions
+      }
       markCopied();
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      void navigator.clipboard
+        .writeText(codeToCopy)
+        .then(markCopied)
+        .catch(copyViaTextareaFallback);
+    } else {
+      copyViaTextareaFallback();
     }
-  }, [claimRecord?.code, scheduleTimer]);
+  }, [claimRecord?.code, customRealCode, scheduleTimer]);
 
   const handleMainKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
@@ -819,14 +975,23 @@ export function InfinityVaultSection({
 
   const activeStone = getStoneById(claimRecord?.stoneId ?? pickedStoneId ?? 'reality');
   const isOrbitStageMounted =
-    phase === 'orbiting' ||
-    phase === 'stopping' ||
-    phase === 'picking' ||
-    phase === 'revealing' ||
-    phase === 'dusting';
+    !ownerEditorOpen &&
+    (phase === 'orbiting' ||
+      phase === 'stopping' ||
+      phase === 'picking' ||
+      phase === 'revealing' ||
+      phase === 'dusting');
 
-  const showRewardCard = phase === 'claimed' || phase === 'alreadyClaimed';
-  const formattedVoucherCode = claimRecord ? claimRecord.code.replace(/\s*-\s*/g, ' · ') : '';
+  const showRewardCard = !ownerEditorOpen && (phase === 'claimed' || phase === 'alreadyClaimed');
+  const activeVoucherSource =
+    customRealCode && isValidVaultGiftCode(customRealCode)
+      ? customRealCode
+      : (claimRecord?.code ?? '');
+  const formattedVoucherCode = activeVoucherSource
+    ? formatVaultGiftCodeDisplay(activeVoucherSource)
+    : '';
+  const cleanOwnerDraft = sanitizeVaultGiftCode(ownerDraftCode);
+  const isOwnerDraftValid = isValidVaultGiftCode(cleanOwnerDraft);
 
   return (
     <section
@@ -919,9 +1084,175 @@ export function InfinityVaultSection({
             />
 
             {/* =========================================================================
+                0. SECRET 1507 OWNER GIFT CODE EDITOR (Pastel Ivory & Rose-Berry Stationery)
+                ========================================================================= */}
+            {ownerEditorOpen && (
+              <div
+                data-testid="vault-owner-editor"
+                className="relative z-30 w-full max-w-[404px] rounded-[22px] border border-[#EED0DF] bg-[#FFFDF8] p-5 text-left text-[#3A1233] shadow-[0_24px_54px_-22px_rgba(22,16,23,0.55)] sm:p-7"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10.5px] font-semibold uppercase tracking-[0.18em] text-[#C43D6E]">
+                      OWNER MODE
+                    </p>
+                    <h3 className="font-display mt-1 text-2xl font-semibold tracking-tight text-[#3A1233]">
+                      Vault Code Override
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    data-testid="vault-owner-close-btn"
+                    aria-label="Close owner gift code editor"
+                    onClick={() => {
+                      try {
+                        haptics.tap();
+                      } catch {
+                        // silent
+                      }
+                      setOwnerEditorOpen(false);
+                    }}
+                    className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#EED0DF] bg-[#FFF4F8] text-[#7A4A63] transition-colors hover:bg-[#FCE6F0] hover:text-[#3A1233]"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+
+                <p className="mt-2 text-xs leading-relaxed text-[#6B3B64]">
+                  Replace the 12 digit placeholder with a real 16 to 20 character alphanumeric gift
+                  card code synced live across devices.
+                </p>
+
+                <div className="mt-3.5 rounded-2xl border border-[#F2D8E4] bg-[#FFF6FA] px-3.5 py-2.5 text-xs">
+                  <span className="font-semibold text-[#3A1233]">Current status: </span>
+                  <span data-testid="vault-owner-active-status" className="text-[#7A4A63]">
+                    {customRealCode
+                      ? `Real code active (${formatVaultGiftCodeDisplay(customRealCode)})`
+                      : 'Using default 12 digit placeholder code'}
+                  </span>
+                </div>
+
+                <label
+                  htmlFor="vault-owner-code-field"
+                  className="mt-4 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8F5A6E]"
+                >
+                  Real Gift Card Code
+                </label>
+                <input
+                  id="vault-owner-code-field"
+                  type="text"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  maxLength={24}
+                  placeholder="ABCD EFGH IJKL MNOP"
+                  data-testid="vault-owner-code-input"
+                  value={ownerDraftCode}
+                  onChange={(e) => {
+                    const upper = e.target.value.toUpperCase().replace(/[^A-Z0-9\s]/g, '');
+                    setOwnerDraftCode(upper);
+                    setOwnerStatusMsg(null);
+                    setOwnerStatusKind('idle');
+                  }}
+                  className="mt-1.5 w-full rounded-2xl border border-[#E6C1D4] bg-[#FFFFFF] px-4 py-3 font-mono text-sm font-semibold tracking-[0.12em] text-[#3A1233] uppercase outline-none transition-colors placeholder:text-[#B58FA3] focus:border-[#D94B7D] focus:ring-2 focus:ring-[#D94B7D]/20"
+                />
+
+                <div className="mt-2 flex items-center justify-between gap-2 text-[11.5px]">
+                  <span
+                    data-testid="vault-owner-char-counter"
+                    className={`font-semibold tabular-nums ${
+                      isOwnerDraftValid ? 'text-[#217A54]' : 'text-[#8F5A6E]'
+                    }`}
+                  >
+                    {cleanOwnerDraft.length} / {VAULT_CUSTOM_CODE_MIN_LEN} to{' '}
+                    {VAULT_CUSTOM_CODE_MAX_LEN} chars
+                  </span>
+                  <span className="text-[#7A4A63]">
+                    {isOwnerDraftValid
+                      ? 'Ready to sync live'
+                      : 'Letters A to Z and numbers 0 to 9 only'}
+                  </span>
+                </div>
+
+                {isOwnerDraftValid && (
+                  <div className="mt-2.5 rounded-xl border border-[#E7D8B6] bg-[#FFFDF4] px-3.5 py-2 text-center">
+                    <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9A722A]">
+                      Voucher Display Preview
+                    </span>
+                    <span
+                      data-testid="vault-owner-preview"
+                      className="mt-0.5 block font-mono text-sm font-semibold tracking-[0.14em] text-[#3A1233]"
+                    >
+                      {formatVaultGiftCodeDisplay(cleanOwnerDraft)}
+                    </span>
+                  </div>
+                )}
+
+                {ownerStatusMsg && (
+                  <p
+                    role="status"
+                    data-testid="vault-owner-status-msg"
+                    className={`mt-3 rounded-xl px-3.5 py-2 text-center text-xs font-semibold ${
+                      ownerStatusKind === 'error'
+                        ? 'border border-[#F2C3D1] bg-[#FFF1F5] text-[#B52B5A]'
+                        : 'border border-[#C9E9D9] bg-[#F2FCF7] text-[#1D6B4A]'
+                    }`}
+                  >
+                    {ownerStatusMsg}
+                  </p>
+                )}
+
+                <div className="mt-4 flex flex-col gap-2.5">
+                  <button
+                    type="button"
+                    data-testid="vault-owner-save-btn"
+                    disabled={ownerSaving || !isOwnerDraftValid}
+                    onClick={() => void handleSaveRealGiftCode()}
+                    className={`btn-rose-berry inline-flex min-h-[44px] w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold transition-all ${
+                      ownerSaving || !isOwnerDraftValid
+                        ? 'cursor-not-allowed opacity-55'
+                        : 'cursor-pointer'
+                    }`}
+                  >
+                    {ownerSaving ? 'Syncing...' : 'Save Real Gift Code'}
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      data-testid="vault-owner-restore-btn"
+                      disabled={ownerSaving}
+                      onClick={() => void handleRestoreFakeGiftCode()}
+                      className="inline-flex min-h-[40px] flex-1 cursor-pointer items-center justify-center rounded-full border border-[#E8CAD8] bg-[#FFF6FA] px-4 py-2 text-xs font-semibold text-[#5E2E57] transition-colors hover:bg-[#FCEAF2] active:scale-[0.98]"
+                    >
+                      Restore Fake 12 Digit Code
+                    </button>
+
+                    <button
+                      type="button"
+                      data-testid="vault-owner-done-btn"
+                      onClick={() => {
+                        try {
+                          haptics.tap();
+                        } catch {
+                          // silent
+                        }
+                        setOwnerEditorOpen(false);
+                      }}
+                      className="inline-flex min-h-[40px] shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#E8CAD8] bg-[#FFFFFF] px-4 py-2 text-xs font-semibold text-[#3A1233] transition-colors hover:bg-[#FFF4F8] active:scale-[0.98]"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* =========================================================================
                 1. LOCKED PASSCODE SCREEN — Luxury Vault Dial (Zero Rainbow Blobs)
                 ========================================================================= */}
-            {phase === 'locked' && (
+            {!ownerEditorOpen && phase === 'locked' && (
               <div
                 data-testid="vault-lock-overlay"
                 className="relative z-20 flex w-full flex-col items-center justify-center py-2"

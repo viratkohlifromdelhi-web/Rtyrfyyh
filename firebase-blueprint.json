@@ -258,6 +258,34 @@
         "elementName",
         "details"
       ]
+    },
+    "GiftVaultConfig": {
+      "title": "GiftVaultConfig",
+      "description": "Live real gift card override document stored at site_config/gift_vault for the Infinity Gift Vault.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "maxLength": 20,
+          "pattern": "^([A-Z0-9]{16,20}|)$"
+        },
+        "isRealCode": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAtMs": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "code",
+        "isRealCode",
+        "updatedAt",
+        "updatedAtMs"
+      ]
     }
   },
   "firestore": {
@@ -272,6 +300,12 @@
         "$ref": "#/entities/VisitEvent"
       },
       "description": "Append-only chronological interaction timeline per visit session. Create-only for visitors when parent session exists; read/list strictly restricted to the verified site owner."
+    },
+    "/site_config/{docId}": {
+      "schema": {
+        "$ref": "#/entities/GiftVaultConfig"
+      },
+      "description": "Publicly readable gift_vault live code override configuration with strict schema validation and zero deletes."
     }
   }
 }

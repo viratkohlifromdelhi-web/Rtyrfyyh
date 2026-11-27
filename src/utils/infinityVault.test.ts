@@ -8,6 +8,8 @@ import {
   PRIZE_POOL_TIERS,
   RIGGED_GIFT_VALUE,
   SUMMARY_CONSUMED_KEY,
+  VAULT_CUSTOM_CODE_STORAGE_KEY,
+  VAULT_OWNER_EDIT_CODE,
   VAULT_RESET_CODE,
   VAULT_STORAGE_KEY,
   VAULT_UNLOCK_CODE,
@@ -18,12 +20,18 @@ import {
   computeStoppingAngularVelocity,
   consumeOneTimeSummary,
   evaluateVaultPasscode,
+  formatVaultGiftCodeDisplay,
   generateGiftCardCode,
+  getRawCopyableVaultCode,
   isSummaryConsumed,
+  isValidVaultGiftCode,
+  readLocalCustomVaultCode,
   readVaultClaim,
   resolveVaultRewardValue,
+  sanitizeVaultGiftCode,
   spawnStoneDustParticles,
   stepDustParticles,
+  writeLocalCustomVaultCode,
   writeVaultClaim,
   type StorageLike,
   type VaultClaimRecord,
@@ -84,13 +92,14 @@ test('strict rigged outcome always resolves to ₹250 for every Infinity Stone',
   }
 });
 
-test('passcode gate enforces 1845 unlock/alreadyClaimed, 9876 universal reset, and wrong code rejection', () => {
+test('passcode gate enforces 1845 unlock/alreadyClaimed, 9876 universal reset, 1507 owner editor, and wrong code rejection', () => {
   assert.equal(VAULT_UNLOCK_CODE, '1845');
   assert.equal(VAULT_RESET_CODE, '9876');
+  assert.equal(VAULT_OWNER_EDIT_CODE, '1507');
 
   const claimedRecord: VaultClaimRecord = {
     claimed: true,
-    code: '4829 - 7104 - 9362',
+    code: '4829 · 7104 · 9362',
     stoneName: 'Reality Stone',
     stoneId: 'reality',
     claimedOn: CLAIMED_DATE_LABEL,
@@ -99,13 +108,38 @@ test('passcode gate enforces 1845 unlock/alreadyClaimed, 9876 universal reset, a
   // Unclaimed state
   assert.equal(evaluateVaultPasscode('1845', null), 'unlock');
   assert.equal(evaluateVaultPasscode('9876', null), 'reset');
+  assert.equal(evaluateVaultPasscode('1507', null), 'ownerEdit');
   assert.equal(evaluateVaultPasscode('0000', null), 'wrong');
   assert.equal(evaluateVaultPasscode('1234', null), 'wrong');
 
   // Claimed state (including after reload on 3rd Dec)
   assert.equal(evaluateVaultPasscode('1845', claimedRecord), 'alreadyClaimed');
   assert.equal(evaluateVaultPasscode('9876', claimedRecord), 'reset');
+  assert.equal(evaluateVaultPasscode('1507', claimedRecord), 'ownerEdit');
   assert.equal(evaluateVaultPasscode('5555', claimedRecord), 'wrong');
+});
+
+test('owner real gift card code validation, 4-char space grouping (zero dashes), raw copy, and local cache', () => {
+  assert.equal(sanitizeVaultGiftCode(' abcd efgh 1234 5678 '), 'ABCDEFGH12345678');
+  assert.equal(isValidVaultGiftCode('ABCDEFGH12345678'), true); // 16 chars
+  assert.equal(isValidVaultGiftCode('ab12 cd34 ef56 gh78 ij90'), true); // 20 chars
+  assert.equal(isValidVaultGiftCode('SHORT1234567890'), false); // 15 chars
+  assert.equal(isValidVaultGiftCode('TOOLONG12345678901234'), false); // 21 chars
+  assert.equal(isValidVaultGiftCode('ABCD-EFGH-IJKL-MNOP'), false); // dashes rejected
+
+  assert.equal(formatVaultGiftCodeDisplay('abcdefgh12345678'), 'ABCD EFGH 1234 5678');
+  assert.equal(formatVaultGiftCodeDisplay('ABCD1234EFGH5678IJ90'), 'ABCD 1234 EFGH 5678 IJ90');
+  assert.equal(formatVaultGiftCodeDisplay('ABCD1234EFGH5678').includes('-'), false);
+  assert.equal(getRawCopyableVaultCode('abcd efgh 1234 5678'), 'ABCDEFGH12345678');
+
+  const storage = createMemoryStorage();
+  assert.equal(readLocalCustomVaultCode(storage), null);
+  writeLocalCustomVaultCode('abcd efgh ijkl mnop', storage);
+  assert.equal(storage.getItem(VAULT_CUSTOM_CODE_STORAGE_KEY), 'ABCDEFGHIJKLMNOP');
+  assert.equal(readLocalCustomVaultCode(storage), 'ABCDEFGHIJKLMNOP');
+
+  writeLocalCustomVaultCode(null, storage);
+  assert.equal(readLocalCustomVaultCode(storage), null);
 });
 
 test('generateGiftCardCode creates 12-digit code formatted as XXXX · XXXX · XXXX', () => {

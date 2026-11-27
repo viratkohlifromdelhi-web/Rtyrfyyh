@@ -4,16 +4,18 @@ import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
 import { emitModinoEvent } from '../utils/modinoBus';
 import { bgMusicPlayer } from '../utils/musicSynth';
+import { playUiSfx } from '../utils/uiSoundEngine';
 import { useInViewAnimation } from '../utils/useInViewAnimation';
 import { WheelAudioEngine } from '../utils/wheelAudio';
 import {
+  applyCrawlPegBend,
   applyFlapperImpulse,
   computeRiggedSpinPlan,
   evaluateWheelAngle,
   getPegCrossingIndex,
   getSliceIndexAtTop,
   SLICE_ANGLE_DEG,
-  SPIN_TOTAL_DURATION_MS,
+  SPIN_RECOIL_DURATION_MS,
   stepFlapperSpring,
   WHEEL_SLICES,
   type FlapperSpringState,
@@ -135,7 +137,7 @@ export function SpinWheelSection() {
   useEffect(() => {
     audioRef.current = new WheelAudioEngine();
     if (wheelDiscRef.current) {
-      wheelDiscRef.current.style.transform = `rotate(${currentAngleRef.current}deg)`;
+      wheelDiscRef.current.style.transform = `rotate3d(0, 0, 1, ${currentAngleRef.current}deg)`;
     }
     return () => {
       if (rafIdRef.current !== null) {
@@ -188,6 +190,7 @@ export function SpinWheelSection() {
     setIsSpinning(true);
     setBulbMode('spinning');
 
+    const totalDurationMs = plan.totalDurationMs;
     const startTime = performance.now();
     let lastFrameTime = startTime;
     let prevAngle = plan.startAngleDeg;
@@ -205,22 +208,36 @@ export function SpinWheelSection() {
 
       // Detect every peg crossing under 12 o'clock in real time
       const currentPegIdx = getPegCrossingIndex(angle);
-      if (currentPegIdx > lastPegIdx && elapsed < SPIN_TOTAL_DURATION_MS - 320) {
+      if (currentPegIdx > lastPegIdx && elapsed < totalDurationMs - SPIN_RECOIL_DURATION_MS + 20) {
         lastPegIdx = currentPegIdx;
         flapperStateRef.current = applyFlapperImpulse(flapperStateRef.current, wheelSpeed);
-        audioRef.current?.playPegTick(speedNorm);
-        haptics.wheelPegTick();
+        try {
+          const playedUiTick = playUiSfx('wheel_tick');
+          if (!playedUiTick) {
+            audioRef.current?.playPegTick(speedNorm);
+          }
+        } catch {
+          // silent
+        }
+        try {
+          haptics.wheelPegTick();
+        } catch {
+          // silent
+        }
+      } else if (elapsed < plan.decelDurationMs) {
+        // Physical peg-contact bend down to -34° during the slow suspense crawl
+        flapperStateRef.current = applyCrawlPegBend(flapperStateRef.current, angle, wheelSpeed);
       }
 
       // Step flapper damped spring physics on every frame
       flapperStateRef.current = stepFlapperSpring(flapperStateRef.current, dtSec);
 
-      // Apply transforms directly to DOM nodes for silky 60fps
+      // Apply GPU-composited transforms directly to DOM nodes for locked 60fps
       if (wheelDiscRef.current) {
-        wheelDiscRef.current.style.transform = `rotate(${angle.toFixed(3)}deg)`;
+        wheelDiscRef.current.style.transform = `rotate3d(0, 0, 1, ${angle.toFixed(3)}deg)`;
       }
       if (flapperRef.current) {
-        flapperRef.current.style.transform = `rotate(${flapperStateRef.current.angleDeg.toFixed(2)}deg)`;
+        flapperRef.current.style.transform = `rotate3d(0, 0, 1, ${flapperStateRef.current.angleDeg.toFixed(2)}deg)`;
       }
       if (wheelGlowRef.current) {
         const glowOpacity = speedNorm > 0.25 ? Math.min(0.85, speedNorm * 0.9) : 0;
@@ -230,7 +247,7 @@ export function SpinWheelSection() {
       currentAngleRef.current = angle;
       prevAngle = angle;
 
-      if (elapsed < SPIN_TOTAL_DURATION_MS) {
+      if (elapsed < totalDurationMs) {
         rafIdRef.current = window.requestAnimationFrame(tick);
         return;
       }
@@ -239,10 +256,10 @@ export function SpinWheelSection() {
       const settledAngle = plan.targetAngleDeg;
       currentAngleRef.current = settledAngle;
       if (wheelDiscRef.current) {
-        wheelDiscRef.current.style.transform = `rotate(${settledAngle.toFixed(3)}deg)`;
+        wheelDiscRef.current.style.transform = `rotate3d(0, 0, 1, ${settledAngle.toFixed(3)}deg)`;
       }
       if (flapperRef.current) {
-        flapperRef.current.style.transform = 'rotate(0deg)';
+        flapperRef.current.style.transform = 'rotate3d(0, 0, 1, 0deg)';
       }
       if (wheelGlowRef.current) {
         wheelGlowRef.current.style.opacity = '0';
@@ -255,7 +272,11 @@ export function SpinWheelSection() {
       lastTrollIndexRef.current = visualSliceIndex;
 
       audioRef.current?.playWompBoing();
-      haptics.wheelLand();
+      try {
+        haptics.celebrate();
+      } catch {
+        // silent
+      }
       emitModinoEvent('spin', { force: true });
       bgMusicPlayer.endWheelSpin();
       trackEvent('wheel_landed', 'Spin the Wheel Result', {

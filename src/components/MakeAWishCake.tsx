@@ -1,10 +1,25 @@
-import { useEffect, useId, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent,
+} from 'react';
 import {
   CANDLE_SPECS,
-  getBlowOutCompleteDelayMs,
   getRelightCompleteDelayMs,
   type CandleAnimPhase,
 } from '../utils/candleAnimation';
+import {
+  computeFlamePhysicsVisual,
+  computeRawBreathEnergy,
+  createInitialCakeBlowState,
+  stepCakeBlowPhysics,
+  type CakeBlowPhysicsState,
+} from '../utils/cakeBlowPhysics';
 import {
   blowOutCandles,
   createInitialCakeState,
@@ -22,7 +37,8 @@ interface MakeAWishCakeProps {
   onBlowOutConfetti: (originX?: number, originY?: number) => void;
 }
 
-const BLOW_OUT_COMPLETE_MS = getBlowOutCompleteDelayMs(CANDLE_SPECS);
+type BlowSessionMode = 'idle' | 'mic_requesting' | 'mic_listening' | 'hold_fallback';
+
 const RELIGHT_COMPLETE_MS = getRelightCompleteDelayMs(CANDLE_SPECS);
 
 function CandleFlameButtonSvg({ className = 'h-4 w-4' }: { className?: string }) {
@@ -133,49 +149,390 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
   const [cake, setCake] = useState(createInitialCakeState);
   const [animPhase, setAnimPhase] = useState<CandleAnimPhase>('lit');
   const [seqId, setSeqId] = useState(0);
+  const [blowMode, setBlowMode] = useState<BlowSessionMode>('idle');
+  const [isHoldingBlow, setIsHoldingBlow] = useState(false);
+  const [blowProgressPct, setBlowProgressPct] = useState(0);
+
   const timerRef = useRef<number | null>(null);
+  const blowRafRef = useRef<number | null>(null);
+  const blowStateRef = useRef<CakeBlowPhysicsState>(createInitialCakeBlowState());
+  const blowModeRef = useRef<BlowSessionMode>('idle');
+  const isHoldingRef = useRef<boolean>(false);
+  const blowStartTsRef = useRef<number>(0);
+  const blowLastFrameTsRef = useRef<number>(0);
+  const lastReportedPctRef = useRef<number>(0);
+  const confettiOriginRef = useRef<{ x?: number; y?: number }>({});
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
+  // Dedicated mic hardware refs (NEVER connected to destination)
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const micAudioCtxRef = useRef<AudioContext | null>(null);
+  const micAnalyserRef = useRef<AnalyserNode | null>(null);
+  const micTimeDomainRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+  const micFreqBinsRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
 
-  const clearPendingTimer = () => {
+  // Direct DOM refs for 60fps GPU flame physics & progress meter without per-frame React re-renders
+  const flamePhysicsRefs = useRef<(SVGGElement | null)[]>([]);
+  const flameSparkRefs = useRef<(SVGCircleElement | null)[]>([]);
+  const progressBarFillRef = useRef<HTMLDivElement | null>(null);
+
+  const clearPendingTimer = useCallback(() => {
     if (timerRef.current !== null) {
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-  };
+  }, []);
 
-  const handleBlowOut = (e: MouseEvent<HTMLButtonElement>) => {
-    if (animPhase === 'blowing' || !cake.candlesLit) return;
-    clearPendingTimer();
+  const resetFlameDomTransforms = useCallback(() => {
+    for (let i = 0; i < CANDLE_SPECS.length; i++) {
+      const g = flamePhysicsRefs.current[i];
+      if (g) {
+        g.style.transform = '';
+        g.style.opacity = '';
+      }
+      const spark = flameSparkRefs.current[i];
+      if (spark) {
+        spark.style.opacity = '0';
+      }
+    }
+    if (progressBarFillRef.current) {
+      progressBarFillRef.current.style.transform = 'scaleX(0)';
+    }
+  }, []);
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    soundEngine.playCakeBlowout();
-    haptics.cakeBlowout();
-    playUiSfx('awww_chime');
+  const releaseMicHardware = useCallback(() => {
+    if (micStreamRef.current) {
+      try {
+        micStreamRef.current.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch {
+            // silent
+          }
+        });
+      } catch {
+        // silent
+      }
+      micStreamRef.current = null;
+    }
+
+    if (micAudioCtxRef.current) {
+      const ctxToClose = micAudioCtxRef.current;
+      micAudioCtxRef.current = null;
+      try {
+        void ctxToClose.close().catch(() => {
+          // silent
+        });
+      } catch {
+        // silent
+      }
+    }
+
+    micAnalyserRef.current = null;
+    micTimeDomainRef.current = null;
+    micFreqBinsRef.current = null;
+  }, []);
+
+  const stopBlowLoop = useCallback(() => {
+    if (blowRafRef.current !== null) {
+      window.cancelAnimationFrame(blowRafRef.current);
+      blowRafRef.current = null;
+    }
+  }, []);
+
+  const cleanupBlowResources = useCallback(() => {
+    stopBlowLoop();
+    releaseMicHardware();
+    isHoldingRef.current = false;
+    setIsHoldingBlow(false);
+    blowModeRef.current = 'idle';
+    setBlowMode('idle');
+    blowStateRef.current = createInitialCakeBlowState();
+    lastReportedPctRef.current = 0;
+    setBlowProgressPct(0);
+    resetFlameDomTransforms();
+  }, [releaseMicHardware, resetFlameDomTransforms, stopBlowLoop]);
+
+  useEffect(() => {
+    return () => {
+      clearPendingTimer();
+      stopBlowLoop();
+      releaseMicHardware();
+    };
+  }, [clearPendingTimer, releaseMicHardware, stopBlowLoop]);
+
+  const completeCandleExtinguish = useCallback(() => {
+    // IMMEDIATELY release microphone hardware & stop physics loop
+    stopBlowLoop();
+    releaseMicHardware();
+    isHoldingRef.current = false;
+    setIsHoldingBlow(false);
+    blowModeRef.current = 'idle';
+    setBlowMode('idle');
+    blowStateRef.current = createInitialCakeBlowState();
+    lastReportedPctRef.current = 0;
+    setBlowProgressPct(0);
+    resetFlameDomTransforms();
+
+    try {
+      soundEngine.playCakeBlowout();
+    } catch {
+      // silent
+    }
+    try {
+      haptics.celebrate();
+    } catch {
+      // silent
+    }
+    try {
+      playUiSfx('awww_chime');
+    } catch {
+      // silent
+    }
     emitModinoEvent('cute', { force: true });
     bgMusicPlayer.triggerCelebrationSwell();
     trackEvent('cake_candles_blown', 'Make a Wish Cake');
-    setSeqId((s) => s + 1);
-    setAnimPhase('blowing');
-    onBlowOutConfetti(rect.left + rect.width / 2, rect.top);
 
-    // Flames lean right in a ~0.25s left-to-right wind gust, then vanish into glowing embers + curling smoke
-    timerRef.current = window.setTimeout(() => {
-      setCake((prev) => blowOutCandles(prev));
-      setAnimPhase('out');
-      timerRef.current = null;
-    }, BLOW_OUT_COMPLETE_MS);
+    setSeqId((s) => s + 1);
+    setCake((prev) => blowOutCandles(prev));
+    setAnimPhase('out');
+    onBlowOutConfetti(confettiOriginRef.current.x, confettiOriginRef.current.y);
+  }, [onBlowOutConfetti, releaseMicHardware, resetFlameDomTransforms, stopBlowLoop]);
+
+  const startBlowPhysicsLoop = useCallback(() => {
+    if (blowRafRef.current !== null) return;
+    const startNow = performance.now();
+    blowStartTsRef.current = startNow;
+    blowLastFrameTsRef.current = startNow;
+
+    const tick = (now: number) => {
+      const mode = blowModeRef.current;
+      if (mode !== 'mic_listening' && mode !== 'hold_fallback') {
+        blowRafRef.current = null;
+        return;
+      }
+
+      const dtSec = Math.min(0.05, Math.max(0.001, (now - blowLastFrameTsRef.current) / 1000));
+      blowLastFrameTsRef.current = now;
+      const elapsedMs = now - blowStartTsRef.current;
+      const timeSec = elapsedMs / 1000;
+
+      let rawEnergy = 0;
+      const analyser = micAnalyserRef.current;
+      const tdBuf = micTimeDomainRef.current;
+      const fqBuf = micFreqBinsRef.current;
+
+      if (mode === 'mic_listening' && analyser && tdBuf && fqBuf) {
+        try {
+          analyser.getByteTimeDomainData(tdBuf);
+          analyser.getByteFrequencyData(fqBuf);
+          rawEnergy = computeRawBreathEnergy(tdBuf, fqBuf);
+        } catch {
+          rawEnergy = 0;
+        }
+      }
+
+      const nextState = stepCakeBlowPhysics(blowStateRef.current, {
+        rawEnergy,
+        dtSec,
+        elapsedMs,
+        isHoldFallback: mode === 'hold_fallback',
+        isHolding: isHoldingRef.current,
+      });
+      blowStateRef.current = nextState;
+
+      // Apply 60fps GPU-composited flame bend, stretch, flicker & sparks directly to SVG refs
+      for (let i = 0; i < CANDLE_SPECS.length; i++) {
+        const g = flamePhysicsRefs.current[i];
+        const vis = computeFlamePhysicsVisual(
+          nextState.strength,
+          nextState.blowProgress,
+          timeSec,
+          i,
+        );
+        if (g) {
+          g.style.transform = `rotate(${vis.tiltDeg.toFixed(2)}deg) scale(${vis.scaleX.toFixed(3)}, ${vis.scaleY.toFixed(3)})`;
+          g.style.opacity = vis.opacity.toFixed(3);
+        }
+        const spark = flameSparkRefs.current[i];
+        if (spark) {
+          const flutterY = Math.sin(timeSec * 29 + i * 2.1) * 5;
+          spark.style.opacity = vis.sparkOpacity.toFixed(3);
+          spark.style.transform = `translate3d(${(vis.tiltDeg * 0.25).toFixed(1)}px, ${flutterY.toFixed(1)}px, 0)`;
+        }
+      }
+
+      if (progressBarFillRef.current) {
+        progressBarFillRef.current.style.transform = `scaleX(${Math.max(0.02, nextState.blowProgress).toFixed(4)})`;
+      }
+
+      const pct = Math.round(nextState.blowProgress * 100);
+      if (pct !== lastReportedPctRef.current) {
+        lastReportedPctRef.current = pct;
+        setBlowProgressPct(pct);
+      }
+
+      if (nextState.extinguished) {
+        completeCandleExtinguish();
+        return;
+      }
+
+      blowRafRef.current = window.requestAnimationFrame(tick);
+    };
+
+    blowRafRef.current = window.requestAnimationFrame(tick);
+  }, [completeCandleExtinguish]);
+
+  const enterHoldFallbackMode = useCallback(
+    (beginHoldingNow = false) => {
+      releaseMicHardware();
+      blowModeRef.current = 'hold_fallback';
+      setBlowMode('hold_fallback');
+      isHoldingRef.current = beginHoldingNow;
+      setIsHoldingBlow(beginHoldingNow);
+      startBlowPhysicsLoop();
+    },
+    [releaseMicHardware, startBlowPhysicsLoop],
+  );
+
+  const handleStartBlowOut = async (e: MouseEvent<HTMLButtonElement>) => {
+    if (!cake.candlesLit || animPhase === 'relighting') return;
+    if (blowModeRef.current !== 'idle') return;
+    clearPendingTimer();
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    confettiOriginRef.current = { x: rect.left + rect.width / 2, y: rect.top };
+
+    try {
+      haptics.tap();
+      soundEngine.playBubbleClick(1.06);
+    } catch {
+      // silent
+    }
+
+    blowStateRef.current = createInitialCakeBlowState();
+    lastReportedPctRef.current = 0;
+    setBlowProgressPct(0);
+
+    // Check Web Audio + MediaDevices microphone support cleanly
+    const canRequestMic =
+      typeof navigator !== 'undefined' &&
+      Boolean(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') &&
+      typeof window !== 'undefined' &&
+      Boolean(
+        window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext,
+      );
+
+    if (!canRequestMic) {
+      enterHoldFallbackMode(false);
+      return;
+    }
+
+    blowModeRef.current = 'mic_requesting';
+    setBlowMode('mic_requesting');
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      });
+
+      // Guard if component reset/unmounted while permission prompt was open
+      if (blowModeRef.current !== 'mic_requesting') {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
+      const AudioCtxCtor =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtxCtor) {
+        stream.getTracks().forEach((t) => t.stop());
+        enterHoldFallbackMode(false);
+        return;
+      }
+
+      const micCtx = new AudioCtxCtor();
+      if (micCtx.state === 'suspended') {
+        await micCtx.resume().catch(() => {
+          // ignore
+        });
+      }
+
+      const source = micCtx.createMediaStreamSource(stream);
+      const analyser = micCtx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.65;
+      // Pipe strictly into AnalyserNode ONLY (NEVER connect to micCtx.destination)
+      source.connect(analyser);
+
+      micStreamRef.current = stream;
+      micAudioCtxRef.current = micCtx;
+      micAnalyserRef.current = analyser;
+      micTimeDomainRef.current = new Uint8Array(new ArrayBuffer(analyser.fftSize));
+      micFreqBinsRef.current = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
+
+      blowModeRef.current = 'mic_listening';
+      setBlowMode('mic_listening');
+      startBlowPhysicsLoop();
+    } catch {
+      // Mic permission denied or unavailable -> seamless hold fallback
+      enterHoldFallbackMode(false);
+    }
   };
+
+  const handleHoldStart = useCallback(() => {
+    if (!cake.candlesLit) return;
+    if (blowModeRef.current === 'mic_listening') {
+      enterHoldFallbackMode(true);
+    } else {
+      isHoldingRef.current = true;
+      setIsHoldingBlow(true);
+      if (blowModeRef.current !== 'hold_fallback') {
+        blowModeRef.current = 'hold_fallback';
+        setBlowMode('hold_fallback');
+      }
+      startBlowPhysicsLoop();
+    }
+    try {
+      haptics.tap();
+    } catch {
+      // silent
+    }
+  }, [cake.candlesLit, enterHoldFallbackMode, startBlowPhysicsLoop]);
+
+  const handleHoldEnd = useCallback(() => {
+    isHoldingRef.current = false;
+    setIsHoldingBlow(false);
+  }, []);
+
+  const handleHoldKeyDown = useCallback(
+    (e: ReactKeyboardEvent<HTMLButtonElement>) => {
+      if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) {
+        e.preventDefault();
+        handleHoldStart();
+      }
+    },
+    [handleHoldStart],
+  );
+
+  const handleHoldKeyUp = useCallback(
+    (e: ReactKeyboardEvent<HTMLButtonElement>) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        handleHoldEnd();
+      }
+    },
+    [handleHoldEnd],
+  );
 
   const handleRelight = () => {
     if (animPhase === 'relighting') return;
     clearPendingTimer();
+    cleanupBlowResources();
     haptics.tap();
     soundEngine.playBubbleClick(1.12);
     emitModinoEvent('interaction_hype');
@@ -189,6 +546,8 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
       timerRef.current = null;
     }, RELIGHT_COMPLETE_MS);
   };
+
+  const isPhysicsBlowing = blowMode === 'mic_listening' || blowMode === 'hold_fallback';
 
   const frostingGlowClass =
     animPhase === 'lit'
@@ -232,7 +591,7 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
             <button
               type="button"
               data-testid="cake-svg-button"
-              onClick={cake.candlesLit ? handleBlowOut : handleRelight}
+              onClick={cake.candlesLit ? handleStartBlowOut : handleRelight}
               aria-label={
                 cake.candlesLit
                   ? '17th birthday cake with lit candles, tap to blow them out'
@@ -644,52 +1003,86 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
                       {/* LIT / BLOWING / RELIGHTING: 3-Layer Expressive Flame Pivoted at Wick Tip */}
                       {animPhase !== 'out' && (
                         <g
-                          key={`flame-${candle.id}-${seqId}-${animPhase === 'blowing' ? 'blow' : 'live'}`}
-                          data-candle-flame={candle.id}
-                          className={
-                            animPhase === 'blowing'
-                              ? 'animate-candle-gust'
-                              : animPhase === 'relighting'
-                                ? 'animate-candle-ignite'
-                                : undefined
-                          }
-                          style={phaseGroupStyle}
+                          ref={(el) => {
+                            flamePhysicsRefs.current[idx] = el;
+                          }}
+                          style={{
+                            transformOrigin: wickOrigin,
+                            willChange: isPhysicsBlowing ? 'transform, opacity' : 'auto',
+                          }}
                         >
-                          {/* Layer 1: Warm Golden-Orange Pulsing Radial Outer Aura */}
-                          <circle
-                            cx={candle.cx}
-                            cy={41}
-                            r={18.5}
-                            fill={`url(#${svgPrefix}-flameAura)`}
-                            className={animPhase === 'blowing' ? undefined : 'animate-candle-aura'}
-                            style={auraStyle}
-                          />
+                          <g
+                            key={`flame-${candle.id}-${seqId}-${animPhase === 'blowing' ? 'blow' : 'live'}`}
+                            data-candle-flame={candle.id}
+                            className={
+                              animPhase === 'blowing'
+                                ? 'animate-candle-gust'
+                                : animPhase === 'relighting'
+                                  ? 'animate-candle-ignite'
+                                  : undefined
+                            }
+                            style={phaseGroupStyle}
+                          >
+                            {/* Layer 1: Warm Golden-Orange Pulsing Radial Outer Aura */}
+                            <circle
+                              cx={candle.cx}
+                              cy={41}
+                              r={18.5}
+                              fill={`url(#${svgPrefix}-flameAura)`}
+                              className={
+                                animPhase === 'blowing' || isPhysicsBlowing
+                                  ? undefined
+                                  : 'animate-candle-aura'
+                              }
+                              style={auraStyle}
+                            />
 
-                          {/* Layer 2: Organic Swaying Amber-Orange Outer Teardrop */}
-                          <path
-                            d={`M${candle.cx} 23 C${candle.cx + 8} 34.5 ${candle.cx + 7} 50 ${candle.cx} 54.5 C${candle.cx - 7} 50 ${candle.cx - 8} 34.5 ${candle.cx} 23 Z`}
-                            fill={`url(#${svgPrefix}-flameOuter)`}
-                            className={animPhase === 'blowing' ? undefined : 'animate-candle-flame'}
-                            style={flameStyle}
-                          />
+                            {/* Layer 2: Organic Swaying Amber-Orange Outer Teardrop */}
+                            <path
+                              d={`M${candle.cx} 23 C${candle.cx + 8} 34.5 ${candle.cx + 7} 50 ${candle.cx} 54.5 C${candle.cx - 7} 50 ${candle.cx - 8} 34.5 ${candle.cx} 23 Z`}
+                              fill={`url(#${svgPrefix}-flameOuter)`}
+                              className={
+                                animPhase === 'blowing' || isPhysicsBlowing
+                                  ? undefined
+                                  : 'animate-candle-flame'
+                              }
+                              style={flameStyle}
+                            />
 
-                          {/* Subtle hot blue-lilac wick base glint */}
-                          <ellipse
-                            cx={candle.cx}
-                            cy={52.5}
-                            rx={2.1}
-                            ry={1.4}
-                            fill="#B89CEB"
-                            fillOpacity="0.42"
-                          />
+                            {/* Subtle hot blue-lilac wick base glint */}
+                            <ellipse
+                              cx={candle.cx}
+                              cy={52.5}
+                              rx={2.1}
+                              ry={1.4}
+                              fill="#B89CEB"
+                              fillOpacity="0.42"
+                            />
 
-                          {/* Layer 3: Bright Cream-White Inner Core Flame */}
-                          <path
-                            d={`M${candle.cx} 34 C${candle.cx + 3.8} 40.5 ${candle.cx + 3.2} 49 ${candle.cx} 52.5 C${candle.cx - 3.2} 49 ${candle.cx - 3.8} 40.5 ${candle.cx} 34 Z`}
-                            fill={`url(#${svgPrefix}-flameCore)`}
-                            className={animPhase === 'blowing' ? undefined : 'animate-candle-core'}
-                            style={coreStyle}
-                          />
+                            {/* Layer 3: Bright Cream-White Inner Core Flame */}
+                            <path
+                              d={`M${candle.cx} 34 C${candle.cx + 3.8} 40.5 ${candle.cx + 3.2} 49 ${candle.cx} 52.5 C${candle.cx - 3.2} 49 ${candle.cx - 3.8} 40.5 ${candle.cx} 34 Z`}
+                              fill={`url(#${svgPrefix}-flameCore)`}
+                              className={
+                                animPhase === 'blowing' || isPhysicsBlowing
+                                  ? undefined
+                                  : 'animate-candle-core'
+                              }
+                              style={coreStyle}
+                            />
+
+                            {/* Warm wind-gust spark ember that flares when blow strength S(t) > 0.55 */}
+                            <circle
+                              ref={(el) => {
+                                flameSparkRefs.current[idx] = el;
+                              }}
+                              cx={candle.cx + 7}
+                              cy={34}
+                              r={2.1}
+                              fill="#FFE28A"
+                              style={{ opacity: 0 }}
+                            />
+                          </g>
                         </g>
                       )}
 
@@ -765,17 +1158,96 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
               </svg>
             </button>
 
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+            <div className="mt-4 flex w-full max-w-xs flex-col items-center justify-center gap-3">
               {cake.candlesLit ? (
-                <button
-                  type="button"
-                  data-testid="cake-blow-btn"
-                  onClick={handleBlowOut}
-                  className="btn-rose-berry inline-flex min-h-[46px] shrink-0 cursor-pointer items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
-                >
-                  <CandleFlameButtonSvg className="h-4 w-4 text-[#FFF4DC]" />
-                  <span>Blow Out Candles</span>
-                </button>
+                <>
+                  {blowMode === 'idle' && (
+                    <button
+                      type="button"
+                      data-testid="cake-blow-btn"
+                      onClick={handleStartBlowOut}
+                      className="btn-rose-berry inline-flex min-h-[46px] shrink-0 cursor-pointer items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
+                    >
+                      <CandleFlameButtonSvg className="h-4 w-4 text-[#FFF4DC]" />
+                      <span>Blow Out Candles</span>
+                    </button>
+                  )}
+
+                  {blowMode === 'mic_requesting' && (
+                    <div
+                      data-testid="cake-mic-requesting"
+                      className="inline-flex min-h-[46px] items-center gap-2 rounded-full border border-[#EED0DF] bg-[#FFF4F8] px-6 py-2.5 text-sm font-semibold text-[#7A355B]"
+                    >
+                      <span>Opening mic...</span>
+                    </div>
+                  )}
+
+                  {isPhysicsBlowing && (
+                    <div
+                      data-testid="cake-blow-meter"
+                      className="w-full rounded-2xl border border-[#F0D1E0] bg-[#FFF6FA] px-4 py-3 text-center shadow-[0_10px_24px_-16px_rgba(217,75,125,0.28)]"
+                    >
+                      <div className="flex items-center justify-between text-xs font-semibold text-[#6B2D52]">
+                        <span>
+                          {blowMode === 'mic_listening'
+                            ? blowProgressPct > 4
+                              ? 'Blowing...'
+                              : 'Blow gently into your mic...'
+                            : isHoldingBlow
+                              ? 'Blowing...'
+                              : 'Hold for 3 seconds to blow'}
+                        </span>
+                        <span data-testid="cake-blow-pct" className="tabular-nums text-[#C43D6E]">
+                          {blowProgressPct}%
+                        </span>
+                      </div>
+                      <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-[#F7DCE8]">
+                        <div
+                          ref={progressBarFillRef}
+                          className="h-full w-full origin-left rounded-full bg-gradient-to-r from-[#E97CA6] via-[#D94B7D] to-[#C43D6E]"
+                          style={{ transform: 'scaleX(0)' }}
+                        />
+                      </div>
+
+                      {blowMode === 'mic_listening' ? (
+                        <button
+                          type="button"
+                          data-testid="cake-hold-fallback-link"
+                          onClick={() => enterHoldFallbackMode(false)}
+                          className="mt-2.5 cursor-pointer text-[11.5px] font-semibold text-[#9C4A72] underline decoration-[#D94B7D]/45 underline-offset-2 transition-colors hover:text-[#D94B7D]"
+                        >
+                          No mic? Hold here to blow
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          data-testid="cake-hold-blow-btn"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            handleHoldStart();
+                          }}
+                          onPointerUp={handleHoldEnd}
+                          onPointerCancel={handleHoldEnd}
+                          onPointerLeave={handleHoldEnd}
+                          onKeyDown={handleHoldKeyDown}
+                          onKeyUp={handleHoldKeyUp}
+                          onContextMenu={(e) => e.preventDefault()}
+                          className={`btn-rose-berry mt-3 inline-flex min-h-[46px] w-full cursor-pointer select-none items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold whitespace-nowrap transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] ${
+                            isHoldingBlow ? 'scale-[0.97] brightness-105' : ''
+                          }`}
+                          style={{ touchAction: 'none' }}
+                        >
+                          <CandleFlameButtonSvg className="h-4 w-4 text-[#FFF4DC]" />
+                          <span>
+                            {isHoldingBlow
+                              ? 'Keep holding to blow...'
+                              : 'Hold 3 Seconds to Blow Out Candles'}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
               ) : (
                 <button
                   type="button"

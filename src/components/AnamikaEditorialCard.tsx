@@ -19,7 +19,12 @@ import {
 } from '../utils/editorialCard';
 import { haptics } from '../utils/haptics';
 import { emitModinoEvent } from '../utils/modinoBus';
+import {
+  launchHeroSideConfettiCannons,
+  tryConsumeHeroPhotoCannons,
+} from '../utils/sideConfettiCannons';
 import { soundEngine } from '../utils/soundEngine';
+import { playUiSfx } from '../utils/uiSoundEngine';
 
 const ANAMIKA_PHOTO_SRC = `${import.meta.env.BASE_URL}${encodeURIComponent('IMG_20261126_131911_725.jpg')}`;
 const PHOTO_MAX_TILT_DEG = 4;
@@ -120,6 +125,8 @@ export function AnamikaEditorialCard({ onLightboxChange }: AnamikaEditorialCardP
   const targetTiltRef = useRef<CardTiltTarget>(createRestTiltState());
   const currentRollZRef = useRef<number>(PHOTO_REST_ROTATE_Z_DEG);
   const targetRollZRef = useRef<number>(PHOTO_REST_ROTATE_Z_DEG);
+  const hasFiredHeroCannonsRef = useRef<boolean>(false);
+  const heroCannonsCleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     isFlippedRef.current = isFlipped;
@@ -208,6 +215,8 @@ export function AnamikaEditorialCard({ onLightboxChange }: AnamikaEditorialCardP
     applyTiltDom(currentTiltRef.current, PHOTO_REST_ROTATE_Z_DEG);
     return () => {
       stopTiltLoop();
+      heroCannonsCleanupRef.current?.();
+      heroCannonsCleanupRef.current = null;
     };
   }, [applyTiltDom, stopTiltLoop]);
 
@@ -279,7 +288,35 @@ export function AnamikaEditorialCard({ onLightboxChange }: AnamikaEditorialCardP
     };
   }, [lightboxOpen]);
 
+  const triggerHeroPhotoCannonsOnce = useCallback(() => {
+    if (!tryConsumeHeroPhotoCannons(hasFiredHeroCannonsRef)) {
+      return;
+    }
+    try {
+      haptics.celebrate();
+    } catch {
+      // silent
+    }
+    try {
+      playUiSfx('confetti_burst');
+    } catch {
+      // silent
+    }
+    try {
+      trackEvent('hero_photo_side_cannons', 'Hero Photo');
+    } catch {
+      // silent
+    }
+    heroCannonsCleanupRef.current?.();
+    heroCannonsCleanupRef.current = launchHeroSideConfettiCannons({
+      onComplete: () => {
+        heroCannonsCleanupRef.current = null;
+      },
+    });
+  }, []);
+
   const handleFlipToggle = useCallback(() => {
+    triggerHeroPhotoCannonsOnce();
     const next = !isFlipped;
     haptics.cardFlip();
     soundEngine.playEditorialCardFlip();
@@ -288,7 +325,7 @@ export function AnamikaEditorialCard({ onLightboxChange }: AnamikaEditorialCardP
       side: next ? 'back' : 'front',
     });
     setIsFlipped(next);
-  }, [isFlipped]);
+  }, [isFlipped, triggerHeroPhotoCannonsOnce]);
 
   const handleCardKeyDown = useCallback(
     (e: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -301,14 +338,18 @@ export function AnamikaEditorialCard({ onLightboxChange }: AnamikaEditorialCardP
     [handleFlipToggle],
   );
 
-  const handleOpenZoom = useCallback((e: ReactMouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    haptics.tap();
-    soundEngine.playBubbleClick(1.06);
-    emitModinoEvent('cute');
-    trackEvent('photo_card_zoomed', 'Anamika Photo Lightbox');
-    setLightboxOpen(true);
-  }, []);
+  const handleOpenZoom = useCallback(
+    (e: ReactMouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      triggerHeroPhotoCannonsOnce();
+      haptics.tap();
+      soundEngine.playBubbleClick(1.06);
+      emitModinoEvent('cute');
+      trackEvent('photo_card_zoomed', 'Anamika Photo Lightbox');
+      setLightboxOpen(true);
+    },
+    [triggerHeroPhotoCannonsOnce],
+  );
 
   const handleCloseZoom = useCallback(() => {
     haptics.tap();

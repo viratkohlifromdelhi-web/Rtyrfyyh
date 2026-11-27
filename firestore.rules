@@ -224,5 +224,40 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+
+    // =========================================================================
+    // Validation Blueprint & Collection Rules: /site_config/{docId}
+    // =========================================================================
+    function isValidGiftVaultConfig(data) {
+      return data.keys().hasAll(['code', 'isRealCode', 'updatedAt', 'updatedAtMs'])
+        && data.keys().hasOnly(['code', 'isRealCode', 'updatedAt', 'updatedAtMs'])
+        && data.isRealCode is bool
+        && data.code is string
+        && data.code.size() <= 20
+        && (
+          (data.isRealCode == false && data.code == '')
+          || (data.isRealCode == true && data.code.matches('^[A-Z0-9]{16,20}$'))
+        )
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time
+        && data.updatedAtMs is int
+        && data.updatedAtMs > 1700000000000
+        && data.updatedAtMs < 4102444800000;
+    }
+
+    match /site_config/{docId} {
+      allow get: if isValidId(docId) && docId == 'gift_vault';
+      allow list: if false;
+      allow create: if isValidId(docId)
+        && docId == 'gift_vault'
+        && isValidGiftVaultConfig(incoming());
+      allow update: if isValidId(docId)
+        && docId == 'gift_vault'
+        && isValidGiftVaultConfig(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'code', 'isRealCode', 'updatedAt', 'updatedAtMs'
+        ]);
+      allow delete: if false;
+    }
   }
 }
