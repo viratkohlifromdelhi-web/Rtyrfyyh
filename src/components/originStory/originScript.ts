@@ -108,9 +108,10 @@ export type KissWalkStage = 'moonlight' | 'stepping' | 'leanIn' | 'kissing' | 'a
 
 /**
  * Exact 5-Phase Realistic Kiss Choreography Timing (Scene 5):
+ * - Audio starts immediately at 0ms when Scene 5 opens (180ms smooth fade-in to 0.82)
  * - Phase 1 (0ms -> 750ms): Moonlight eye contact (standing apart)
  * - Phase 2 (750ms -> 1850ms): 2.5 gentle walking steps closer together
- * - Phase 3 (1850ms -> 2400ms): Tender lean-in + neck-pivoted head tilts (audio swells at 2150ms)
+ * - Phase 3 (1850ms -> 2400ms): Tender lean-in + neck-pivoted head tilts
  * - Phase 4 (2400ms -> 5900ms): 3.5s realistic kiss hold + rising hearts + 2 shooting stars
  * - Phase 5 (5900ms -> 6600ms+): Shy pull-back & glowing afterglow while full kiss audio finishes naturally
  */
@@ -120,13 +121,44 @@ export const SCENE5_KISS_TIMING = {
   phase2StepDurationMs: 1100,
   phase3LeanInStartMs: 1850,
   phase3LeanInDurationMs: 550,
-  audioSwellStartMs: 2150,
+  audioSwellStartMs: 0,
   phase4KissStartMs: 2400,
   phase4KissHoldMs: 3500,
   phase5AfterglowStartMs: 5900,
   phase5PullBackDurationMs: 700,
   settleMs: 6600,
 } as const;
+
+export interface Scene5SyncedTimings {
+  readonly phase1MoonlightMs: number;
+  readonly phase2StepStartMs: number;
+  readonly phase3LeanInStartMs: number;
+  readonly phase4KissStartMs: number;
+  readonly phase5AfterglowStartMs: number;
+  readonly settleMs: number;
+}
+
+/**
+ * Syncs Scene 5's kiss-to-afterglow pull-back with the actual trimmed Web Audio clip
+ * duration so Shivjee & Archana ease into afterglow right as the final notes fade out,
+ * falling back cleanly to `SCENE5_KISS_TIMING` defaults if the clip is not yet decoded
+ * or shorter than 3200ms.
+ */
+export function computeScene5SyncedTimings(clipDurationMs: number): Scene5SyncedTimings {
+  const phase5AfterglowStartMs =
+    Number.isFinite(clipDurationMs) && clipDurationMs >= 3200
+      ? Math.min(Math.max(3600, Math.round(clipDurationMs) - 700), 9500)
+      : SCENE5_KISS_TIMING.phase5AfterglowStartMs;
+
+  return {
+    phase1MoonlightMs: SCENE5_KISS_TIMING.phase1MoonlightMs,
+    phase2StepStartMs: SCENE5_KISS_TIMING.phase2StepStartMs,
+    phase3LeanInStartMs: SCENE5_KISS_TIMING.phase3LeanInStartMs,
+    phase4KissStartMs: SCENE5_KISS_TIMING.phase4KissStartMs,
+    phase5AfterglowStartMs,
+    settleMs: phase5AfterglowStartMs + SCENE5_KISS_TIMING.phase5PullBackDurationMs,
+  };
+}
 
 export interface Scene5CharacterPose {
   /** Horizontal offset from stage center in SVG viewBox units (160u character width) */
@@ -220,9 +252,9 @@ export const ORIGIN_AUDIO_CONFIG = {
   audioSwellStartMs: SCENE5_KISS_TIMING.audioSwellStartMs,
   playFullTrackToEnd: true,
   fallbackSynthDurationMs: 5000,
-  fadeInMs: 300,
-  interruptFadeOutMs: 150,
-  fadeOutMs: 150,
+  fadeInMs: 180,
+  interruptFadeOutMs: 140,
+  fadeOutMs: 140,
   maxVolume: 0.82,
 } as const;
 

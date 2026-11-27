@@ -1,67 +1,26 @@
-import { ORIGIN_AUDIO_CONFIG } from './originScript';
+import {
+  startKissAudio,
+  stopKissAudio,
+  unlockKissAudioContext,
+} from './kissAudioSingleton';
 import { soundEngine } from '../../utils/soundEngine';
 
 /**
  * Self-contained, crash-proof audio controller for The Origin Story Play.
  *
- * - Loads the Scene 5 MP3 (`ORIGIN_AUDIO_CONFIG.kissTrackSrc`) with `loop = false`
- *   and plays the full track to its natural `ended` event after a smooth 300ms fade-in to 0.82.
- * - Immediately fast-fades down to 0 over 150ms, pauses, resets `currentTime = 0`, and cancels
- *   any active `requestAnimationFrame` ramp when interrupted (Next, Back, Skip, Mute, or dispose).
- * - If the MP3 is missing (404) or blocked by autoplay policy, plays a finite dreamy Web Audio
- *   synth pad/chime chord (gain <= 0.08) without looping endlessly.
- * - Provides subtle capped-gain (<= 0.10) Web Audio SFX for story milestones.
+ * - Delegates Scene 5's kissing soundtrack directly to the pre-decoded Web Audio PCM
+ *   engine (`kissAudioSingleton.ts`) for < 5ms synchronous start latency, silence-trimmed
+ *   alignment, hardware audio-thread gain envelopes, and click-free 55ms stop on exit.
+ * - Retains all procedural Web Audio storybook SFX cues (morning pop, month flip tick,
+ *   arrival bell, padlock slam, comic bonk, finale sparkle, year tick).
  */
 export class OriginStoryAudioController {
-  private audioEl: HTMLAudioElement | null = null;
-  private mp3Failed = false;
   private muted = false;
   private disposed = false;
 
   private audioCtx: AudioContext | null = null;
-  private rampRafId: number | null = null;
-  private fadeOutSafetyTimer: number | null = null;
-  private activePadNodes: AudioNode[] = [];
-  private activePadGain: GainNode | null = null;
   private kissPlaying = false;
-  private onKissEndedHandler: (() => void) | null = null;
-
-  constructor() {
-    this.prepareKissTrack();
-  }
-
-  private prepareKissTrack(): void {
-    if (typeof window === 'undefined' || typeof Audio === 'undefined') {
-      this.mp3Failed = true;
-      return;
-    }
-
-    try {
-      const audio = new Audio(ORIGIN_AUDIO_CONFIG.kissTrackSrc);
-      audio.preload = 'auto';
-      audio.volume = 0;
-      audio.loop = false;
-
-      audio.addEventListener('canplaythrough', () => {
-        if (!this.disposed) {
-          this.mp3Failed = false;
-        }
-      });
-      audio.addEventListener('loadeddata', () => {
-        if (!this.disposed) {
-          this.mp3Failed = false;
-        }
-      });
-      audio.addEventListener('error', () => {
-        this.mp3Failed = true;
-      });
-
-      this.audioEl = audio;
-    } catch {
-      this.mp3Failed = true;
-      this.audioEl = null;
-    }
-  }
+  private activeSessionKey: string | null = null;
 
   private ensureAudioContext(): AudioContext | null {
     if (this.disposed) return null;
@@ -80,341 +39,58 @@ export class OriginStoryAudioController {
     }
   }
 
-  private cancelVolumeRamp(): void {
-    if (this.rampRafId !== null && typeof window !== 'undefined') {
-      window.cancelAnimationFrame(this.rampRafId);
-      this.rampRafId = null;
-    }
-    if (this.fadeOutSafetyTimer !== null && typeof window !== 'undefined') {
-      window.clearTimeout(this.fadeOutSafetyTimer);
-      this.fadeOutSafetyTimer = null;
-    }
-  }
-
-  private stopSynthPad(fadeOutSec = 0.15): void {
-    const ctx = this.audioCtx;
-    const padGain = this.activePadGain;
-    const nodes = this.activePadNodes;
-    this.activePadGain = null;
-    this.activePadNodes = [];
-
-    if (!ctx || !padGain) return;
-    try {
-      const now = ctx.currentTime;
-      padGain.gain.cancelScheduledValues(now);
-      padGain.gain.setValueAtTime(Math.max(0.0001, padGain.gain.value), now);
-      padGain.gain.linearRampToValueAtTime(0.0001, now + Math.max(0.05, fadeOutSec));
-      window.setTimeout(() => {
-        for (const node of nodes) {
-          try {
-            if ('stop' in node && typeof (node as OscillatorNode).stop === 'function') {
-              (node as OscillatorNode).stop();
-            }
-            node.disconnect();
-          } catch {
-            // already stopped
-          }
-        }
-      }, Math.ceil(fadeOutSec * 1000) + 60);
-    } catch {
-      // ignore teardown errors
-    }
-  }
-
-  private rampElementVolume(
-    targetVolume: number,
-    durationMs: number,
-    onDone?: () => void,
-    options?: { allowAudibleWhileMuted?: boolean },
-  ): void {
-    this.cancelVolumeRamp();
-    const el = this.audioEl;
-    if (!el || typeof window === 'undefined') {
-      onDone?.();
-      return;
-    }
-
-    const startVol = el.volume;
-    const startTs = performance.now();
-    const safeDuration = Math.max(16, durationMs);
-    const allowWhileMuted = Boolean(options?.allowAudibleWhileMuted);
-
-    const step = (now: number) => {
-      if (this.disposed || !this.audioEl) {
-        this.rampRafId = null;
-        return;
-      }
-      const progress = Math.min(1, (now - startTs) / safeDuration);
-      const eased = progress * (2 - progress);
-      const nextVol = Math.max(0, Math.min(1, startVol + (targetVolume - startVol) * eased));
-      try {
-        this.audioEl.volume = this.muted && !allowWhileMuted ? 0 : nextVol;
-      } catch {
-        // ignore iOS read-only volume errors
-      }
-      if (progress < 1) {
-        this.rampRafId = window.requestAnimationFrame(step);
-      } else {
-        this.rampRafId = null;
-        onDone?.();
-      }
-    };
-
-    this.rampRafId = window.requestAnimationFrame(step);
-  }
-
   public setMuted(nextMuted: boolean): void {
     this.muted = Boolean(nextMuted);
     if (this.muted) {
-      // Immediately fast-fade any playing kiss audio to 0 (150ms), pause, reset currentTime = 0, and cancel active rAF
-      this.fadeOutKissCue(ORIGIN_AUDIO_CONFIG.interruptFadeOutMs);
+      this.fadeOutKissCue();
       return;
     }
-
-    if (this.audioEl) {
-      try {
-        this.audioEl.muted = false;
-        if (this.kissPlaying && !this.audioEl.paused) {
-          this.audioEl.volume = ORIGIN_AUDIO_CONFIG.maxVolume;
-        }
-      } catch {
-        // silent fallback
-      }
-    }
-    if (this.activePadGain && this.audioCtx) {
-      try {
-        const now = this.audioCtx.currentTime;
-        this.activePadGain.gain.cancelScheduledValues(now);
-        this.activePadGain.gain.setTargetAtTime(0.075, now, 0.05);
-      } catch {
-        // silent fallback
-      }
-    }
+    unlockKissAudioContext();
   }
 
-  private clearKissEndedListener(): void {
-    if (this.audioEl && this.onKissEndedHandler) {
-      this.audioEl.removeEventListener('ended', this.onKissEndedHandler);
-    }
-    this.onKissEndedHandler = null;
-  }
-
-  public startKissCue(options?: { restart?: boolean; onEnded?: () => void }): void {
+  public startKissCue(options?: {
+    restart?: boolean;
+    sessionKey?: string;
+    onEnded?: () => void;
+  }): void {
     if (this.disposed || this.muted) return;
+    if (
+      !options?.restart &&
+      options?.sessionKey &&
+      this.activeSessionKey === options.sessionKey &&
+      this.kissPlaying
+    ) {
+      return;
+    }
     if (this.kissPlaying && !options?.restart) return;
 
-    this.cancelVolumeRamp();
-    this.stopSynthPad(0.05);
-    this.clearKissEndedListener();
+    const sessionKey = options?.sessionKey ?? null;
+    this.activeSessionKey = sessionKey;
     this.kissPlaying = true;
 
-    const el = this.audioEl;
-    const canTryMp3 = Boolean(el && !this.mp3Failed);
-
-    if (canTryMp3 && el) {
-      try {
-        el.loop = false;
-
-        // Always listen for natural `ended` so the full audio clip plays to completion and cleans up state cleanly
-        const onEndedCb = options?.onEnded;
-        this.onKissEndedHandler = () => {
-          this.clearKissEndedListener();
-          this.cancelVolumeRamp();
+    const started = startKissAudio({
+      muted: this.muted,
+      onEnded: () => {
+        if (this.activeSessionKey === sessionKey) {
           this.kissPlaying = false;
-          try {
-            el.volume = 0;
-            el.currentTime = 0;
-          } catch {
-            // ignore reset errors
-          }
-          if (!this.disposed) {
-            onEndedCb?.();
-          }
-        };
-        el.addEventListener('ended', this.onKissEndedHandler, { once: true });
-
-        el.currentTime = 0;
-        el.volume = 0;
-        el.muted = false;
-        const playPromise = el.play();
-        if (playPromise && typeof playPromise.then === 'function') {
-          playPromise
-            .then(() => {
-              if (!this.disposed && this.kissPlaying) {
-                if (this.muted) {
-                  this.fadeOutKissCue(ORIGIN_AUDIO_CONFIG.interruptFadeOutMs);
-                } else {
-                  this.rampElementVolume(
-                    ORIGIN_AUDIO_CONFIG.maxVolume,
-                    ORIGIN_AUDIO_CONFIG.fadeInMs,
-                  );
-                }
-              }
-            })
-            .catch(() => {
-              this.clearKissEndedListener();
-              if (!this.disposed && this.kissPlaying && !this.muted) {
-                this.playDreamyKissFallbackPad(options?.onEnded);
-              }
-            });
-        } else if (!this.muted) {
-          this.rampElementVolume(
-            ORIGIN_AUDIO_CONFIG.maxVolume,
-            ORIGIN_AUDIO_CONFIG.fadeInMs,
-          );
+          this.activeSessionKey = null;
         }
-        return;
-      } catch {
-        this.clearKissEndedListener();
-        // Fall through to Web Audio dreamy synth pad
-      }
-    }
+        if (!this.disposed) {
+          options?.onEnded?.();
+        }
+      },
+    });
 
-    if (!this.muted) {
-      this.playDreamyKissFallbackPad(options?.onEnded);
+    if (!started) {
+      this.kissPlaying = false;
+      this.activeSessionKey = null;
     }
   }
 
-  private playDreamyKissFallbackPad(onEnded?: () => void): void {
-    if (this.disposed || this.muted) return;
-    const ctx = this.ensureAudioContext();
-    if (!ctx) return;
-
-    try {
-      this.stopSynthPad(0.05);
-      const now = ctx.currentTime;
-      const totalSec = Math.max(1.5, ORIGIN_AUDIO_CONFIG.fallbackSynthDurationMs / 1000);
-      const fadeInSec = ORIGIN_AUDIO_CONFIG.fadeInMs / 1000;
-      const fadeOutSec = 0.45;
-      const holdUntilSec = Math.max(0.5, totalSec - fadeOutSec);
-
-      const masterGain = ctx.createGain();
-      masterGain.gain.setValueAtTime(0.0001, now);
-      masterGain.gain.linearRampToValueAtTime(0.075, now + fadeInSec);
-      masterGain.gain.setValueAtTime(0.075, now + holdUntilSec);
-      masterGain.gain.linearRampToValueAtTime(0.0001, now + totalSec);
-
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(1150, now);
-      filter.Q.setValueAtTime(0.8, now);
-
-      filter.connect(masterGain);
-      masterGain.connect(ctx.destination);
-
-      // Warm pastel Fmaj9 dreamy storybook pad chord across the full 5 seconds
-      const freqs = [261.63, 329.63, 392.0, 493.88, 587.33];
-      const created: AudioNode[] = [filter, masterGain];
-
-      freqs.forEach((freq, idx) => {
-        const osc = ctx.createOscillator();
-        const voiceGain = ctx.createGain();
-        osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
-        osc.frequency.setValueAtTime(freq, now);
-        osc.detune.setValueAtTime((idx - 2) * 3.5, now);
-
-        voiceGain.gain.setValueAtTime(idx < 3 ? 0.24 : 0.14, now);
-        osc.connect(voiceGain);
-        voiceGain.connect(filter);
-        osc.start(now + idx * 0.04);
-        osc.stop(now + totalSec + 0.1);
-        created.push(osc, voiceGain);
-      });
-
-      // Gentle bell shimmer notes floating inside the 5-second pad
-      const bellNotes = [783.99, 987.77, 1174.66, 1046.5];
-      bellNotes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const g = ctx.createGain();
-        const t = now + 0.5 + i * 1.05;
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, t);
-        g.gain.setValueAtTime(0.0001, t);
-        g.gain.linearRampToValueAtTime(0.045, t + 0.04);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.95);
-        osc.connect(g);
-        g.connect(ctx.destination);
-        osc.start(t);
-        osc.stop(t + 1.0);
-        created.push(osc, g);
-      });
-
-      this.activePadGain = masterGain;
-      this.activePadNodes = created;
-
-      if (typeof window !== 'undefined') {
-        const padRef = masterGain;
-        window.setTimeout(() => {
-          if (this.activePadGain === padRef) {
-            this.activePadGain = null;
-            this.activePadNodes = [];
-            this.kissPlaying = false;
-            if (!this.disposed) {
-              onEnded?.();
-            }
-          }
-        }, Math.ceil(totalSec * 1000) + 120);
-      }
-    } catch {
-      // silent fallback
-    }
-  }
-
-  public fadeOutKissCue(durationMs: number = ORIGIN_AUDIO_CONFIG.interruptFadeOutMs): void {
-    this.clearKissEndedListener();
-    const el = this.audioEl;
-    const isElementActive = Boolean(el && !el.paused);
-
-    if (!this.kissPlaying && !isElementActive) {
-      this.cancelVolumeRamp();
-      if (el) {
-        try {
-          el.muted = this.muted;
-          el.volume = 0;
-          el.currentTime = 0;
-        } catch {
-          // ignore
-        }
-      }
-      return;
-    }
-
+  public fadeOutKissCue(_durationMs?: number): void {
     this.kissPlaying = false;
-    this.stopSynthPad(durationMs / 1000);
-
-    if (isElementActive && el) {
-      const finalizePause = () => {
-        this.cancelVolumeRamp();
-        try {
-          el.volume = 0;
-          el.pause();
-          el.currentTime = 0;
-          el.muted = this.muted;
-        } catch {
-          // ignore
-        }
-      };
-
-      // Always override any prior ramp so interrupt fast-fades complete cleanly in `durationMs`
-      this.rampElementVolume(0, durationMs, finalizePause, { allowAudibleWhileMuted: true });
-
-      if (typeof window !== 'undefined') {
-        this.fadeOutSafetyTimer = window.setTimeout(() => {
-          finalizePause();
-        }, Math.max(20, durationMs) + 40);
-      }
-    } else {
-      this.cancelVolumeRamp();
-      if (el) {
-        try {
-          el.volume = 0;
-          el.currentTime = 0;
-          el.muted = this.muted;
-        } catch {
-          // ignore
-        }
-      }
-    }
+    this.activeSessionKey = null;
+    stopKissAudio(false);
   }
 
   public playMorningPop(): void {
@@ -632,29 +308,17 @@ export class OriginStoryAudioController {
     this.startKissCue({ restart: true });
   }
 
-  public fadeOutAllAndStop(durationMs = 150): void {
+  public fadeOutAllAndStop(durationMs?: number): void {
     this.fadeOutKissCue(durationMs);
   }
 
   public dispose(): void {
     this.disposed = true;
     this.kissPlaying = false;
-    this.clearKissEndedListener();
-    this.cancelVolumeRamp();
-    this.stopSynthPad(0.05);
+    this.activeSessionKey = null;
+    stopKissAudio(true);
 
-    if (this.audioEl) {
-      try {
-        this.audioEl.pause();
-        this.audioEl.removeAttribute('src');
-        this.audioEl.load();
-      } catch {
-        // ignore
-      }
-      this.audioEl = null;
-    }
-
-    // Shared AudioContext is owned by soundEngine; detach local reference only
+    // Shared SFX AudioContext is owned by soundEngine; detach local reference only
     this.audioCtx = null;
   }
 }

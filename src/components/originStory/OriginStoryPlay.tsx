@@ -31,6 +31,7 @@ import {
   SCENE_10_FREEZE_STEPS,
   SCENE_8_GROWTH_STEPS,
   SCENE_9_GROWTH_STEPS,
+  computeScene5SyncedTimings,
   getOriginFinaleCopy,
   getOriginRomanticGlowIntensity,
   getScene5KissPose,
@@ -40,6 +41,11 @@ import {
   type KissWalkStage,
   type OriginBackdropMood,
 } from './originScript';
+import {
+  getKissAudioDurationMs,
+  stopKissAudio,
+  unlockKissAudioContext,
+} from './kissAudioSingleton';
 import { OriginStoryAudioController } from './originAudio';
 import { haptics } from '../../utils/haptics';
 
@@ -226,6 +232,9 @@ export default function OriginStoryPlay({
   const audioRef = useRef<OriginStoryAudioController | null>(null);
   const timersRef = useRef<Set<number>>(new Set());
   const exitingRef = useRef(false);
+  const kissVisitCounterRef = useRef(0);
+  const activeKissSessionRef = useRef<string | null>(null);
+  const isMutedRef = useRef(false);
 
   const finaleCopy = useMemo(() => getOriginFinaleCopy(), []);
   const currentScene = ORIGIN_SCENES[sceneIndex] ?? ORIGIN_SCENES[0];
@@ -263,8 +272,43 @@ export default function OriginStoryPlay({
 
   // Sync mute state cleanly
   useEffect(() => {
+    isMutedRef.current = isMuted;
     audioRef.current?.setMuted(isMuted);
   }, [isMuted]);
+
+  /**
+   * Starts Scene 5's singleton kiss track immediately (0ms) with a unique session key.
+   * Calling this directly inside user-tap handlers (`Next >`, `< Back`, `Replay Kiss`)
+   * unlocks instant mobile playback while preventing Scene 5's `useEffect` from double-starting.
+   */
+  const startScene5KissAudio = useCallback(
+    (restart: boolean) => {
+      onInterruptIntroAudio?.();
+      if (isMutedRef.current) {
+        setIsKissAudioPlaying(false);
+        return;
+      }
+
+      if (!restart && activeKissSessionRef.current) {
+        return;
+      }
+
+      kissVisitCounterRef.current += 1;
+      const sessionKey = `kiss-visit-${kissVisitCounterRef.current}`;
+      activeKissSessionRef.current = sessionKey;
+      setIsKissAudioPlaying(true);
+      audioRef.current?.startKissCue({
+        restart: true,
+        sessionKey,
+        onEnded: () => {
+          if (activeKissSessionRef.current === sessionKey) {
+            setIsKissAudioPlaying(false);
+          }
+        },
+      });
+    },
+    [onInterruptIntroAudio],
+  );
 
   // Lock body scroll while theatrical overlay is open
   useEffect(() => {
@@ -282,8 +326,9 @@ export default function OriginStoryPlay({
     if (!scene) return;
 
     if (scene.id !== 'starry_kiss') {
+      activeKissSessionRef.current = null;
       setIsKissAudioPlaying(false);
-      audioRef.current?.fadeOutAllAndStop(150);
+      audioRef.current?.fadeOutAllAndStop(140);
     }
     setSceneSettled(false);
 
@@ -309,8 +354,13 @@ export default function OriginStoryPlay({
     }
 
     if (scene.id === 'starry_kiss') {
-      // Immediately silence any lingering Stage 2 trailing intro audio before Scene 5 soundtrack swells
-      onInterruptIntroAudio?.();
+      // 0ms Instant Start: Silence any lingering Stage 2 trailing intro audio and start Scene 5 song immediately.
+      // If `handleNext` / `handleBack` / `handleReplayScene` already started it synchronously on tap,
+      // `startScene5KissAudio(false)` is a clean no-op with zero double-start.
+      startScene5KissAudio(false);
+
+      // Sync kiss-to-afterglow transition with actual decoded & silence-trimmed clip duration
+      const syncedTiming = computeScene5SyncedTimings(getKissAudioDurationMs());
 
       // Phase 1 (0ms -> 750ms): Moonlight Eye Contact (standing apart, glancing shyly toward each other)
       setKissWalkStage('moonlight');
@@ -322,28 +372,16 @@ export default function OriginStoryPlay({
         setKissWalkStage('stepping');
         setKissPhase('approach');
         setKissBeat('shyGlance');
-      }, SCENE5_KISS_TIMING.phase2StepStartMs);
+      }, syncedTiming.phase2StepStartMs);
 
       // Phase 3 (1850ms -> 2400ms): Tender Lean-In, neck-pivoted head tilts & inner arm embrace
       schedule(() => {
         setKissWalkStage('leanIn');
         setKissPhase('leanIn');
         setKissBeat('leanIn');
-      }, SCENE5_KISS_TIMING.phase3LeanInStartMs);
+      }, syncedTiming.phase3LeanInStartMs);
 
-      // Audio Swell (2150ms): 300ms smooth fade-in up to 0.82; plays entire track uninterrupted to natural end
-      setIsKissAudioPlaying(false);
-      schedule(() => {
-        setIsKissAudioPlaying(true);
-        audioRef.current?.startKissCue({
-          restart: true,
-          onEnded: () => {
-            setIsKissAudioPlaying(false);
-          },
-        });
-      }, SCENE5_KISS_TIMING.audioSwellStartMs);
-
-      // Phase 4 (2400ms -> 5900ms, 3.5s hold): Realistic Kiss Hold + soft haptic + hearts + 2 shooting stars
+      // Phase 4 (2400ms -> afterglow): Realistic Kiss Hold + soft haptic + hearts + 2 shooting stars
       schedule(() => {
         setKissWalkStage('kissing');
         setKissPhase('kissing');
@@ -353,19 +391,19 @@ export default function OriginStoryPlay({
         } catch {
           // silent haptic fallback
         }
-      }, SCENE5_KISS_TIMING.phase4KissStartMs);
+      }, syncedTiming.phase4KissStartMs);
 
-      // Phase 5 (5900ms -> 6600ms+): Shy Pull-Back & Glowing Afterglow (full kiss audio continues warmly until natural end)
+      // Phase 5 (synced with final notes of decoded clip): Shy Pull-Back & Glowing Afterglow
       schedule(() => {
         setKissWalkStage('afterglow');
         setKissPhase('afterglow');
         setKissBeat('afterglow');
-      }, SCENE5_KISS_TIMING.phase5AfterglowStartMs);
+      }, syncedTiming.phase5AfterglowStartMs);
 
       // Mark Scene 5 settled once shy pull-back completes (Next button stays tappable at any time)
       schedule(() => {
         setSceneSettled(true);
-      }, SCENE5_KISS_TIMING.settleMs);
+      }, syncedTiming.settleMs);
 
       return clearScheduledTimers;
     }
@@ -519,31 +557,62 @@ export default function OriginStoryPlay({
     }
 
     return clearScheduledTimers;
-  }, [sceneIndex, sceneRunKey, clearScheduledTimers, schedule, onInterruptIntroAudio]);
+  }, [sceneIndex, sceneRunKey, clearScheduledTimers, schedule, startScene5KissAudio]);
 
   const handleNext = useCallback(() => {
     if (exitingRef.current) return;
+    unlockKissAudioContext();
     haptics.tap();
-    audioRef.current?.fadeOutAllAndStop(150);
 
     if (sceneIndex < ORIGIN_TOTAL_SCENES - 1) {
+      const nextScene = ORIGIN_SCENES[sceneIndex + 1];
+      if (nextScene?.id === 'starry_kiss') {
+        // Direct user-gesture unlock: starts pre-decoded Web Audio buffer in < 5ms right inside the tap
+        startScene5KissAudio(true);
+      } else {
+        activeKissSessionRef.current = null;
+        setIsKissAudioPlaying(false);
+        stopKissAudio(false);
+        audioRef.current?.fadeOutAllAndStop();
+      }
       setSceneIndex((prev) => prev + 1);
     }
-  }, [sceneIndex]);
+  }, [sceneIndex, startScene5KissAudio]);
 
   const handleBack = useCallback(() => {
     if (exitingRef.current || sceneIndex <= 0) return;
+    unlockKissAudioContext();
     haptics.tap();
-    audioRef.current?.fadeOutAllAndStop(150);
+
+    const prevScene = ORIGIN_SCENES[sceneIndex - 1];
+    if (prevScene?.id === 'starry_kiss') {
+      // Direct user-gesture unlock when stepping back into Scene 5
+      startScene5KissAudio(true);
+    } else {
+      activeKissSessionRef.current = null;
+      setIsKissAudioPlaying(false);
+      stopKissAudio(false);
+      audioRef.current?.fadeOutAllAndStop();
+    }
     setSceneIndex((prev) => Math.max(0, prev - 1));
-  }, [sceneIndex]);
+  }, [sceneIndex, startScene5KissAudio]);
 
   const handleReplayScene = useCallback(() => {
     if (exitingRef.current) return;
+    unlockKissAudioContext();
     haptics.tap();
-    audioRef.current?.fadeOutAllAndStop(150);
+
+    if (ORIGIN_SCENES[sceneIndex]?.id === 'starry_kiss') {
+      // Direct user-gesture restart for "Replay Kiss"
+      startScene5KissAudio(true);
+    } else {
+      activeKissSessionRef.current = null;
+      setIsKissAudioPlaying(false);
+      stopKissAudio(false);
+      audioRef.current?.fadeOutAllAndStop();
+    }
     setSceneRunKey((k) => k + 1);
-  }, []);
+  }, [sceneIndex, startScene5KissAudio]);
 
   const handleEnterBirthdayWorld = useCallback(() => {
     if (exitingRef.current) return;
@@ -553,8 +622,11 @@ export default function OriginStoryPlay({
     } catch {
       // silent haptic fallback
     }
+    activeKissSessionRef.current = null;
+    setIsKissAudioPlaying(false);
+    stopKissAudio(false);
     onInterruptIntroAudio?.();
-    audioRef.current?.fadeOutAllAndStop(150);
+    audioRef.current?.fadeOutAllAndStop();
     audioRef.current?.playFinaleSparkle();
     clearScheduledTimers();
     setIsExiting(true);
@@ -569,8 +641,11 @@ export default function OriginStoryPlay({
     } catch {
       // silent haptic fallback
     }
+    activeKissSessionRef.current = null;
+    setIsKissAudioPlaying(false);
+    stopKissAudio(false);
     onInterruptIntroAudio?.();
-    audioRef.current?.fadeOutAllAndStop(150);
+    audioRef.current?.fadeOutAllAndStop();
     audioRef.current?.playFinaleSparkle();
     clearScheduledTimers();
     setIsExiting(true);
@@ -581,9 +656,14 @@ export default function OriginStoryPlay({
     haptics.tap();
     setIsMuted((prev) => {
       const nextMuted = !prev;
+      isMutedRef.current = nextMuted;
       if (nextMuted) {
+        activeKissSessionRef.current = null;
         setIsKissAudioPlaying(false);
+        stopKissAudio(false);
         onInterruptIntroAudio?.();
+      } else {
+        unlockKissAudioContext();
       }
       return nextMuted;
     });
@@ -981,6 +1061,7 @@ export default function OriginStoryPlay({
                   data-kiss-phase={kissPhase}
                   data-kiss-walk-stage={kissWalkStage}
                   data-kiss-audio-playing={isKissAudioPlaying ? 'true' : 'false'}
+                  data-kiss-duration-ms={getKissAudioDurationMs()}
                   className="relative z-10 flex h-full w-full flex-col items-center justify-between px-4 pt-4 pb-4"
                 >
                   {/* Compact Replay Kiss pill tucked in top-left of stage */}

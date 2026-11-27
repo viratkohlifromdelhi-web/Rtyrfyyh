@@ -95,6 +95,42 @@ export const TIER2_MAIN_LOADERS: ReadonlyArray<() => Promise<unknown>> = [
 ];
 
 /**
+ * Wave 3 Intro-Video Preload Order (runs in 160ms requestIdleCallback slices starting at +1600ms
+ * after Intro Video confirms smooth playback; strictly excludes OwnerAnalyticsDashboard):
+ *   1. Above-the-fold first: InteractiveTogglesSection (Quick Switches, Note Deck, Friend List), ModinoPet
+ *      (HeroSection, TopBar / StickyHeader, and SparkleRainCanvas are already eagerly bundled)
+ *   2. Mid-page next: Backstory Notebook, December 2026 Calendar, Life Stats, GAWAAR Gift Box,
+ *      Bakery Cake (MakeAWishCake), Case File #0721, BaadMeRevealSection
+ *   3. Lower-page last: Infinity Gift Vault, Spin Wheel, Bauni Meter, Starter Pack,
+ *      Runaway Agreement, Adoption Certificate, Scratch Coupons, Summary/Keepsake Card,
+ *      Mini Chicken Farm, Closing Footer
+ */
+export const WAVE3_MAIN_PAGE_LOADERS: ReadonlyArray<() => Promise<unknown>> = [
+  // 1. Above-the-fold first
+  loadInteractiveTogglesSection,
+  loadModinoPet,
+  // 2. Mid-page next
+  loadBackstorySection,
+  loadCalendarAndCounterSection,
+  loadLifeStatsSection,
+  loadSurpriseGiftSection,
+  loadMakeAWishCake,
+  loadCaseFileSection,
+  loadBaadMeRevealSection,
+  // 3. Lower-page last
+  loadInfinityVaultSection,
+  loadSpinWheelSection,
+  loadBauniMeterSection,
+  loadStarterPackGrid,
+  loadRunawayAgreementSection,
+  loadAdoptionCertificateSection,
+  loadScratchCouponsSection,
+  loadBirthdaySummaryCard,
+  loadChickenFarmSection,
+  loadClosingSignOffFooter,
+];
+
+/**
  * Top-to-bottom visual scroll order used by the staggered idle background preloader.
  */
 export const BACKGROUND_SECTION_LOADERS: ReadonlyArray<() => Promise<unknown>> = [

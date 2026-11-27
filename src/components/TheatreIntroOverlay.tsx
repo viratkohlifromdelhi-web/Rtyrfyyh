@@ -2,7 +2,12 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 import { Volume2 } from 'lucide-react';
 import { SparkleStarSvg } from './DoodleSvgs';
 import { trackEvent } from '../utils/analytics';
+import {
+  INTRO_PRELOAD_GRACE_BREATHER_MS,
+  INTRO_PRELOAD_SAFETY_FALLBACK_MS,
+} from '../utils/preloader';
 import { soundEngine } from '../utils/soundEngine';
+import { unlockKissAudioContext } from './originStory/kissAudioSingleton';
 import {
   BG_MUSIC_AUTOPLAY_FADE_MS,
   CURTAIN_REST_SCALE_X,
@@ -222,6 +227,8 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
     const audioFadeRafRef = useRef<number | null>(null);
     const trailingAudioCleanupRef = useRef<(() => void) | null>(null);
     const fallbackClockRafRef = useRef<number | null>(null);
+    const preloadBreatherTimerRef = useRef<number | null>(null);
+    const preloadFallbackTimerRef = useRef<number | null>(null);
 
     // Latest callback refs
     const onBeginMainRevealRef = useRef(onBeginMainReveal);
@@ -239,11 +246,44 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
     onVideoSmoothPlaybackRef.current = onVideoSmoothPlayback;
     onVideoPastOneSecondRef.current = onVideoPastOneSecond;
 
+    const clearPreloadTriggerTimers = useCallback(() => {
+      if (preloadBreatherTimerRef.current !== null) {
+        window.clearTimeout(preloadBreatherTimerRef.current);
+        preloadBreatherTimerRef.current = null;
+      }
+      if (preloadFallbackTimerRef.current !== null) {
+        window.clearTimeout(preloadFallbackTimerRef.current);
+        preloadFallbackTimerRef.current = null;
+      }
+    }, []);
+
     const notifySmoothPlaybackOnce = useCallback(() => {
       if (smoothPlaybackNotifiedRef.current) return;
       smoothPlaybackNotifiedRef.current = true;
+      clearPreloadTriggerTimers();
       onVideoSmoothPlaybackRef.current?.();
-    }, []);
+    }, [clearPreloadTriggerTimers]);
+
+    const scheduleSmoothPlaybackWithBreather = useCallback(
+      (breatherMs = INTRO_PRELOAD_GRACE_BREATHER_MS) => {
+        if (smoothPlaybackNotifiedRef.current) return;
+        if (preloadBreatherTimerRef.current !== null) return;
+        preloadBreatherTimerRef.current = window.setTimeout(() => {
+          preloadBreatherTimerRef.current = null;
+          notifySmoothPlaybackOnce();
+        }, breatherMs);
+      },
+      [notifySmoothPlaybackOnce],
+    );
+
+    const armSmoothPlaybackSafetyFallback = useCallback(() => {
+      if (smoothPlaybackNotifiedRef.current) return;
+      if (preloadFallbackTimerRef.current !== null) return;
+      preloadFallbackTimerRef.current = window.setTimeout(() => {
+        preloadFallbackTimerRef.current = null;
+        notifySmoothPlaybackOnce();
+      }, INTRO_PRELOAD_SAFETY_FALLBACK_MS);
+    }, [notifySmoothPlaybackOnce]);
 
     const notifyPastOneSecondOnce = useCallback(() => {
       if (pastOneSecondNotifiedRef.current) return;
@@ -290,7 +330,8 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
         window.cancelAnimationFrame(fallbackClockRafRef.current);
         fallbackClockRafRef.current = null;
       }
-    }, []);
+      clearPreloadTriggerTimers();
+    }, [clearPreloadTriggerTimers]);
 
     /**
      * Applies gain (0..1) via Web Audio GainNode when attached (iOS Safari safe),
@@ -1066,14 +1107,17 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
 
       const video = videoRef.current;
       if (!video || videoMissingRef.current) {
-        notifySmoothPlaybackOnce();
+        scheduleSmoothPlaybackWithBreather(INTRO_PRELOAD_GRACE_BREATHER_MS);
         startFallbackTimeline();
         return;
       }
 
+      // Safety fallback timer (1200ms) in case `playing` fired early or is delayed on mobile
+      armSmoothPlaybackSafetyFallback();
+
       const handlePlayingSignal = () => {
         video.removeEventListener('playing', handlePlayingSignal);
-        notifySmoothPlaybackOnce();
+        scheduleSmoothPlaybackWithBreather(INTRO_PRELOAD_GRACE_BREATHER_MS);
       };
       video.addEventListener('playing', handlePlayingSignal, { once: true });
 
@@ -1088,8 +1132,8 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
         await video.play();
         audioUnlockedRef.current = true;
         setShowSoundPill(false);
-        if (video.readyState >= 3) {
-          notifySmoothPlaybackOnce();
+        if (video.readyState >= 3 && !video.paused) {
+          scheduleSmoothPlaybackWithBreather(INTRO_PRELOAD_GRACE_BREATHER_MS);
         }
         startPlaybackMilestoneWatcher();
       } catch {
@@ -1097,8 +1141,8 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
           video.muted = true;
           await video.play();
           setShowSoundPill(true);
-          if (video.readyState >= 3) {
-            notifySmoothPlaybackOnce();
+          if (video.readyState >= 3 && !video.paused) {
+            scheduleSmoothPlaybackWithBreather(INTRO_PRELOAD_GRACE_BREATHER_MS);
           }
           startPlaybackMilestoneWatcher();
         } catch {
@@ -1106,13 +1150,14 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
           videoMissingRef.current = true;
           setVideoMissingFallback(true);
           setShowSoundPill(false);
-          notifySmoothPlaybackOnce();
+          scheduleSmoothPlaybackWithBreather(INTRO_PRELOAD_GRACE_BREATHER_MS);
           startFallbackTimeline();
         }
       }
     }, [
+      armSmoothPlaybackSafetyFallback,
       evaluatePlaybackMilestones,
-      notifySmoothPlaybackOnce,
+      scheduleSmoothPlaybackWithBreather,
       startExitSequence,
       startPlaybackMilestoneWatcher,
     ]);
@@ -1458,6 +1503,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
       trackEvent('intro_unmuted_tapped', 'Intro Tap for Sound Button');
       audioUnlockedRef.current = true;
       soundEngine.unlock();
+      unlockKissAudioContext();
       soundEngine.playBubbleClick(1.1);
       const video = videoRef.current;
       if (video) {

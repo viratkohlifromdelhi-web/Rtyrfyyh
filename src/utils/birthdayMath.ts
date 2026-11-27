@@ -17,6 +17,7 @@ export interface FriendRankEntry {
   id: string;
   name: string;
   tag: string;
+  avatarSrc?: string;
   instagramHandle?: string;
   instagramUrl?: string;
   isAnamika?: boolean;

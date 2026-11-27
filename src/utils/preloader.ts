@@ -1,25 +1,44 @@
 /**
- * Staggered idle background preloader for SparkleBirth.
+ * Bandwidth-safe, strictly idempotent full-pipeline background preloader for SparkleBirth.
  *
- * Runs strictly AFTER the intro video begins smooth playback (or after a brief 300ms
- * grace window if the intro is skipped/bypassed) so it never competes with initial
- * paint or video startup bandwidth.
+ * Stage 2 (Intro Video) 3-Wave Staggered Pipeline (`startIntroPlaybackPreload`):
+ *   Triggered strictly AFTER the Intro Video confirms smooth playback (`playing` + 350ms grace
+ *   breather, or 1200ms safety fallback) so zero parallel downloads compete with video startup:
+ *   - Wave 1 (+0ms after trigger): OriginStoryPlay JS/animation bundle, single shared Scene 5
+ *     kiss audio singleton (`preloadKissAudio()`), and silent UI SFX engine warmup.
+ *   - Wave 2 (+750ms after trigger): Single shared Milky background song `preload="auto"`
+ *     upgrade (strictly paused at volume = 0) + all 8 critical images (Hero portrait, Case File
+ *     #0721, Baad Me Reveal, and all 5 Friend List PFPs) preloaded & GPU-decoded in staggered
+ *     pairs of 2 every 180ms.
+ *   - Wave 3 (+1600ms after trigger): All Main Birthday Page lazy chunks in priority order
+ *     (above-the-fold -> mid-page -> lower-page) inside requestIdleCallback slices spaced 160ms
+ *     apart (strictly excluding OwnerAnalyticsDashboard).
  *
- * Priority order (120ms breathing gaps between idle tasks):
- *   1. GPU image pre-decode (`img.decode()` inside try/catch):
- *      - Anamika's hero portrait (`IMG_20261126_131911_725.jpg`)
- *      - Case File 21 July screenshot (`Screenshot_2026-11-26-13-11-51-847_com.instagram.android.png`)
- *   2. Lazy below-the-fold JS chunks in exact top-to-bottom visual scroll order
- *      (never loads OwnerAnalyticsDashboard)
- *   3. Gentle background MP3 preload upgrade (`preload="metadata"` -> `preload="auto"`)
+ * Stage 3 (`preloadMainPageDuringStory`) & fallback (`startBackgroundWarmup`) share the exact
+ * same module-level deduplication Sets/Map/flags so anything already loaded during the Intro
+ * Video is skipped in 0ms and zero files ever download twice.
  */
 
 import { ORIGIN_AUDIO_CONFIG } from '../components/originStory/originScript';
+import { preloadKissAudio } from '../components/originStory/kissAudioSingleton';
+import { scheduleGithubSfxPreload } from './uiSoundEngine';
 
 export const PRELOAD_GAP_MS = 120;
 export const PRELOAD_IDLE_TIMEOUT_MS = 1200;
 
-export type PreloadTaskKind = 'image' | 'chunk' | 'audio';
+/** Stage 2 Intro Video playback trigger protection constants */
+export const INTRO_PRELOAD_GRACE_BREATHER_MS = 350;
+export const INTRO_PRELOAD_SAFETY_FALLBACK_MS = 1200;
+
+/** Stage 2 3-Wave staggered preload timings (relative to trigger t = 0ms) */
+export const INTRO_WAVE1_DELAY_MS = 0;
+export const INTRO_WAVE2_DELAY_MS = 750;
+export const INTRO_WAVE3_DELAY_MS = 1600;
+export const INTRO_IMAGE_PAIR_SIZE = 2;
+export const INTRO_IMAGE_PAIR_GAP_MS = 180;
+export const INTRO_WAVE3_CHUNK_GAP_MS = 160;
+
+export type PreloadTaskKind = 'image' | 'chunk' | 'audio' | 'sfx';
 
 export interface PreloadTask {
   id: string;
@@ -43,29 +62,192 @@ export interface BackgroundWarmupOptions {
   onTaskComplete?: (taskId: string, kind: PreloadTaskKind) => void;
 }
 
+export const FRIEND_PFP_FILENAMES = [
+  'abhay.png',
+  'Anamika.png',
+  'ankit.png',
+  'ayush.png',
+  'harsh.png',
+] as const;
+
+export const CORE_PRELOAD_IMAGE_COUNT = 3;
+
+export function getFriendPfpImageUrls(baseUrl = '/'): readonly string[] {
+  const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  return FRIEND_PFP_FILENAMES.map((filename) => `${normalizedBase}${encodeURIComponent(filename)}`);
+}
+
 export function getDefaultPreloadImageUrls(baseUrl = '/'): readonly string[] {
   const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
   return [
     `${normalizedBase}${encodeURIComponent('IMG_20261126_131911_725.jpg')}`,
     `${normalizedBase}${encodeURIComponent('Screenshot_2026-11-26-13-11-51-847_com.instagram.android.png')}`,
     `${normalizedBase}${encodeURIComponent('Screenshot_2026-11-28-02-05-00-977_com.instagram.android.png')}`,
+    ...getFriendPfpImageUrls(normalizedBase),
   ];
+}
+
+// ============================================================================
+// Shared Module-Level Deduplication Caches (Zero Duplicate Downloads)
+// ============================================================================
+
+// Retain strong references to preloaded HTMLImageElement instances so the browser
+// keeps decoded bitmaps warm in MemoryCache and never fetches any URL twice.
+const decodedImageCache = new Map<string, HTMLImageElement>();
+
+// Tracks every URL whose decode was already initiated (covers both browser cache & test mocks).
+const preloadedImageUrls = new Set<string>();
+
+// Tracks every lazy chunk loader function already initiated across Waves 1-3 & Stage 3.
+const preloadedChunkLoaders = new Set<() => Promise<unknown>>();
+
+// Guards the single shared Milky background audio `preload="auto"` upgrade across all waves/stages.
+let mainAudioPreloadTriggered = false;
+
+// Guards the single shared Scene 5 kiss audio singleton preload across waves/stages.
+let kissAudioPreloadTriggered = false;
+
+// Guards lightweight silent UI SFX engine warmup.
+let uiSfxWarmupTriggered = false;
+
+export function getDecodedImageCacheSize(): number {
+  return decodedImageCache.size;
+}
+
+export function hasPreloadedImageUrl(url: string): boolean {
+  return decodedImageCache.has(url) || preloadedImageUrls.has(url);
+}
+
+export function hasPreloadedChunkLoader(loader: () => Promise<unknown>): boolean {
+  return preloadedChunkLoaders.has(loader);
+}
+
+export function hasTriggeredMainAudioPreload(): boolean {
+  return mainAudioPreloadTriggered;
+}
+
+export function clearDecodedImageCacheForTesting(): void {
+  decodedImageCache.clear();
+  preloadedImageUrls.clear();
+}
+
+export function resetAllPreloadDeduplicationForTesting(): void {
+  decodedImageCache.clear();
+  preloadedImageUrls.clear();
+  preloadedChunkLoaders.clear();
+  mainAudioPreloadTriggered = false;
+  kissAudioPreloadTriggered = false;
+  uiSfxWarmupTriggered = false;
+}
+
+function invokeChunkLoaderOnce(loader: () => Promise<unknown>): Promise<void> {
+  if (preloadedChunkLoaders.has(loader)) {
+    return Promise.resolve();
+  }
+  preloadedChunkLoaders.add(loader);
+  try {
+    return Promise.resolve(loader())
+      .then(() => {})
+      .catch(() => {
+        // Allow React.lazy / a later stage to retry naturally if a transient network glitch happened
+        preloadedChunkLoaders.delete(loader);
+      });
+  } catch {
+    preloadedChunkLoaders.delete(loader);
+    return Promise.resolve();
+  }
+}
+
+function invokeMainAudioPreloadOnce(onUpgradeAudioPreload?: () => void): boolean {
+  if (!onUpgradeAudioPreload || mainAudioPreloadTriggered) {
+    return false;
+  }
+  mainAudioPreloadTriggered = true;
+  try {
+    onUpgradeAudioPreload();
+  } catch {
+    // Non-fatal
+  }
+  return true;
+}
+
+function invokeKissAudioPreloadOnce(
+  kissAudioSrc: string,
+  preloadAudioFn: (src: string) => void,
+): boolean {
+  if (kissAudioPreloadTriggered) {
+    return false;
+  }
+  kissAudioPreloadTriggered = true;
+  try {
+    preloadAudioFn(kissAudioSrc);
+  } catch {
+    // Non-fatal
+  }
+  return true;
+}
+
+function invokeUiSfxWarmupOnce(warmUpFn: () => void): boolean {
+  if (uiSfxWarmupTriggered) {
+    return false;
+  }
+  uiSfxWarmupTriggered = true;
+  try {
+    warmUpFn();
+  } catch {
+    // Non-fatal silent warmup
+  }
+  return true;
+}
+
+function findExistingDomImage(url: string): HTMLImageElement | null {
+  if (typeof document === 'undefined' || !document.images) return null;
+  for (let i = 0; i < document.images.length; i += 1) {
+    const existing = document.images[i];
+    const attrSrc = existing.getAttribute('src');
+    if (attrSrc === url || (existing.src && existing.src.endsWith(url))) {
+      return existing;
+    }
+  }
+  return null;
 }
 
 /**
  * Preloads and GPU-decodes an image cleanly via `img.decode()` wrapped in try/catch
  * so unsupported browsers or transient network glitches never reject the queue.
+ * Retains a module-level cache reference so decoded bitmaps stay warm until rendered
+ * and strictly deduplicates URLs across waves and stages.
  */
 export async function preDecodeImageUrl(url: string): Promise<void> {
   if (typeof window === 'undefined' || typeof Image === 'undefined') return;
+  if (decodedImageCache.has(url)) return;
+
+  preloadedImageUrls.add(url);
+
   try {
+    // If the DOM already mounted an <img> for this exact URL, reuse it without firing a second fetch
+    const existingDomImg = findExistingDomImage(url);
+    if (existingDomImg) {
+      decodedImageCache.set(url, existingDomImg);
+      if (typeof existingDomImg.decode === 'function') {
+        await existingDomImg.decode().catch(() => {});
+      }
+      return;
+    }
+
     const img = new Image();
     img.decoding = 'async';
     img.referrerPolicy = 'no-referrer';
+    img.onerror = () => {
+      // Silently swallow image preload errors so zero console noise occurs
+    };
+    decodedImageCache.set(url, img);
     img.src = url;
 
     if (typeof img.decode === 'function') {
-      await img.decode();
+      await img.decode().catch(() => {
+        // Non-fatal: per-component onError fallback handles any broken image cleanly
+      });
       return;
     }
 
@@ -76,7 +258,7 @@ export async function preDecodeImageUrl(url: string): Promise<void> {
       }
       const done = () => {
         img.onload = null;
-        img.onerror = null;
+        img.onerror = () => {};
         resolve();
       };
       img.onload = done;
@@ -87,13 +269,30 @@ export async function preDecodeImageUrl(url: string): Promise<void> {
   }
 }
 
+async function decodeImageUrlOnce(
+  url: string,
+  decodeFn: (u: string) => Promise<void>,
+): Promise<boolean> {
+  if (hasPreloadedImageUrl(url)) {
+    return false;
+  }
+  preloadedImageUrls.add(url);
+  try {
+    await decodeFn(url);
+  } catch {
+    // Non-fatal: component fallback handles any broken image cleanly
+  }
+  return true;
+}
+
 export function createBrowserWarmupScheduler(): WarmupScheduler {
-  const win = typeof window !== 'undefined'
-    ? (window as Window & {
-        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-        cancelIdleCallback?: (id: number) => void;
-      })
-    : undefined;
+  const win =
+    typeof window !== 'undefined'
+      ? (window as Window & {
+          requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+          cancelIdleCallback?: (id: number) => void;
+        })
+      : undefined;
 
   return {
     scheduleIdle(fn: () => void, timeoutMs: number): () => void {
@@ -119,18 +318,39 @@ export function createBrowserWarmupScheduler(): WarmupScheduler {
 }
 
 /**
+ * Splits an array into fixed-size batches (e.g., pairs of 2 images for 60fps mobile decode).
+ */
+export function chunkIntoPairs<T>(items: readonly T[], pairSize = INTRO_IMAGE_PAIR_SIZE): T[][] {
+  const size = Math.max(1, Math.floor(pairSize));
+  const batches: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    batches.push(items.slice(i, i + size));
+  }
+  return batches;
+}
+
+/**
  * Builds the exact ordered warmup queue:
  * Priority 1 (images) -> Priority 2 (lazy chunks) -> Priority 3 (audio preload upgrade).
+ * When `deduplicate: true`, skips any image/chunk/audio already handled in Stage 2 or Stage 3.
  */
-export function buildWarmupQueue(options: BackgroundWarmupOptions): PreloadTask[] {
+export function buildWarmupQueue(
+  options: BackgroundWarmupOptions & { deduplicate?: boolean },
+): PreloadTask[] {
   const decodeFn = options.decodeImage ?? preDecodeImageUrl;
+  const deduplicate = Boolean(options.deduplicate);
   const tasks: PreloadTask[] = [];
 
   options.imageUrls.forEach((url, index) => {
+    if (deduplicate && hasPreloadedImageUrl(url)) return;
     tasks.push({
       id: `image:${index}`,
       kind: 'image',
       run: async () => {
+        if (deduplicate) {
+          await decodeImageUrlOnce(url, decodeFn);
+          return;
+        }
         try {
           await decodeFn(url);
         } catch {
@@ -141,10 +361,15 @@ export function buildWarmupQueue(options: BackgroundWarmupOptions): PreloadTask[
   });
 
   options.chunkLoaders.forEach((loader, index) => {
+    if (deduplicate && preloadedChunkLoaders.has(loader)) return;
     tasks.push({
       id: `chunk:${index}`,
       kind: 'chunk',
       run: async () => {
+        if (deduplicate) {
+          await invokeChunkLoaderOnce(loader);
+          return;
+        }
         try {
           await loader();
         } catch {
@@ -154,12 +379,16 @@ export function buildWarmupQueue(options: BackgroundWarmupOptions): PreloadTask[
     });
   });
 
-  if (options.onUpgradeAudioPreload) {
+  if (options.onUpgradeAudioPreload && (!deduplicate || !mainAudioPreloadTriggered)) {
     const upgradeAudio = options.onUpgradeAudioPreload;
     tasks.push({
       id: 'audio:upgrade',
       kind: 'audio',
       run: async () => {
+        if (deduplicate) {
+          invokeMainAudioPreloadOnce(upgradeAudio);
+          return;
+        }
         try {
           upgradeAudio();
         } catch {
@@ -233,7 +462,7 @@ let sessionWarmupStarted = false;
 let activeCancelWarmup: (() => void) | null = null;
 
 /**
- * Starts the idempotent session-level background warmup queue once.
+ * Starts the idempotent session-level background warmup queue once (used when intro is bypassed).
  */
 export function startBackgroundWarmup(options: BackgroundWarmupOptions): () => void {
   if (sessionWarmupStarted) {
@@ -241,7 +470,7 @@ export function startBackgroundWarmup(options: BackgroundWarmupOptions): () => v
   }
   sessionWarmupStarted = true;
 
-  const tasks = buildWarmupQueue(options);
+  const tasks = buildWarmupQueue({ ...options, deduplicate: true });
   const cancel = runWarmupQueue(tasks, {
     gapMs: options.gapMs,
     idleTimeoutMs: options.idleTimeoutMs,
@@ -267,6 +496,7 @@ export function resetBackgroundWarmupForTesting(): void {
     activeCancelWarmup = null;
   }
   sessionWarmupStarted = false;
+  resetAllPreloadDeduplicationForTesting();
 }
 
 export interface OriginStoryPreloadOptions {
@@ -280,27 +510,13 @@ export interface OriginStoryPreloadOptions {
 let originStoryPreloadStarted = false;
 let activeCancelOriginPreload: (() => void) | null = null;
 
-function quietPreloadAudioAsset(src: string): void {
-  if (typeof window === 'undefined' || typeof Audio === 'undefined') return;
-  try {
-    const audio = new Audio();
-    audio.preload = 'auto';
-    audio.volume = 0;
-    audio.onerror = () => {
-      // Silently ignore missing optional MP3 so zero console noise occurs
-    };
-    audio.src = src;
-    audio.load();
-  } catch {
-    // Silently ignore in restricted environments
-  }
+function preloadOriginKissSingleton(src: string): void {
+  void preloadKissAudio(src);
 }
 
 /**
- * Stage 2 -> Stage 3 silent background preloader.
- * Runs inside requestIdleCallback (with setTimeout fallback) while the Opening
- * Curtain / Intro Video plays, warming up the lazy OriginStoryPlay JS chunk and
- * quietly preloading the Scene 5 kissing MP3 with zero console errors.
+ * Legacy Stage 2 -> Stage 3 helper retained for compatibility; shares the exact same
+ * singleton & chunk deduplication guards as `startIntroPlaybackPreload`.
  */
 export function preloadOriginStoryStageAssets(
   options: OriginStoryPreloadOptions,
@@ -313,26 +529,15 @@ export function preloadOriginStoryStageAssets(
   const scheduler = options.scheduler ?? createBrowserWarmupScheduler();
   const idleTimeoutMs = options.idleTimeoutMs ?? PRELOAD_IDLE_TIMEOUT_MS;
   const kissAudioSrc = options.kissAudioSrc ?? ORIGIN_AUDIO_CONFIG.kissTrackSrc;
-  const preloadAudio = options.preloadAudio ?? quietPreloadAudioAsset;
+  const preloadAudio = options.preloadAudio ?? preloadOriginKissSingleton;
 
   let cancelled = false;
   const cancelIdle = scheduler.scheduleIdle(() => {
     activeCancelOriginPreload = null;
     if (cancelled) return;
 
-    try {
-      void Promise.resolve(options.loadOriginStoryChunk()).catch(() => {
-        // React.lazy will retry naturally on mount
-      });
-    } catch {
-      // React.lazy will retry naturally on mount
-    }
-
-    try {
-      preloadAudio(kissAudioSrc);
-    } catch {
-      // Non-fatal
-    }
+    void invokeChunkLoaderOnce(options.loadOriginStoryChunk);
+    invokeKissAudioPreloadOnce(kissAudioSrc, preloadAudio);
   }, idleTimeoutMs);
 
   const cancel = () => {
@@ -353,6 +558,247 @@ export function resetOriginStoryPreloadForTesting(): void {
     activeCancelOriginPreload = null;
   }
   originStoryPreloadStarted = false;
+  kissAudioPreloadTriggered = false;
+  preloadedChunkLoaders.clear();
+}
+
+// ============================================================================
+// Stage 2 Intro Video 3-Wave Full-Pipeline Preloader
+// ============================================================================
+
+export interface IntroPlaybackPreloadOptions {
+  /** Wave 1 (+0ms): OriginStoryPlay bundle (brings in OriginCharacters, OriginStageBackdrop, originScript) */
+  loadOriginStoryChunk: () => Promise<unknown>;
+  /** Wave 1 (+0ms): Optional kiss track URL override (defaults to ORIGIN_AUDIO_CONFIG.kissTrackSrc) */
+  kissAudioSrc?: string;
+  /** Wave 1 (+0ms): Optional kiss audio preload override (defaults to kissAudioSingleton.preloadKissAudio) */
+  preloadKissAudioFn?: (src: string) => void;
+  /** Wave 1 (+0ms): Optional silent UI SFX warmup override (defaults to scheduleGithubSfxPreload) */
+  warmUpUiSfx?: () => void;
+  /** Wave 2 (+750ms): Single shared Milky background audio element preload="auto" upgrade */
+  onUpgradeAudioPreload?: () => void;
+  /** Wave 2 (+750ms): All critical images (Hero, Case File, Baad Me, 5 Friend PFPs) decoded in pairs of 2 every 180ms */
+  imageUrls?: readonly string[];
+  /** Wave 3 (+1600ms): Priority-ordered Main Page lazy chunks in 160ms idle slices */
+  wave3ChunkLoaders?: ReadonlyArray<() => Promise<unknown>>;
+  /** Optional overrides for deterministic unit testing */
+  wave2DelayMs?: number;
+  wave3DelayMs?: number;
+  imagePairSize?: number;
+  imagePairGapMs?: number;
+  wave3ChunkGapMs?: number;
+  idleTimeoutMs?: number;
+  decodeImage?: (url: string) => Promise<void>;
+  scheduler?: WarmupScheduler;
+  onWaveStart?: (wave: 1 | 2 | 3) => void;
+  onTaskComplete?: (taskId: string, kind: PreloadTaskKind) => void;
+  onWaveComplete?: (wave: 1 | 2 | 3) => void;
+  onAllComplete?: () => void;
+}
+
+let introPreloadStarted = false;
+let activeCancelIntroPreload: (() => void) | null = null;
+
+export function hasIntroPlaybackPreloadStarted(): boolean {
+  return introPreloadStarted;
+}
+
+/**
+ * Full-pipeline 3-wave staggered preloader triggered strictly AFTER the Stage 2 Intro Video
+ * confirms smooth playback (`playing` + 350ms grace breather, or 1200ms safety fallback).
+ *
+ * Strictly guarded by `introPreloadStarted` so it runs at most ONCE per session and shares
+ * deduplication state with Stage 3 (`preloadMainPageDuringStory`) so zero files download twice.
+ */
+export function startIntroPlaybackPreload(
+  options: IntroPlaybackPreloadOptions,
+): () => void {
+  if (introPreloadStarted) {
+    return () => {};
+  }
+  introPreloadStarted = true;
+  originStoryPreloadStarted = true;
+
+  const scheduler = options.scheduler ?? createBrowserWarmupScheduler();
+  const idleTimeoutMs = options.idleTimeoutMs ?? PRELOAD_IDLE_TIMEOUT_MS;
+  const wave2DelayMs = options.wave2DelayMs ?? INTRO_WAVE2_DELAY_MS;
+  const wave3DelayMs = options.wave3DelayMs ?? INTRO_WAVE3_DELAY_MS;
+  const imagePairSize = options.imagePairSize ?? INTRO_IMAGE_PAIR_SIZE;
+  const imagePairGapMs = options.imagePairGapMs ?? INTRO_IMAGE_PAIR_GAP_MS;
+  const wave3ChunkGapMs = options.wave3ChunkGapMs ?? INTRO_WAVE3_CHUNK_GAP_MS;
+  const kissAudioSrc = options.kissAudioSrc ?? ORIGIN_AUDIO_CONFIG.kissTrackSrc;
+  const preloadKissFn = options.preloadKissAudioFn ?? preloadOriginKissSingleton;
+  const warmUpSfxFn = options.warmUpUiSfx ?? scheduleGithubSfxPreload;
+  const decodeFn = options.decodeImage ?? preDecodeImageUrl;
+  const imageUrls = options.imageUrls ?? getDefaultPreloadImageUrls('/');
+  const wave3ChunkLoaders = options.wave3ChunkLoaders ?? [];
+
+  let cancelled = false;
+  const pendingCancels = new Set<() => void>();
+  let wave1Done = false;
+  let wave2Done = false;
+  let wave3Done = false;
+
+  const trackCancel = (cancelFn: () => void): (() => void) => {
+    const wrapped = () => {
+      pendingCancels.delete(wrapped);
+      cancelFn();
+    };
+    pendingCancels.add(wrapped);
+    return wrapped;
+  };
+
+  const checkAllComplete = () => {
+    if (!cancelled && wave1Done && wave2Done && wave3Done) {
+      activeCancelIntroPreload = null;
+      options.onAllComplete?.();
+    }
+  };
+
+  // ---- WAVE 1 (+0ms after trigger): Origin Story bundle + Kiss singleton + Silent UI SFX warmup ----
+  const runWave1 = () => {
+    if (cancelled) return;
+    options.onWaveStart?.(1);
+
+    const originChunkPromise = invokeChunkLoaderOnce(options.loadOriginStoryChunk).finally(() => {
+      if (!cancelled) options.onTaskComplete?.('wave1:chunk:originStory', 'chunk');
+    });
+
+    if (invokeKissAudioPreloadOnce(kissAudioSrc, preloadKissFn)) {
+      options.onTaskComplete?.('wave1:audio:kissSingleton', 'audio');
+    }
+
+    if (invokeUiSfxWarmupOnce(warmUpSfxFn)) {
+      options.onTaskComplete?.('wave1:sfx:uiWarmup', 'sfx');
+    }
+
+    void originChunkPromise.finally(() => {
+      if (cancelled) return;
+      wave1Done = true;
+      options.onWaveComplete?.(1);
+      checkAllComplete();
+    });
+  };
+
+  const cancelWave1Idle = trackCancel(
+    scheduler.scheduleIdle(() => {
+      pendingCancels.delete(cancelWave1Idle);
+      runWave1();
+    }, idleTimeoutMs),
+  );
+
+  // ---- WAVE 2 (+750ms after trigger): Milky preload="auto" + Critical Images in pairs of 2 every 180ms ----
+  const cancelWave2Delay = trackCancel(
+    scheduler.delay(wave2DelayMs, () => {
+      pendingCancels.delete(cancelWave2Delay);
+      if (cancelled) return;
+      options.onWaveStart?.(2);
+
+      // 2A: Upgrade single shared Milky <audio> element to preload="auto" (paused, volume = 0)
+      if (invokeMainAudioPreloadOnce(options.onUpgradeAudioPreload)) {
+        options.onTaskComplete?.('wave2:audio:milkyAuto', 'audio');
+      }
+
+      // 2B: Preload & async GPU-decode all critical images in staggered pairs of 2 every 180ms
+      const remainingImages = imageUrls.filter((url) => !hasPreloadedImageUrl(url));
+      const imagePairs = chunkIntoPairs(remainingImages, imagePairSize);
+
+      if (imagePairs.length === 0) {
+        wave2Done = true;
+        options.onWaveComplete?.(2);
+        checkAllComplete();
+        return;
+      }
+
+      const pairTasks: PreloadTask[] = imagePairs.map((pair, pairIdx) => ({
+        id: `wave2:imagePair:${pairIdx}`,
+        kind: 'image',
+        run: async () => {
+          await Promise.allSettled(pair.map((url) => decodeImageUrlOnce(url, decodeFn)));
+        },
+      }));
+
+      const cancelPairsQueue = trackCancel(
+        runWarmupQueue(pairTasks, {
+          gapMs: imagePairGapMs,
+          idleTimeoutMs,
+          scheduler,
+          onTaskComplete: options.onTaskComplete,
+          onAllComplete: () => {
+            pendingCancels.delete(cancelPairsQueue);
+            if (cancelled) return;
+            wave2Done = true;
+            options.onWaveComplete?.(2);
+            checkAllComplete();
+          },
+        }),
+      );
+    }),
+  );
+
+  // ---- WAVE 3 (+1600ms after trigger): All Main Birthday Page lazy chunks in 160ms idle slices ----
+  const cancelWave3Delay = trackCancel(
+    scheduler.delay(wave3DelayMs, () => {
+      pendingCancels.delete(cancelWave3Delay);
+      if (cancelled) return;
+      options.onWaveStart?.(3);
+
+      const wave3Tasks: PreloadTask[] = wave3ChunkLoaders
+        .filter((loader) => !preloadedChunkLoaders.has(loader))
+        .map((loader, idx) => ({
+          id: `wave3:chunk:${idx}`,
+          kind: 'chunk',
+          run: async () => {
+            await invokeChunkLoaderOnce(loader);
+          },
+        }));
+
+      if (wave3Tasks.length === 0) {
+        wave3Done = true;
+        options.onWaveComplete?.(3);
+        checkAllComplete();
+        return;
+      }
+
+      const cancelWave3Queue = trackCancel(
+        runWarmupQueue(wave3Tasks, {
+          gapMs: wave3ChunkGapMs,
+          idleTimeoutMs,
+          scheduler,
+          onTaskComplete: options.onTaskComplete,
+          onAllComplete: () => {
+            pendingCancels.delete(cancelWave3Queue);
+            if (cancelled) return;
+            wave3Done = true;
+            options.onWaveComplete?.(3);
+            checkAllComplete();
+          },
+        }),
+      );
+    }),
+  );
+
+  const cancel = () => {
+    cancelled = true;
+    Array.from(pendingCancels).forEach((fn) => fn());
+    pendingCancels.clear();
+    if (activeCancelIntroPreload === cancel) {
+      activeCancelIntroPreload = null;
+    }
+  };
+  activeCancelIntroPreload = cancel;
+
+  return cancel;
+}
+
+export function resetIntroPlaybackPreloadForTesting(): void {
+  if (activeCancelIntroPreload) {
+    activeCancelIntroPreload();
+    activeCancelIntroPreload = null;
+  }
+  introPreloadStarted = false;
+  originStoryPreloadStarted = false;
+  resetAllPreloadDeduplicationForTesting();
 }
 
 export const STORY_PRELOAD_TIER1_DELAY_MS = 350;
@@ -411,15 +857,12 @@ let storyMainPreloadStarted = false;
 let activeCancelStoryMainPreload: (() => void) | null = null;
 
 /**
- * Stage 3 -> Stage 4 idempotent silent preloader triggered the moment OriginStoryPlay mounts.
+ * Stage 3 -> Stage 4 seamless idempotent continuation triggered the moment OriginStoryPlay mounts.
  *
- * - Priority Tier 1 (starts at 350ms after Scene 1 paint settles):
- *   1. Imports above-the-fold lazy Main Page chunks (`InteractiveTogglesSection`, `ModinoPet`)
- *   2. Preloads & GPU-decodes Anamika's Hero Scrapbook Photo and critical main-page images
- *   3. Upgrades `Milky - Just The Way You Are` to `preload="auto"` (strictly paused, volume = 0)
- *
- * - Priority Tier 2 (staggered `requestIdleCallback` slices separated by 180ms):
- *   Quietly imports all remaining below-the-fold Main Page sections without dropping frames.
+ * Shares deduplication Sets/Map/flags with `startIntroPlaybackPreload`:
+ * - Anything already loaded during the Stage 2 Intro Video is skipped in 0ms.
+ * - Anything still remaining on slower mobile networks finishes smoothly in Tier 1 (350ms)
+ *   and Tier 2 (180ms idle slices) while she reads Scenes 1-11.
  */
 export function preloadMainPageDuringStory(
   options: StoryMainPreloadOptions = {},
@@ -450,41 +893,31 @@ export function preloadMainPageDuringStory(
 
     const tier1Promises: Promise<unknown>[] = [];
 
-    // Tier 1A: Above-the-fold & companion lazy chunks
+    // Tier 1A: Above-the-fold & companion lazy chunks (skips any already loaded in Stage 2 Wave 3)
     tier1ChunkLoaders.forEach((loader, idx) => {
+      if (preloadedChunkLoaders.has(loader)) return;
       tier1Promises.push(
-        Promise.resolve()
-          .then(() => loader())
-          .then(() => {
-            if (!cancelled) options.onTaskComplete?.(`tier1:chunk:${idx}`, 'chunk');
-          })
-          .catch(() => {
-            if (!cancelled) options.onTaskComplete?.(`tier1:chunk:${idx}`, 'chunk');
-          }),
+        invokeChunkLoaderOnce(loader).finally(() => {
+          if (!cancelled) options.onTaskComplete?.(`tier1:chunk:${idx}`, 'chunk');
+        }),
       );
     });
 
-    // Tier 1B: Preload & GPU-decode Hero portrait and critical images
-    imageUrls.forEach((url, idx) => {
+    // Tier 1B: Preload & GPU-decode core above-the-fold & receipt images (skips any already decoded in Wave 2)
+    const tier1Images = imageUrls.slice(0, CORE_PRELOAD_IMAGE_COUNT);
+    const tier2StaggeredImages = imageUrls.slice(CORE_PRELOAD_IMAGE_COUNT);
+
+    tier1Images.forEach((url, idx) => {
+      if (hasPreloadedImageUrl(url)) return;
       tier1Promises.push(
-        Promise.resolve()
-          .then(() => decodeFn(url))
-          .then(() => {
-            if (!cancelled) options.onTaskComplete?.(`tier1:image:${idx}`, 'image');
-          })
-          .catch(() => {
-            if (!cancelled) options.onTaskComplete?.(`tier1:image:${idx}`, 'image');
-          }),
+        decodeImageUrlOnce(url, decodeFn).finally(() => {
+          if (!cancelled) options.onTaskComplete?.(`tier1:image:${idx}`, 'image');
+        }),
       );
     });
 
-    // Tier 1C: Warm up Milky audio strictly paused at volume 0
-    if (options.onUpgradeAudioPreload) {
-      try {
-        options.onUpgradeAudioPreload();
-      } catch {
-        // Non-fatal
-      }
+    // Tier 1C: Warm up Milky audio strictly paused at volume 0 (skipped in 0ms if Wave 2 already did it)
+    if (invokeMainAudioPreloadOnce(options.onUpgradeAudioPreload)) {
       options.onTaskComplete?.('tier1:audio:upgrade', 'audio');
     }
 
@@ -492,18 +925,28 @@ export function preloadMainPageDuringStory(
       if (cancelled) return;
       options.onTier1Complete?.();
 
-      // Priority Tier 2: Staggered 180ms requestIdleCallback slices for all below-the-fold sections
-      const tier2Tasks: PreloadTask[] = tier2ChunkLoaders.map((loader, idx) => ({
-        id: `tier2:chunk:${idx}`,
-        kind: 'chunk',
-        run: async () => {
-          try {
-            await loader();
-          } catch {
-            // React.lazy will retry naturally if needed
-          }
-        },
-      }));
+      // Priority Tier 2: Staggered 180ms requestIdleCallback slices for any remaining friend PFPs + below-the-fold chunks
+      const tier2ImageTasks: PreloadTask[] = tier2StaggeredImages
+        .filter((url) => !hasPreloadedImageUrl(url))
+        .map((url, idx) => ({
+          id: `tier2:image:${idx}`,
+          kind: 'image',
+          run: async () => {
+            await decodeImageUrlOnce(url, decodeFn);
+          },
+        }));
+
+      const tier2ChunkTasks: PreloadTask[] = tier2ChunkLoaders
+        .filter((loader) => !preloadedChunkLoaders.has(loader))
+        .map((loader, idx) => ({
+          id: `tier2:chunk:${idx}`,
+          kind: 'chunk',
+          run: async () => {
+            await invokeChunkLoaderOnce(loader);
+          },
+        }));
+
+      const tier2Tasks: PreloadTask[] = [...tier2ImageTasks, ...tier2ChunkTasks];
 
       if (tier2Tasks.length === 0) {
         activeCancelStoryMainPreload = null;
@@ -550,7 +993,6 @@ export function resetStoryMainPreloadForTesting(): void {
     activeCancelStoryMainPreload = null;
   }
   storyMainPreloadStarted = false;
+  resetIntroPlaybackPreloadForTesting();
   resetBackgroundWarmupForTesting();
 }
-
-

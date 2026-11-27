@@ -22,13 +22,14 @@ import {
   STAGE3_TO_MAIN_TIMING,
   getDefaultPreloadImageUrls,
   preloadMainPageDuringStory,
-  preloadOriginStoryStageAssets,
   startBackgroundWarmup,
+  startIntroPlaybackPreload,
 } from './utils/preloader';
 import {
   BACKGROUND_SECTION_LOADERS,
   TIER1_MAIN_LOADERS,
   TIER2_MAIN_LOADERS,
+  WAVE3_MAIN_PAGE_LOADERS,
   loadAdoptionCertificateSection,
   loadBackstorySection,
   loadBauniMeterSection,
@@ -63,6 +64,7 @@ import {
   BG_MUSIC_AUTOPLAY_FADE_MS,
   STAGE3_AUDIO_INTERRUPT_FADE_MS,
 } from './utils/theatrePhysics';
+import { unlockKissAudioContext } from './components/originStory/kissAudioSingleton';
 
 // Code-split below-the-fold sections & owner-only dashboard into independent lazy chunks
 const InteractiveTogglesSection = lazy(() =>
@@ -244,16 +246,9 @@ function BirthdayWebsiteShell() {
     };
   }, [clearBridgeTimers]);
 
-  // Stage 2 -> Stage 3 silent preload while Opening Curtain / Intro Video plays
-  useEffect(() => {
-    if (!showIntro) return;
-    const cancelOriginPreload = preloadOriginStoryStageAssets({
-      loadOriginStoryChunk: loadOriginStoryPlay,
-    });
-    return () => {
-      cancelOriginPreload();
-    };
-  }, [showIntro]);
+  // Stage 2 preload is intentionally NOT fired at 0ms here so the Intro Video gets 100% of
+  // startup bandwidth. Instead, `handleVideoSmoothPlayback` fires `startIntroPlaybackPreload()`
+  // right after `<video>` confirms `playing` + 350ms breather (with a 1200ms safety fallback).
 
   // Stage 3 -> Stage 4 true silent background loading + pre-painting while Origin Story is ongoing:
   // 1. Trigger staggered Tier 1 (350ms) & Tier 2 (180ms idle slices) preload immediately on Stage 3 mount
@@ -311,14 +306,20 @@ function BirthdayWebsiteShell() {
   }, [siteRevealed, triggerBackgroundWarmup]);
 
   const handleVideoSmoothPlayback = useCallback(() => {
-    preloadOriginStoryStageAssets({
+    startIntroPlaybackPreload({
       loadOriginStoryChunk: loadOriginStoryPlay,
+      imageUrls: getDefaultPreloadImageUrls(import.meta.env.BASE_URL),
+      wave3ChunkLoaders: WAVE3_MAIN_PAGE_LOADERS,
+      onUpgradeAudioPreload: () => {
+        bgMusicPlayer.upgradePreloadToAuto();
+      },
     });
   }, []);
 
+  // Idempotent safety backup at currentTime > 1.0s (no-op if smooth playback already kicked off Waves 1-3)
   const handleVideoPastOneSecond = useCallback(() => {
-    bgMusicPlayer.upgradePreloadToAuto();
-  }, []);
+    handleVideoSmoothPlayback();
+  }, [handleVideoSmoothPlayback]);
 
   const handleToggleSfx = useCallback(() => {
     haptics.tap();
@@ -639,6 +640,7 @@ function BirthdayWebsiteShell() {
   );
 
   const handleReplayOriginStory = useCallback(() => {
+    unlockKissAudioContext();
     try {
       haptics.vibrateSafe(12);
     } catch {
@@ -839,17 +841,18 @@ function BirthdayWebsiteShell() {
       >
         {/* CRITICAL: Keep <main> free of content-visibility / contain / overflow:hidden so Backstory sticky stacking never breaks */}
         <main className="overflow-x-clip pt-14">
-          {/* 1. Hero Section (Eager-loaded & GPU-painted behind Stage 3 for instant zero-flash reveal) */}
+          {/* Keep Main Page DOM pre-painting starting cleanly behind Stage 3 (after 450ms breather),
+              never competing with Stage 2 Intro Video decoding — while benefiting from 100% pre-fetched
+              JS chunks, GPU-decoded images, and buffered songs already warm in memory from Stage 2. */}
+          {(shouldPreMountMain || stage === 'main') && (
+            <>
+          {/* 1. Hero Section (Pre-painted behind Stage 3 with already GPU-decoded portrait for instant zero-flash reveal) */}
           <HeroSection
             isBirthdayTruce={isBirthdayTruce}
             onPopConfetti={handleHeroPopConfetti}
             isSiteRevealed={isMainStageActive}
             onPhotoLightboxChange={setIsPhotoLightboxOpen}
           />
-
-          {/* Pre-mount all lazy sections quietly behind Stage 3 (after 450ms Scene 1 breather) with heavy effects paused */}
-          {(shouldPreMountMain || stage === 'main') && (
-            <>
 
           {/* 2. Interactive Toggles & Control Bar */}
           <Suspense fallback={<SectionPlaceholder id="toggles" minHeight={720} />}>
@@ -1067,7 +1070,23 @@ export default function App() {
     setShowOwnerDashboard(false);
   }, []);
 
+  // Synchronously unlock the Scene 5 Web AudioContext on the very first user tap/key anywhere
+  // so mobile Chrome/Safari/in-app browsers pre-decode & start Scene 5 audio in < 5ms.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleFirstGesture = () => {
+      unlockKissAudioContext();
+    };
+    window.addEventListener('pointerdown', handleFirstGesture, { once: true, passive: true });
+    window.addEventListener('keydown', handleFirstGesture, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', handleFirstGesture);
+      window.removeEventListener('keydown', handleFirstGesture);
+    };
+  }, []);
+
   const handleMidnightUnlock = useCallback(() => {
+    unlockKissAudioContext();
     setIsMidnightLocked(false);
   }, []);
 

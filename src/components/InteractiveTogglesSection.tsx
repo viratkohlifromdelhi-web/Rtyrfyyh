@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Flame, HeartHandshake, Sparkles, Trophy } from 'lucide-react';
 import { FRIEND_LEADERBOARD_BASE } from '../data/celebrationData';
 import { getOrderedFriendList } from '../utils/birthdayMath';
@@ -72,6 +73,7 @@ export function InteractiveTogglesSection({
   onToggleSparkleRain,
   onReplayOriginStory,
 }: InteractiveTogglesSectionProps) {
+  const [failedAvatars, setFailedAvatars] = useState<Record<string, boolean>>({});
   const isNoFilterActive = !isBirthdayTruce;
   const orderedFriends = getOrderedFriendList(FRIEND_LEADERBOARD_BASE, friendOverride);
 
@@ -363,7 +365,7 @@ export function InteractiveTogglesSection({
                       />
                     )}
 
-                    <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
                       {/* Crisp Tabular Rank Numeral (No Clunky Box, Muted Gold #1) */}
                       <span
                         data-testid={`friend-rank-num-${entry.id}`}
@@ -378,15 +380,43 @@ export function InteractiveTogglesSection({
                         #{rankNum}
                       </span>
 
-                      {/* Clean 36x36px Cohesive Tonal Initial Avatar (No Overlapping Crown) */}
-                      <span
-                        aria-hidden="true"
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold ${
-                          AVATAR_STYLES[entry.id] ?? 'bg-[#FFE6F0] text-[#3A1233] border-[#F2B5CC]'
-                        }`}
-                      >
-                        {initial}
-                      </span>
+                      {/* Crisp Circular Friend PFP with Pastel Stationery Ring & Per-Friend Fallback */}
+                      {entry.avatarSrc && !failedAvatars[entry.id] ? (
+                        <span
+                          className={`relative block h-10 w-10 shrink-0 overflow-hidden rounded-full border-[1.5px] bg-[#FFF5F9] sm:h-11 sm:w-11 ${
+                            isRankOne
+                              ? 'border-[#DFB958] shadow-[0_4px_14px_-4px_rgba(181,134,26,0.34)]'
+                              : isMorganHighlighted
+                                ? 'border-[rgba(217,75,125,0.48)] shadow-[0_4px_14px_-4px_rgba(217,75,125,0.32)]'
+                                : 'border-[rgba(217,75,125,0.24)] shadow-[0_4px_12px_-4px_rgba(58,18,51,0.18)]'
+                          }`}
+                        >
+                          <img
+                            src={entry.avatarSrc}
+                            alt={entry.name}
+                            width={44}
+                            height={44}
+                            decoding="async"
+                            data-testid={`friend-avatar-img-${entry.id}`}
+                            onError={() =>
+                              setFailedAvatars((prev) =>
+                                prev[entry.id] ? prev : { ...prev, [entry.id]: true },
+                              )
+                            }
+                            className="h-full w-full rounded-full object-cover object-top"
+                          />
+                        </span>
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          data-testid={`friend-avatar-fallback-${entry.id}`}
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-[1.5px] text-sm font-bold sm:h-11 sm:w-11 ${
+                            AVATAR_STYLES[entry.id] ?? 'bg-[#FFE6F0] text-[#3A1233] border-[#F2B5CC]'
+                          }`}
+                        >
+                          {initial}
+                        </span>
+                      )}
 
                       {/* Name + Clean Non-Clickable Plain-Text Instagram Handle Underneath */}
                       <div className="min-w-0">

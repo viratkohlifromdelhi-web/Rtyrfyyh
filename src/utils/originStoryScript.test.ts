@@ -14,6 +14,7 @@ import {
   SCENE_8_GROWTH_STEPS,
   SCENE_9_GROWTH_STEPS,
   buildOriginKissTrackSrc,
+  computeScene5SyncedTimings,
   getIstMonthDay,
   getOriginFinaleCopy,
   getOriginRomanticGlowIntensity,
@@ -183,18 +184,18 @@ test('Scene 5 starry kiss 5-phase timeline, audio cues, and pose contact geometr
   assert.equal(buildOriginKissTrackSrc('/birthday-site/'), '/birthday-site/origin-kiss-track.mp3');
   assert.equal(ORIGIN_AUDIO_CONFIG.kissTrackSrc, buildOriginKissTrackSrc('/'));
 
-  // Exact 5-phase choreography milestones (full kiss track plays to natural end; no early fade-out cutoff)
+  // Exact 5-phase choreography milestones (0ms immediate kiss audio start, full track to natural end)
   assert.equal(SCENE5_KISS_TIMING.phase2StepStartMs, 750);
   assert.equal(SCENE5_KISS_TIMING.phase3LeanInStartMs, 1850);
-  assert.equal(SCENE5_KISS_TIMING.audioSwellStartMs, 2150);
+  assert.equal(SCENE5_KISS_TIMING.audioSwellStartMs, 0);
   assert.equal(SCENE5_KISS_TIMING.phase4KissStartMs, 2400);
   assert.equal(SCENE5_KISS_TIMING.phase4KissHoldMs, 3500);
   assert.equal('audioFadeOutStartMs' in SCENE5_KISS_TIMING, false);
   assert.equal(SCENE5_KISS_TIMING.phase5AfterglowStartMs, 5900);
   assert.equal(SCENE5_KISS_TIMING.settleMs, 6600);
   assert.equal(ORIGIN_AUDIO_CONFIG.playFullTrackToEnd, true);
-  assert.equal(ORIGIN_AUDIO_CONFIG.fadeInMs, 300);
-  assert.equal(ORIGIN_AUDIO_CONFIG.interruptFadeOutMs, 150);
+  assert.equal(ORIGIN_AUDIO_CONFIG.fadeInMs, 180);
+  assert.equal(ORIGIN_AUDIO_CONFIG.interruptFadeOutMs, 140);
   assert.equal(ORIGIN_AUDIO_CONFIG.maxVolume, 0.82);
 
   const kissScene = ORIGIN_SCENES.find((s) => s.id === 'starry_kiss');
@@ -234,6 +235,30 @@ test('Romantic soft-pink radial lighting intensity ramps up to peak during the S
   assert.equal(getOriginRomanticGlowIntensity('starry_kiss', 'kissing'), 'peak');
   assert.equal(getOriginRomanticGlowIntensity('starry_kiss', 'afterglow'), 'afterglow');
 });
+
+test('computeScene5SyncedTimings aligns afterglow pull-back with decoded Web Audio clip duration and clamps safely', () => {
+  // Undecoded (0ms) or too short (< 3200ms) -> preserves default 5900ms / 6600ms
+  const fallback = computeScene5SyncedTimings(0);
+  assert.equal(fallback.phase5AfterglowStartMs, SCENE5_KISS_TIMING.phase5AfterglowStartMs);
+  assert.equal(fallback.settleMs, SCENE5_KISS_TIMING.settleMs);
+
+  // Mid-length 5400ms trimmed clip -> pulls back at 4700ms, settles at 5400ms
+  const syncedMid = computeScene5SyncedTimings(5400);
+  assert.equal(syncedMid.phase4KissStartMs, 2400);
+  assert.equal(syncedMid.phase5AfterglowStartMs, 4700);
+  assert.equal(syncedMid.settleMs, 5400);
+
+  // Short-ish 3500ms clip -> enforces minimum 3600ms afterglow so kiss hold is never skipped
+  const syncedMin = computeScene5SyncedTimings(3500);
+  assert.equal(syncedMin.phase5AfterglowStartMs, 3600);
+  assert.equal(syncedMin.settleMs, 4300);
+
+  // Very long 15000ms clip -> caps afterglow at 9500ms so kiss hold stays graceful
+  const syncedMax = computeScene5SyncedTimings(15000);
+  assert.equal(syncedMax.phase5AfterglowStartMs, 9500);
+  assert.equal(syncedMax.settleMs, 10200);
+});
+
 
 
 

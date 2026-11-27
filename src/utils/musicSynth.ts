@@ -161,9 +161,8 @@ export class BirthdayMusicPlayer {
       el.setAttribute('playsinline', '');
       el.setAttribute('webkit-playsinline', '');
       el.hidden = true;
-      el.src = BG_MUSIC_SRC;
       el.loop = true;
-      el.preload = 'metadata';
+      el.preload = 'none';
       el.playsInline = true;
       el.playbackRate = 1.0;
       el.defaultPlaybackRate = 1.0;
@@ -472,8 +471,8 @@ export class BirthdayMusicPlayer {
   }
 
   /**
-   * Pre-creates the persistent <audio> element with `preload="metadata"` so initial page load
-   * and intro video buffering never compete with a multi-MB MP3 download.
+   * Pre-creates the persistent <audio> element with `preload="none"` and no `src` yet so initial
+   * page load and Stage 2 Intro Video buffering incur zero competing MP3 network requests.
    */
   public warmUp(): void {
     this.ensureVisibilityListener();
@@ -481,8 +480,9 @@ export class BirthdayMusicPlayer {
   }
 
   /**
-   * Gently upgrades the background MP3 to `preload="auto"` once the intro video is smoothly
-   * playing (`currentTime > 1.0`) or during idle warmup — without starting playback.
+   * Upgrades the single persistent background MP3 element to `preload="auto"` strictly once
+   * during Stage 2 Wave 2 (or Stage 3 / fallback warmup) — paused at volume = 0 with strictly
+   * ONE network fetch.
    */
   public upgradePreloadToAuto(): void {
     if (this.audioPreloadUpgraded || this.isPlaying) return;
@@ -490,7 +490,21 @@ export class BirthdayMusicPlayer {
     if (!el) return;
     this.audioPreloadUpgraded = true;
     el.preload = 'auto';
-    if (el.readyState < 3 && el.paused) {
+    el.volume = 0;
+    if (!el.getAttribute('src')) {
+      el.src = BG_MUSIC_SRC;
+      // Setting `el.src` automatically triggers the HTML5 resource load algorithm;
+      // only call `el.load()` if the environment did not transition out of NETWORK_EMPTY.
+      if (el.networkState === 0 && el.paused) {
+        try {
+          el.load();
+        } catch {
+          // Ignore load() errors in minimal environments
+        }
+      }
+      return;
+    }
+    if (el.networkState === 0 && el.readyState < 3 && el.paused) {
       try {
         el.load();
       } catch {
@@ -506,6 +520,9 @@ export class BirthdayMusicPlayer {
     if (el.preload !== 'auto') {
       el.preload = 'auto';
       this.audioPreloadUpgraded = true;
+    }
+    if (!el.getAttribute('src')) {
+      el.src = BG_MUSIC_SRC;
     }
 
     this.clearPendingPauseTimer();

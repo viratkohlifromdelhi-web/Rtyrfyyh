@@ -34,12 +34,19 @@ function createImmediateTestScheduler(recordedGaps: number[]): WarmupScheduler {
   };
 }
 
-test('getDefaultPreloadImageUrls lists Anamika portrait, 21 July receipt, and Baad Me receipt', () => {
+test('getDefaultPreloadImageUrls lists core images plus all 5 exact case-sensitive friend PFPs', () => {
   const urls = getDefaultPreloadImageUrls('/');
-  assert.equal(urls.length, 3);
-  assert.ok(urls[0].includes('IMG_20261126_131911_725.jpg'));
-  assert.ok(urls[1].includes('Screenshot_2026-11-26-13-11-51-847_com.instagram.android.png'));
-  assert.ok(urls[2].includes('Screenshot_2026-11-28-02-05-00-977_com.instagram.android.png'));
+  assert.equal(urls.length, 8);
+  assert.equal(urls[0], '/IMG_20261126_131911_725.jpg');
+  assert.equal(urls[1], '/Screenshot_2026-11-26-13-11-51-847_com.instagram.android.png');
+  assert.equal(urls[2], '/Screenshot_2026-11-28-02-05-00-977_com.instagram.android.png');
+  assert.deepEqual(urls.slice(3), [
+    '/abhay.png',
+    '/Anamika.png',
+    '/ankit.png',
+    '/ayush.png',
+    '/harsh.png',
+  ]);
 });
 
 test('runWarmupQueue executes images -> lazy chunks -> audio in strict priority order with 120ms gaps', async () => {
@@ -302,5 +309,333 @@ test('preloadMainPageDuringStory runs Tier 1 after 350ms, then Tier 2 in 180ms i
 
   resetStoryMainPreloadForTesting();
 });
+
+test('Stage 3 preload decodes all 5 friend PFPs in staggered idle slices and retains bitmaps in module cache', async () => {
+  const {
+    clearDecodedImageCacheForTesting,
+    getDecodedImageCacheSize,
+    getDefaultPreloadImageUrls: getUrls,
+    preDecodeImageUrl,
+    preloadMainPageDuringStory,
+    resetStoryMainPreloadForTesting,
+  } = await import('./preloader');
+  resetStoryMainPreloadForTesting();
+  clearDecodedImageCacheForTesting();
+
+  const decodedOrder: string[] = [];
+  const gaps: number[] = [];
+  const scheduler = createImmediateTestScheduler(gaps);
+
+  await new Promise<void>((resolve) => {
+    preloadMainPageDuringStory({
+      imageUrls: getUrls('/'),
+      tier1ChunkLoaders: [],
+      tier2ChunkLoaders: [
+        async () => {
+          decodedOrder.push('chunk:after-pfps');
+        },
+      ],
+      decodeImage: async (url) => {
+        decodedOrder.push(url);
+      },
+      scheduler,
+      onTier1Complete: () => {
+        decodedOrder.push('tier1:done');
+      },
+      onAllComplete: resolve,
+    });
+  });
+
+  const tier1DoneIdx = decodedOrder.indexOf('tier1:done');
+  assert.equal(tier1DoneIdx, 3);
+  assert.deepEqual(decodedOrder.slice(tier1DoneIdx + 1), [
+    '/abhay.png',
+    '/Anamika.png',
+    '/ankit.png',
+    '/ayush.png',
+    '/harsh.png',
+    'chunk:after-pfps',
+  ]);
+
+  // Verify preDecodeImageUrl retains strong references in decodedImageCache and deduplicates URLs
+  const originalWindow = globalThis.window;
+  const originalImage = globalThis.Image;
+  const createdSrcs: string[] = [];
+
+  class MockImage {
+    decoding = '';
+    referrerPolicy = '';
+    complete = true;
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    private _src = '';
+    set src(val: string) {
+      this._src = val;
+      createdSrcs.push(val);
+    }
+    get src() {
+      return this._src;
+    }
+    async decode() {
+      if (this._src === '/broken-pfp.png') {
+        throw new Error('decode failed');
+      }
+    }
+  }
+
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    writable: true,
+    value: {},
+  });
+  Object.defineProperty(globalThis, 'Image', {
+    configurable: true,
+    writable: true,
+    value: MockImage,
+  });
+
+  try {
+    await preDecodeImageUrl('/abhay.png');
+    await preDecodeImageUrl('/Anamika.png');
+    await preDecodeImageUrl('/abhay.png'); // duplicate should be skipped cleanly
+    await preDecodeImageUrl('/broken-pfp.png'); // failed decode should never throw
+    assert.equal(getDecodedImageCacheSize(), 3);
+    assert.deepEqual(createdSrcs, ['/abhay.png', '/Anamika.png', '/broken-pfp.png']);
+  } finally {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      writable: true,
+      value: originalWindow,
+    });
+    Object.defineProperty(globalThis, 'Image', {
+      configurable: true,
+      writable: true,
+      value: originalImage,
+    });
+    clearDecodedImageCacheForTesting();
+    resetStoryMainPreloadForTesting();
+  }
+});
+
+test('startIntroPlaybackPreload executes Waves 1, 2, 3 with exact stagger timings and is strictly idempotent', async () => {
+  const {
+    INTRO_IMAGE_PAIR_GAP_MS,
+    INTRO_IMAGE_PAIR_SIZE,
+    INTRO_PRELOAD_GRACE_BREATHER_MS,
+    INTRO_PRELOAD_SAFETY_FALLBACK_MS,
+    INTRO_WAVE1_DELAY_MS,
+    INTRO_WAVE2_DELAY_MS,
+    INTRO_WAVE3_CHUNK_GAP_MS,
+    INTRO_WAVE3_DELAY_MS,
+    chunkIntoPairs,
+    getDefaultPreloadImageUrls: getUrls,
+    hasIntroPlaybackPreloadStarted,
+    resetIntroPlaybackPreloadForTesting,
+    startIntroPlaybackPreload,
+  } = await import('./preloader');
+  resetIntroPlaybackPreloadForTesting();
+
+  assert.equal(INTRO_PRELOAD_GRACE_BREATHER_MS, 350);
+  assert.equal(INTRO_PRELOAD_SAFETY_FALLBACK_MS, 1200);
+  assert.equal(INTRO_WAVE1_DELAY_MS, 0);
+  assert.equal(INTRO_WAVE2_DELAY_MS, 750);
+  assert.equal(INTRO_WAVE3_DELAY_MS, 1600);
+  assert.equal(INTRO_IMAGE_PAIR_SIZE, 2);
+  assert.equal(INTRO_IMAGE_PAIR_GAP_MS, 180);
+  assert.equal(INTRO_WAVE3_CHUNK_GAP_MS, 160);
+  assert.equal(hasIntroPlaybackPreloadStarted(), false);
+
+  const defaultImages = getUrls('/');
+  const pairs = chunkIntoPairs(defaultImages, INTRO_IMAGE_PAIR_SIZE);
+  assert.equal(pairs.length, 4);
+  assert.deepEqual(
+    pairs.map((p) => p.length),
+    [2, 2, 2, 2],
+  );
+
+  const recordedDelays: number[] = [];
+  const events: string[] = [];
+  const scheduler = createImmediateTestScheduler(recordedDelays);
+
+  const loadOrigin = async () => {
+    events.push('wave1:originStory');
+  };
+  const loadToggles = async () => {
+    events.push('wave3:toggles');
+  };
+  const loadModino = async () => {
+    events.push('wave3:modino');
+  };
+  const loadFooter = async () => {
+    events.push('wave3:footer');
+  };
+
+  await new Promise<void>((resolve) => {
+    startIntroPlaybackPreload({
+      loadOriginStoryChunk: loadOrigin,
+      preloadKissAudioFn: (src) => {
+        events.push(`wave1:kiss:${src}`);
+      },
+      warmUpUiSfx: () => {
+        events.push('wave1:sfx');
+      },
+      onUpgradeAudioPreload: () => {
+        events.push('wave2:milky');
+      },
+      imageUrls: defaultImages,
+      decodeImage: async (url) => {
+        events.push(`wave2:img:${url}`);
+      },
+      wave3ChunkLoaders: [loadToggles, loadModino, loadFooter],
+      scheduler,
+      onAllComplete: resolve,
+    });
+
+    assert.equal(hasIntroPlaybackPreloadStarted(), true);
+
+    // Second invocation in same session must be an idempotent no-op
+    startIntroPlaybackPreload({
+      loadOriginStoryChunk: async () => {
+        events.push('duplicate:origin');
+      },
+      preloadKissAudioFn: () => {
+        events.push('duplicate:kiss');
+      },
+      onUpgradeAudioPreload: () => {
+        events.push('duplicate:milky');
+      },
+      imageUrls: ['/duplicate.png'],
+      decodeImage: async () => {
+        events.push('duplicate:img');
+      },
+      wave3ChunkLoaders: [
+        async () => {
+          events.push('duplicate:chunk');
+        },
+      ],
+      scheduler,
+    });
+  });
+
+  // Verify Wave 1, Wave 2, Wave 3 tasks all executed strictly once
+  assert.equal(events.filter((e) => e === 'wave1:originStory').length, 1);
+  assert.equal(events.filter((e) => e === 'wave1:kiss:/origin-kiss-track.mp3').length, 1);
+  assert.equal(events.filter((e) => e === 'wave1:sfx').length, 1);
+  assert.equal(events.filter((e) => e === 'wave2:milky').length, 1);
+  for (const url of defaultImages) {
+    assert.equal(events.filter((e) => e === `wave2:img:${url}`).length, 1);
+  }
+  assert.equal(events.filter((e) => e === 'wave3:toggles').length, 1);
+  assert.equal(events.filter((e) => e === 'wave3:modino').length, 1);
+  assert.equal(events.filter((e) => e === 'wave3:footer').length, 1);
+  assert.equal(
+    events.some((e) => e.startsWith('duplicate:')),
+    false,
+  );
+
+  // Verify wave delays (750ms Wave 2, 1600ms Wave 3), 180ms image-pair gaps (3 gaps for 4 pairs), and 160ms chunk gaps (2 gaps for 3 chunks)
+  assert.ok(recordedDelays.includes(750));
+  assert.ok(recordedDelays.includes(1600));
+  assert.equal(recordedDelays.filter((d) => d === 180).length, 3);
+  assert.equal(recordedDelays.filter((d) => d === 160).length, 2);
+
+  resetIntroPlaybackPreloadForTesting();
+});
+
+test('Stage 3 preloadMainPageDuringStory skips already-loaded Stage 2 assets in 0ms and only finishes remaining items', async () => {
+  const {
+    preloadMainPageDuringStory,
+    resetStoryMainPreloadForTesting,
+    startIntroPlaybackPreload,
+  } = await import('./preloader');
+  resetStoryMainPreloadForTesting();
+
+  const counts = new Map<string, number>();
+  const bump = (key: string) => {
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  };
+
+  const loadOrigin = async () => bump('origin');
+  const loadToggles = async () => bump('toggles');
+  const loadModino = async () => bump('modino');
+  const loadRemaining = async () => bump('remaining_slow_4g_chunk');
+
+  const scheduler = createImmediateTestScheduler([]);
+
+  // Stage 2 completes Wave 1, Wave 2 (2 images + Milky), and 2 of 3 Wave 3 chunks
+  await new Promise<void>((resolve) => {
+    startIntroPlaybackPreload({
+      loadOriginStoryChunk: loadOrigin,
+      preloadKissAudioFn: () => bump('kiss'),
+      warmUpUiSfx: () => bump('sfx'),
+      onUpgradeAudioPreload: () => bump('milky'),
+      imageUrls: ['/IMG_20261126_131911_725.jpg', '/abhay.png'],
+      decodeImage: async (url) => bump(`img:${url}`),
+      wave3ChunkLoaders: [loadToggles, loadModino],
+      scheduler,
+      onAllComplete: resolve,
+    });
+  });
+
+  // Now Stage 3 mounts and calls preloadMainPageDuringStory with overlapping + 1 new chunk & 1 new image
+  await new Promise<void>((resolve) => {
+    preloadMainPageDuringStory({
+      imageUrls: [
+        '/IMG_20261126_131911_725.jpg',
+        '/abhay.png',
+        '/Screenshot_2026-11-28-02-05-00-977_com.instagram.android.png',
+        '/ayush.png',
+      ],
+      tier1ChunkLoaders: [loadToggles, loadModino],
+      tier2ChunkLoaders: [loadRemaining],
+      onUpgradeAudioPreload: () => bump('milky'),
+      decodeImage: async (url) => bump(`img:${url}`),
+      scheduler,
+      onAllComplete: resolve,
+    });
+  });
+
+  // Zero duplicate downloads for anything already handled in Stage 2!
+  assert.equal(counts.get('origin'), 1);
+  assert.equal(counts.get('kiss'), 1);
+  assert.equal(counts.get('milky'), 1);
+  assert.equal(counts.get('toggles'), 1);
+  assert.equal(counts.get('modino'), 1);
+  assert.equal(counts.get('img:/IMG_20261126_131911_725.jpg'), 1);
+  assert.equal(counts.get('img:/abhay.png'), 1);
+
+  // Remaining items not yet loaded during Stage 2 finish seamlessly in Stage 3!
+  assert.equal(counts.get('remaining_slow_4g_chunk'), 1);
+  assert.equal(counts.get('img:/Screenshot_2026-11-28-02-05-00-977_com.instagram.android.png'), 1);
+  assert.equal(counts.get('img:/ayush.png'), 1);
+
+  resetStoryMainPreloadForTesting();
+});
+
+test('WAVE3_MAIN_PAGE_LOADERS covers all Main Birthday Page sections in priority order and strictly excludes OwnerAnalyticsDashboard', async () => {
+  const {
+    BACKGROUND_SECTION_LOADERS,
+    WAVE3_MAIN_PAGE_LOADERS,
+    loadInteractiveTogglesSection,
+    loadModinoPet,
+    loadClosingSignOffFooter,
+    loadOwnerAnalyticsDashboard,
+  } = await import('./sectionLoaders');
+
+  // Above-the-fold first
+  assert.equal(WAVE3_MAIN_PAGE_LOADERS[0], loadInteractiveTogglesSection);
+  assert.equal(WAVE3_MAIN_PAGE_LOADERS[1], loadModinoPet);
+  // Closing Footer last
+  assert.equal(WAVE3_MAIN_PAGE_LOADERS[WAVE3_MAIN_PAGE_LOADERS.length - 1], loadClosingSignOffFooter);
+  // Owner dashboard strictly excluded
+  assert.equal(WAVE3_MAIN_PAGE_LOADERS.includes(loadOwnerAnalyticsDashboard), false);
+  // Covers every section in BACKGROUND_SECTION_LOADERS with zero duplicates
+  assert.equal(new Set(WAVE3_MAIN_PAGE_LOADERS).size, WAVE3_MAIN_PAGE_LOADERS.length);
+  for (const loader of BACKGROUND_SECTION_LOADERS) {
+    assert.equal(WAVE3_MAIN_PAGE_LOADERS.includes(loader), true);
+  }
+});
+
+
 
 
