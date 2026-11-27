@@ -35,6 +35,7 @@ import {
   loadBirthdaySummaryCard,
   loadCalendarAndCounterSection,
   loadCaseFileSection,
+  loadBaadMeRevealSection,
   loadChickenFarmSection,
   loadClosingSignOffFooter,
   loadInfinityVaultSection,
@@ -90,6 +91,9 @@ const AdoptionCertificateSection = lazy(() =>
 );
 const CaseFileSection = lazy(() =>
   loadCaseFileSection().then((m) => ({ default: m.CaseFileSection })),
+);
+const BaadMeRevealSection = lazy(() =>
+  loadBaadMeRevealSection().then((m) => ({ default: m.BaadMeRevealSection })),
 );
 const ScratchCouponsSection = lazy(() =>
   loadScratchCouponsSection().then((m) => ({ default: m.ScratchCouponsSection })),
@@ -183,6 +187,7 @@ function BirthdayWebsiteShell() {
   const [showMusicHint, setShowMusicHint] = useState(false);
   const [isPhotoLightboxOpen, setIsPhotoLightboxOpen] = useState(false);
   const [isCaseFileLightboxOpen, setIsCaseFileLightboxOpen] = useState(false);
+  const [isBaadMeLightboxOpen, setIsBaadMeLightboxOpen] = useState(false);
   const [isKeepsakeModalOpen, setIsKeepsakeModalOpen] = useState(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -760,6 +765,7 @@ function BirthdayWebsiteShell() {
     pauseBackgroundWork ||
     isPhotoLightboxOpen ||
     isCaseFileLightboxOpen ||
+    isBaadMeLightboxOpen ||
     isKeepsakeModalOpen;
 
   return (
@@ -902,6 +908,11 @@ function BirthdayWebsiteShell() {
             <CaseFileSection onLightboxChange={setIsCaseFileLightboxOpen} />
           </Suspense>
 
+          {/* 10B. The "Baad Me" Mystery Reveal Card (Companion Instagram Receipt Exhibit) */}
+          <Suspense fallback={null}>
+            <BaadMeRevealSection onLightboxChange={setIsBaadMeLightboxOpen} />
+          </Suspense>
+
           {/* 11. Finger Scratch-Off Coupons Section ("Morgan's Birthday Scratch Cards") */}
           <Suspense fallback={<SectionPlaceholder id="scratch-coupons" minHeight={600} />}>
             <ScratchCouponsSection onCardRevealConfetti={handleBurstConfetti} />
@@ -1009,6 +1020,7 @@ function BirthdayWebsiteShell() {
               showOriginStory ||
               isPhotoLightboxOpen ||
               isCaseFileLightboxOpen ||
+              isBaadMeLightboxOpen ||
               isKeepsakeModalOpen
             }
           />

@@ -26,6 +26,8 @@ export const loadAdoptionCertificateSection = () =>
 
 export const loadCaseFileSection = () => import('../components/CaseFileSection');
 
+export const loadBaadMeRevealSection = () => import('../components/BaadMeRevealSection');
+
 export const loadScratchCouponsSection = () => import('../components/ScratchCouponsSection');
 
 export const loadInfinityVaultSection = () => import('../components/InfinityVaultSection');
@@ -81,6 +83,7 @@ export const TIER2_MAIN_LOADERS: ReadonlyArray<() => Promise<unknown>> = [
   loadBauniMeterSection,
   loadAdoptionCertificateSection,
   loadCaseFileSection,
+  loadBaadMeRevealSection,
   loadScratchCouponsSection,
   loadInfinityVaultSection,
   loadSpinWheelSection,

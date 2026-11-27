@@ -34,11 +34,12 @@ function createImmediateTestScheduler(recordedGaps: number[]): WarmupScheduler {
   };
 }
 
-test('getDefaultPreloadImageUrls lists Anamika portrait first and 21 July receipt second', () => {
+test('getDefaultPreloadImageUrls lists Anamika portrait, 21 July receipt, and Baad Me receipt', () => {
   const urls = getDefaultPreloadImageUrls('/');
-  assert.equal(urls.length, 2);
+  assert.equal(urls.length, 3);
   assert.ok(urls[0].includes('IMG_20261126_131911_725.jpg'));
   assert.ok(urls[1].includes('Screenshot_2026-11-26-13-11-51-847_com.instagram.android.png'));
+  assert.ok(urls[2].includes('Screenshot_2026-11-28-02-05-00-977_com.instagram.android.png'));
 });
 
 test('runWarmupQueue executes images -> lazy chunks -> audio in strict priority order with 120ms gaps', async () => {

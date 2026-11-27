@@ -167,6 +167,12 @@ export const MODINO_REACTION_BANKS: Record<ModinoReactionCategory, readonly Modi
   backstory: [
     { text: "memories, let's go 📖✨", mood: 'happy_smile', sfx: 'awww_chime', priority: true },
     {
+      text: 'Baad me finally aa gaya! Case closed! 📱😂',
+      mood: 'laugh',
+      sfx: 'giggle',
+      priority: true,
+    },
+    {
       text: '12:29 AM on 21 July really rewrote the whole timeline! 🕰️✨',
       mood: 'surprised',
       sfx: 'surprise_bling',

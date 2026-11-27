@@ -48,6 +48,7 @@ export function getDefaultPreloadImageUrls(baseUrl = '/'): readonly string[] {
   return [
     `${normalizedBase}${encodeURIComponent('IMG_20261126_131911_725.jpg')}`,
     `${normalizedBase}${encodeURIComponent('Screenshot_2026-11-26-13-11-51-847_com.instagram.android.png')}`,
+    `${normalizedBase}${encodeURIComponent('Screenshot_2026-11-28-02-05-00-977_com.instagram.android.png')}`,
   ];
 }
 
