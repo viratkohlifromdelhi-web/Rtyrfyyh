@@ -310,14 +310,7 @@ export default function OriginStoryPlay({
     [onInterruptIntroAudio],
   );
 
-  // Lock body scroll while theatrical overlay is open
-  useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
-  }, []);
+  // Document scroll lock is managed centrally by App.tsx via html/body.stage-scroll-locked.
 
   // Scene-by-scene dedicated choreography runner (never auto-advances between scenes)
   useEffect(() => {
@@ -757,13 +750,14 @@ export default function OriginStoryPlay({
       data-scene-number={currentScene.sceneNumber}
       data-kiss-beat={isStarryScene ? kissBeat : undefined}
       data-scene-settled={sceneSettled ? 'true' : 'false'}
-      className={`fixed inset-0 z-[9500] flex h-[100dvh] flex-col justify-between gap-[clamp(10px,2vh,16px)] overflow-hidden transition-all duration-[380ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-        isExiting ? 'scale-[1.035] opacity-0 pointer-events-none' : 'scale-100 opacity-100'
+      className={`fixed inset-0 z-[9500] h-[100dvh] w-full overflow-x-hidden overflow-y-auto overscroll-none transition-all duration-[380ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        isExiting ? 'scale-[1.035] opacity-0 pointer-events-none' : 'opacity-100'
       }`}
       style={{
+        backgroundColor: isStarryScene ? '#271334' : '#FFFDF9',
         background: isStarryScene
           ? 'linear-gradient(180deg, #271334 0%, #562A55 54%, #A85781 100%)'
-          : 'radial-gradient(circle at 50% 18%, #FFFDF9 0%, #FFF5FA 48%, #FCE9F2 100%)',
+          : 'linear-gradient(180deg, #FFFDF9 0%, #FFF5F8 100%)',
         transition:
           'background 900ms cubic-bezier(0.22, 1, 0.36, 1), opacity 380ms cubic-bezier(0.22, 1, 0.36, 1), transform 380ms cubic-bezier(0.22, 1, 0.36, 1)',
       }}
@@ -790,6 +784,8 @@ export default function OriginStoryPlay({
         />
       </div>
 
+      {/* Inner Full-Viewport Flex Shell (fits 100dvh cleanly with zero scroll in normal use) */}
+      <div className="relative z-10 flex h-full min-h-full w-full flex-col justify-between gap-[clamp(10px,2vh,16px)]">
       {/* Top Chrome: Single-line Sound On/Muted pill, 11-Scene Progress Counter, Single-line Skip Story pill */}
       <header className="relative z-30 mx-auto flex w-[min(94vw,660px)] shrink-0 items-center justify-between gap-2 px-1 pt-[max(10px,var(--safe-top))] sm:pt-[max(14px,var(--safe-top))]">
         <button
@@ -1738,6 +1734,7 @@ export default function OriginStoryPlay({
           )}
         </div>
       </footer>
+      </div>
     </section>
   );
 }

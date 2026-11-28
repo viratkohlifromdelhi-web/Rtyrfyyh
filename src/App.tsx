@@ -198,6 +198,7 @@ function BirthdayWebsiteShell() {
   const originStoryModeRef = useRef<'pipeline' | 'replay'>('pipeline');
   const wasMusicPlayingBeforeReplayRef = useRef(false);
   const savedReplayScrollYRef = useRef(0);
+  const pendingReplayRestoreScrollRef = useRef<number | null>(null);
   const originReturnTimerRef = useRef<number | null>(null);
   const bridgeTimersRef = useRef<number[]>([]);
 
@@ -293,19 +294,49 @@ function BirthdayWebsiteShell() {
     };
   }, [showOriginStory]);
 
-  // Keep body scroll strictly locked during Stage 3 (including after TheatreIntroOverlay unmounts),
-  // and guarantee clean scroll unlock when Stage 4 activates.
+  // Authoritative scroll lock across Stages 2, 3 & silk curtain bridge:
+  // Locks both <html> and <body> via .stage-scroll-locked (!important) so swiping/scrolling
+  // on Stage 3 can never scroll the document or reveal the pre-painted Main Page behind it.
+  // Immediately unlocks & resets scrollY = 0 on Stage 4 interactive entry so Backstory sticky stays unbroken.
+  const isIntroVisualActiveForLock = showIntro && stage === 'intro';
+  const isMainStageInteractive =
+    stage === 'main' && siteRevealed && !isIntroVisualActiveForLock && !showOriginStory;
+  const isStageScrollLocked = !isMainStageInteractive || bridgeTransition !== null;
+
   useEffect(() => {
-    if (showOriginStory) {
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = '';
-      };
+    const html = document.documentElement;
+    const body = document.body;
+
+    if (isStageScrollLocked) {
+      html.classList.add('stage-scroll-locked');
+      body.classList.add('stage-scroll-locked');
+      return;
     }
-    if (!showIntro) {
-      document.body.style.overflow = '';
+
+    html.classList.remove('stage-scroll-locked');
+    body.classList.remove('stage-scroll-locked');
+    html.style.overflow = '';
+    body.style.overflow = '';
+
+    try {
+      if (pendingReplayRestoreScrollRef.current !== null) {
+        const targetY = pendingReplayRestoreScrollRef.current;
+        pendingReplayRestoreScrollRef.current = null;
+        window.scrollTo({ top: targetY, left: 0, behavior: 'auto' });
+      } else {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      }
+    } catch {
+      // silent
     }
-  }, [showOriginStory, showIntro]);
+  }, [isStageScrollLocked]);
+
+  useEffect(() => {
+    return () => {
+      document.documentElement.classList.remove('stage-scroll-locked');
+      document.body.classList.remove('stage-scroll-locked');
+    };
+  }, []);
 
   // If the intro is bypassed (?autostart=1) or skipped before smooth playback fired,
   // kick off the staggered background warmup after a 300ms breathing gap.
@@ -529,6 +560,7 @@ function BirthdayWebsiteShell() {
         }, STAGE3_TO_MAIN_TIMING.replayCrossfadeSwapMs);
 
         scheduleBridgeTimer(() => {
+          pendingReplayRestoreScrollRef.current = savedReplayScrollYRef.current;
           setBridgeTransition(null);
           setCurtainCompletedAtMs((prev) => prev ?? Date.now());
         }, STAGE3_TO_MAIN_TIMING.replayCrossfadeTotalMs);
@@ -836,27 +868,61 @@ function BirthdayWebsiteShell() {
       <SparkleRainCanvas enabled={isSparkleRainOn} suppressed={suppressSparkleRain} />
       <ConfettiCanvas ref={confettiRef} />
 
-      <TopBar
-        isPlaying={isPlaying}
-        onToggleMusic={handleToggleMusic}
-        sfxEnabled={sfxEnabled}
-        onToggleSfx={handleToggleSfx}
-        showMusicHint={showMusicHint}
-        onHeaderEasterEgg={handleHeaderEasterEgg}
-      />
+      {isMainStageActive && (
+        <TopBar
+          isPlaying={isPlaying}
+          onToggleMusic={handleToggleMusic}
+          sfxEnabled={sfxEnabled}
+          onToggleSfx={handleToggleSfx}
+          showMusicHint={showMusicHint}
+          onHeaderEasterEgg={handleHeaderEasterEgg}
+        />
+      )}
 
-      {/* Pre-mounted & pre-painted main birthday website quietly underneath Stage 3 (zero flash & zero layout stutter) */}
+      {/* Pre-mounted & pre-painted main birthday website:
+          - Behind Stage 2 / Stage 3 (or during curtain gather): isolated in fixed 100dvh overflow:hidden opacity:0
+            so DOM & GPU-decoded images stay warm in RAM without extending document height or bleeding through.
+          - During parting silk curtain: flips to opacity:1 behind z-[9600] curtain for zero-flash reveal at top:0.
+          - On Stage 4 interactive entry (curtain finished): returns to normal document flow (relative, height:auto)
+            with ZERO overflow:hidden / transform on ancestors so BackstorySection position:sticky stays 100% unbroken. */}
       <div
         data-testid="main-site-shell"
         data-revealed={String(siteRevealed)}
         data-premounted={String(shouldPreMountMain)}
         data-bg-paused={String(pauseBackgroundWork)}
         aria-hidden={!isMainStageActive || undefined}
-        className={`${!isMainStageActive ? 'pointer-events-none' : ''} ${
-          isMainStageActive && !visualExitDone
-            ? 'stage-bridge-hero-settle will-change-[transform,opacity]'
-            : 'opacity-100'
-        }`}
+        style={
+          !isMainStageActive
+            ? {
+                position: 'fixed',
+                inset: 0,
+                width: '100%',
+                height: '100dvh',
+                overflow: 'hidden',
+                pointerEvents: 'none',
+                zIndex: 1,
+                opacity: 0,
+              }
+            : bridgeTransition !== null
+              ? {
+                  position: 'fixed',
+                  inset: 0,
+                  width: '100%',
+                  height: '100dvh',
+                  overflow: 'hidden',
+                  pointerEvents: 'none',
+                  zIndex: 1,
+                  opacity: 1,
+                }
+              : undefined
+        }
+        className={
+          isMainStageActive && bridgeTransition === null
+            ? 'relative opacity-100'
+            : isMainStageActive && !visualExitDone
+              ? 'stage-bridge-hero-settle will-change-[transform,opacity]'
+              : ''
+        }
       >
         {/* CRITICAL: Keep <main> free of content-visibility / contain / overflow:hidden so Backstory sticky stacking never breaks */}
         <main className="overflow-x-clip" style={{ paddingTop: 'calc(var(--header-h) + var(--safe-top))' }}>
@@ -1045,7 +1111,7 @@ function BirthdayWebsiteShell() {
         )}
       </div>
 
-      <FloatingConfettiButton onPop={handleBurstConfetti} />
+      {isMainStageActive && <FloatingConfettiButton onPop={handleBurstConfetti} />}
 
       {(shouldPreMountMain || hasReachedMainStage) && (
         <Suspense fallback={null}>
@@ -1121,6 +1187,17 @@ export default function App() {
       window.removeEventListener('keydown', handleFirstGesture);
     };
   }, []);
+
+  // Lock document scroll during Stage 1 (Midnight Countdown Lock) so nothing can rubber-band behind it
+  useEffect(() => {
+    if (!isMidnightLocked) return;
+    document.documentElement.classList.add('stage-scroll-locked');
+    document.body.classList.add('stage-scroll-locked');
+    return () => {
+      document.documentElement.classList.remove('stage-scroll-locked');
+      document.body.classList.remove('stage-scroll-locked');
+    };
+  }, [isMidnightLocked]);
 
   const handleMidnightUnlock = useCallback(() => {
     unlockKissAudioContext();

@@ -412,12 +412,12 @@ export function MidnightLockOverlay({
       data-testid="midnight-lock-overlay"
       data-celebrating={String(isCelebrating)}
       data-final-five={String(countdown.isFinalFiveSeconds)}
-      className={`fixed inset-0 z-[10000] flex min-h-[100dvh] w-full items-center justify-center overflow-y-auto bg-[#FFF6F9] px-4 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] transition-[opacity,transform] ease-out ${fadeDurationClass} ${
+      className={`fixed inset-0 z-[10000] flex h-[100dvh] w-full items-center justify-center overflow-x-hidden overflow-y-auto overscroll-none bg-[#FFF6F9] px-4 pt-[calc(1.25rem+var(--safe-top))] pb-[calc(1.5rem+var(--safe-bottom))] transition-[opacity,transform] ease-out ${fadeDurationClass} ${
         isFadingOut
           ? exitMode === 'midnight'
             ? 'scale-[1.03] opacity-0 pointer-events-none'
             : 'opacity-0 pointer-events-none'
-          : 'scale-100 opacity-100'
+          : 'opacity-100'
       }`}
     >
       {/* Subtle Rose-Cream atmospheric radial warmth */}

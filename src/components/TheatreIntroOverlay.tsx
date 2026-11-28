@@ -1541,7 +1541,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
         className={
           isAudioOnly
             ? 'pointer-events-none fixed top-0 left-0 -z-[1] h-[1px] w-[1px] overflow-hidden bg-transparent opacity-0'
-            : `fixed inset-0 z-[9999] flex min-h-[100dvh] flex-col items-center justify-center overflow-y-auto px-4 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] select-none ${
+            : `fixed inset-0 z-[9999] flex h-[100dvh] w-full flex-col items-center justify-center overflow-x-hidden overflow-y-auto overscroll-none px-4 pt-[calc(1.25rem+var(--safe-top))] pb-[calc(1.5rem+var(--safe-bottom))] select-none ${
                 pointerEventsDisabled ? 'pointer-events-none' : ''
               }`
         }

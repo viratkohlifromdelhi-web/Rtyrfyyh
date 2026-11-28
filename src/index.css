@@ -230,6 +230,15 @@
   }
 }
 
+/* Strict document scroll containment during Stages 1, 2, 3 & silk curtain bridge;
+   removed immediately on Stage 4 interactive entry so Backstory position:sticky stays unbroken */
+html.stage-scroll-locked,
+body.stage-scroll-locked {
+  overflow: hidden !important;
+  height: 100dvh !important;
+  overscroll-behavior: none !important;
+}
+
 @layer base {
   html {
     font-size: 16px;
