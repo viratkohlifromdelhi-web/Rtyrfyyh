@@ -438,6 +438,50 @@
         "sessionId",
         "deviceType"
       ]
+    },
+    "LiveBroadcast": {
+      "title": "LiveBroadcast",
+      "description": "Real-time owner-authored Modino live broadcast message stored at /site_config/live_broadcast with a 90s freshness window.",
+      "type": "object",
+      "properties": {
+        "broadcastId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 220
+        },
+        "mood": {
+          "type": "string",
+          "enum": ["cheer", "tease", "hype", "whisper"]
+        },
+        "confetti": {
+          "type": "boolean"
+        },
+        "sentAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sentAtMs": {
+          "type": "integer"
+        },
+        "expiresAtMs": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "broadcastId",
+        "message",
+        "mood",
+        "confetti",
+        "sentAt",
+        "sentAtMs",
+        "expiresAtMs"
+      ]
     }
   },
   "firestore": {
@@ -464,6 +508,12 @@
         "$ref": "#/entities/TapliCounter"
       },
       "description": "Publicly readable global Tapli Arena counter accepting strictly monotonic bounded (+1..500) atomic increments with zero deletes."
+    },
+    "/site_config/live_broadcast": {
+      "schema": {
+        "$ref": "#/entities/LiveBroadcast"
+      },
+      "description": "Publicly readable live broadcast message for Modino Pet. Create, update, and delete strictly restricted to verified site owners with strict schema validation."
     },
     "/developer_reviews/{reviewId}": {
       "schema": {

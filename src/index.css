@@ -4241,6 +4241,173 @@ body.stage-scroll-locked {
   animation: tc-sparkle-rise 820ms cubic-bezier(0.16, 1, 0.3, 1) var(--tc-delay, 460ms) forwards;
 }
 
+/* Remote Modino Live Broadcast GPU-composited animations (120Hz transform + opacity only) */
+@keyframes modino-live-shimmer-sweep {
+  0% {
+    transform: translate3d(-130%, 0, 0) skewX(-20deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.55;
+  }
+  52% {
+    transform: translate3d(230%, 0, 0) skewX(-20deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(230%, 0, 0) skewX(-20deg);
+    opacity: 0;
+  }
+}
+
+@keyframes modino-live-badge-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+@keyframes modino-live-cheer {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  16% {
+    transform: translate3d(0, -14px, 0) scale(1.06, 0.96);
+  }
+  34% {
+    transform: translate3d(0, 0, 0) scale(0.96, 1.04);
+  }
+  52% {
+    transform: translate3d(0, -11px, 0) scale(1.05, 0.97);
+  }
+  72% {
+    transform: translate3d(0, 0, 0) scale(0.98, 1.02);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes modino-live-tease {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  18% {
+    transform: translate3d(-3px, -5px, 0) rotate(-7deg);
+  }
+  38% {
+    transform: translate3d(4px, -6px, 0) rotate(7deg);
+  }
+  58% {
+    transform: translate3d(-3px, -4px, 0) rotate(-5deg);
+  }
+  78% {
+    transform: translate3d(2px, -2px, 0) rotate(4deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+@keyframes modino-live-hype {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  12% {
+    transform: translate3d(0, -17px, 0) scale(1.09, 0.94);
+  }
+  26% {
+    transform: translate3d(0, 0, 0) scale(0.94, 1.06);
+  }
+  40% {
+    transform: translate3d(0, -15px, 0) scale(1.08, 0.95);
+  }
+  54% {
+    transform: translate3d(0, 0, 0) scale(0.96, 1.05);
+  }
+  68% {
+    transform: translate3d(0, -10px, 0) scale(1.05, 0.97);
+  }
+  84% {
+    transform: translate3d(0, 0, 0) scale(0.99, 1.01);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes modino-live-whisper {
+  0% {
+    opacity: 0.72;
+    transform: translate3d(0, 4px, 0) scale(0.97);
+  }
+  45% {
+    opacity: 1;
+    transform: translate3d(0, -6px, 0) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes modino-live-confetti {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0) scale(0.35) rotate(0deg);
+  }
+  16% {
+    opacity: 1;
+    transform: translate3d(calc(var(--lc-dx, 0px) * 0.45), calc(var(--lc-dy, -52px) * 0.55), 0) scale(1.1) rotate(calc(var(--lc-rot, 90deg) * 0.45));
+  }
+  72% {
+    opacity: 0.92;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--lc-dx, 0px), var(--lc-dy, -52px), 0) scale(0.45) rotate(var(--lc-rot, 160deg));
+  }
+}
+
+.modino-live-shimmer-sweep {
+  animation: modino-live-shimmer-sweep 3.1s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.modino-live-badge-pulse {
+  animation: modino-live-badge-pulse 1.9s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-modino-live-cheer {
+  animation: modino-live-cheer 920ms cubic-bezier(0.22, 1, 0.36, 1) 2;
+  will-change: transform;
+}
+
+.animate-modino-live-tease {
+  animation: modino-live-tease 860ms cubic-bezier(0.22, 1, 0.36, 1) 2;
+  will-change: transform;
+}
+
+.animate-modino-live-hype {
+  animation: modino-live-hype 980ms cubic-bezier(0.22, 1, 0.36, 1) 2;
+  will-change: transform;
+}
+
+.animate-modino-live-whisper {
+  animation: modino-live-whisper 1350ms ease-in-out 1;
+  will-change: transform, opacity;
+}
+
+.animate-modino-live-confetti {
+  animation: modino-live-confetti var(--lc-dur, 920ms) cubic-bezier(0.16, 1, 0.3, 1) var(--lc-delay, 0ms) forwards;
+  will-change: transform, opacity;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stage-bridge-veil-gather,
   .stage-bridge-veil-parting,
@@ -4274,7 +4441,14 @@ body.stage-scroll-locked {
   .tc-flap-close,
   .tc-wax-stamp,
   .tc-gold-ring,
-  .tc-sparkle-rise {
+  .tc-sparkle-rise,
+  .modino-live-shimmer-sweep,
+  .modino-live-badge-pulse,
+  .animate-modino-live-cheer,
+  .animate-modino-live-tease,
+  .animate-modino-live-hype,
+  .animate-modino-live-whisper,
+  .animate-modino-live-confetti {
     animation: none !important;
   }
 

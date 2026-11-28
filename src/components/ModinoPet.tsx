@@ -16,12 +16,89 @@ import {
   type ModinoMood,
   type ModinoReaction,
 } from '../utils/modinoReactions';
-import { playUiSfx } from '../utils/uiSoundEngine';
+import { playUiSfx, type UiSfxName } from '../utils/uiSoundEngine';
+import {
+  LIVE_BROADCAST_LOCAL_EVENT,
+  computeLiveBroadcastHoldMs,
+  isLiveBroadcastDeliverable,
+  markLiveBroadcastIdSeen,
+  parseLiveBroadcastData,
+  readSeenLiveBroadcastIds,
+  subscribeToLiveBroadcast,
+  type LiveBroadcastMood,
+  type LiveBroadcastRecord,
+} from '../utils/liveBroadcastService';
 import {
   STAGE3_TO_MAIN_TIMING,
   computeModinoEntranceDelayMs,
 } from '../utils/preloader';
 import { ModinoAvatarSvg } from './ModinoAvatarSvg';
+
+interface LiveConfettiParticle {
+  id: number;
+  dx: number;
+  dy: number;
+  rot: number;
+  size: number;
+  delayMs: number;
+  durationMs: number;
+  color: string;
+  shape: 'petal' | 'star' | 'dot';
+}
+
+const LIVE_CONFETTI_COLORS = [
+  '#F59EBD',
+  '#E6B85C',
+  '#C7B6F5',
+  '#F9B493',
+  '#D94B7D',
+  '#F4D078',
+] as const;
+
+const LIVE_MOOD_TO_AVATAR_MOOD: Record<LiveBroadcastMood, ModinoMood> = {
+  cheer: 'happy_smile',
+  tease: 'laugh',
+  hype: 'jump',
+  whisper: 'shy_blush',
+};
+
+const LIVE_MOOD_TO_SFX: Record<LiveBroadcastMood, UiSfxName> = {
+  cheer: 'wake_chirp',
+  tease: 'giggle',
+  hype: 'surprise_bling',
+  whisper: 'awww_chime',
+};
+
+const LIVE_MOOD_ANIM_CLASS: Record<LiveBroadcastMood, string> = {
+  cheer: 'animate-modino-live-cheer',
+  tease: 'animate-modino-live-tease',
+  hype: 'animate-modino-live-hype',
+  whisper: 'animate-modino-live-whisper',
+};
+
+function createLiveConfettiBurst(nextId: () => number): LiveConfettiParticle[] {
+  const count = 14;
+  const shapes: ReadonlyArray<LiveConfettiParticle['shape']> = ['petal', 'star', 'dot'];
+  const particles: LiveConfettiParticle[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const spreadRatio = (i / (count - 1)) * 2 - 1; // -1..1
+    const dx = Math.round(spreadRatio * 58 + (i % 2 === 0 ? 5 : -5));
+    const dy = -Math.round(44 + Math.cos(spreadRatio * 1.2) * 34 + (i % 3) * 8);
+    const rot = Math.round(spreadRatio * 185 + (i % 2 === 0 ? 40 : -40));
+    particles.push({
+      id: nextId(),
+      dx,
+      dy,
+      rot,
+      size: i % 3 === 1 ? 10 : 7 + (i % 3),
+      delayMs: (i % 5) * 28,
+      durationMs: 820 + (i % 4) * 70,
+      color: LIVE_CONFETTI_COLORS[i % LIVE_CONFETTI_COLORS.length],
+      shape: shapes[i % shapes.length],
+    });
+  }
+  return particles;
+}
 
 function prefersReducedMotion(): boolean {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
@@ -81,6 +158,10 @@ export function ModinoPet({
   const [bubbleKey, setBubbleKey] = useState(0);
   const [tapRippleKey, setTapRippleKey] = useState(0);
   const [isBubbleSleepy, setIsBubbleSleepy] = useState(false);
+  const [isBubbleLive, setIsBubbleLive] = useState(false);
+  const [activeLiveMood, setActiveLiveMood] = useState<LiveBroadcastMood | null>(null);
+  const [liveAnimKey, setLiveAnimKey] = useState(0);
+  const [liveConfetti, setLiveConfetti] = useState<LiveConfettiParticle[]>([]);
   const [isTucked, setIsTucked] = useState(false);
   const [hasEntered, setHasEntered] = useState(false);
   const [isTabHidden, setIsTabHidden] = useState(
@@ -107,6 +188,10 @@ export function ModinoPet({
   const hasEnteredRef = useRef(hasEntered);
   hasEnteredRef.current = hasEntered;
 
+  const isLiveBroadcastActiveRef = useRef(false);
+  const pendingLiveBroadcastRef = useRef<LiveBroadcastRecord | null>(null);
+  const seenBroadcastIdsRef = useRef<Set<string>>(readSeenLiveBroadcastIds());
+
   const bubbleVisibleRef = useRef(false);
   bubbleVisibleRef.current = Boolean(bubbleText && !isBubbleSleepy);
 
@@ -117,6 +202,8 @@ export function ModinoPet({
   const wakeFollowupTimerRef = useRef<number | null>(null);
   const greetingTimerRef = useRef<number | null>(null);
   const untuckTimerRef = useRef<number | null>(null);
+  const liveConfettiTimerRef = useRef<number | null>(null);
+  const liveConfettiIdCounterRef = useRef(1);
   const heartTimersRef = useRef<Map<number, number>>(new Map());
   const heartIdCounterRef = useRef(1);
   const heartColorCursorRef = useRef(0);
@@ -148,6 +235,11 @@ export function ModinoPet({
     clearTimer(wakeFollowupTimerRef);
     clearTimer(greetingTimerRef);
     clearTimer(untuckTimerRef);
+    clearTimer(liveConfettiTimerRef);
+    setLiveConfetti([]);
+    isLiveBroadcastActiveRef.current = false;
+    setIsBubbleLive(false);
+    setActiveLiveMood(null);
     clearAllHeartTimers();
   }, [clearAllHeartTimers]);
 
@@ -266,11 +358,12 @@ export function ModinoPet({
     clearTimer(sleepTimerRef);
     clearTimer(sleepMutterTimerRef);
     if (!isActiveRef.current || isTuckedRef.current || !hasEnteredRef.current) return;
+    if (isLiveBroadcastActiveRef.current) return;
     if (moodRef.current === 'sleepy_zzz') return;
 
     sleepTimerRef.current = window.setTimeout(() => {
       sleepTimerRef.current = null;
-      if (!isActiveRef.current || isTuckedRef.current) return;
+      if (!isActiveRef.current || isTuckedRef.current || isLiveBroadcastActiveRef.current) return;
       if (bubbleVisibleRef.current) {
         // Wait gently until the active important speech bubble finishes
         scheduleSleepCountdown();
@@ -303,6 +396,9 @@ export function ModinoPet({
       clearTimer(bubbleTimerRef);
       clearTimer(wakeFollowupTimerRef);
 
+      isLiveBroadcastActiveRef.current = false;
+      setIsBubbleLive(false);
+      setActiveLiveMood(null);
       applyMood(reaction.mood);
       setIsBubbleSleepy(false);
       setBubbleText(reaction.text);
@@ -400,6 +496,8 @@ export function ModinoPet({
   const triggerCategoryReaction = useCallback(
     (category: ModinoReactionCategory, options?: { triggerRipple?: boolean; logAnalytics?: boolean }) => {
       if (!isActiveRef.current || isTuckedRef.current) return;
+      // Preserve active owner live broadcast against passive section/scroll chatter
+      if (isLiveBroadcastActiveRef.current && category !== 'direct_tap') return;
 
       const deliver = () => {
         const reaction = modinoReactionEngine.next(category);
@@ -419,6 +517,103 @@ export function ModinoPet({
       deliver();
     },
     [showReaction, wakeUpStartled],
+  );
+
+  const deliverLiveBroadcastNow = useCallback(
+    (record: LiveBroadcastRecord) => {
+      if (!isActiveRef.current || !hasEnteredRef.current) return;
+
+      clearTimer(sleepTimerRef);
+      clearTimer(sleepMutterTimerRef);
+      clearTimer(moodResetTimerRef);
+      clearTimer(bubbleTimerRef);
+      clearTimer(wakeFollowupTimerRef);
+      clearTimer(liveConfettiTimerRef);
+
+      const avatarMood = LIVE_MOOD_TO_AVATAR_MOOD[record.mood];
+      isLiveBroadcastActiveRef.current = true;
+      setIsBubbleLive(true);
+      setActiveLiveMood(record.mood);
+      setLiveAnimKey((k) => k + 1);
+      setIsBubbleSleepy(false);
+      applyMood(avatarMood);
+      setBubbleText(record.message);
+      setBubbleKey((k) => k + 1);
+      setTapRippleKey((k) => k + 1);
+
+      emitMicroHearts({
+        trigger: 'direct_tap',
+        mood: avatarMood,
+      });
+
+      if (record.confetti && !prefersReducedMotion()) {
+        const burst = createLiveConfettiBurst(() => {
+          const next = liveConfettiIdCounterRef.current;
+          liveConfettiIdCounterRef.current += 1;
+          return next;
+        });
+        setLiveConfetti(burst);
+        liveConfettiTimerRef.current = window.setTimeout(() => {
+          liveConfettiTimerRef.current = null;
+          setLiveConfetti([]);
+        }, 1250);
+      } else {
+        setLiveConfetti([]);
+      }
+
+      try {
+        haptics.success();
+      } catch {
+        // silent
+      }
+      playUiSfx(LIVE_MOOD_TO_SFX[record.mood]);
+
+      const holdMs = computeLiveBroadcastHoldMs(record.message);
+
+      moodResetTimerRef.current = window.setTimeout(() => {
+        moodResetTimerRef.current = null;
+        if (moodRef.current !== 'sleepy_zzz') {
+          applyMood('idle');
+        }
+      }, 2200);
+
+      bubbleTimerRef.current = window.setTimeout(() => {
+        bubbleTimerRef.current = null;
+        isLiveBroadcastActiveRef.current = false;
+        setIsBubbleLive(false);
+        setActiveLiveMood(null);
+        setBubbleText(null);
+        setIsBubbleSleepy(false);
+        scheduleSleepCountdown();
+      }, holdMs);
+    },
+    [applyMood, emitMicroHearts, scheduleSleepCountdown],
+  );
+
+  const handleIncomingLiveBroadcast = useCallback(
+    (record: LiveBroadcastRecord | null) => {
+      if (!record) return;
+      if (!isSiteRevealed || !isReadyAfterCurtain || isBlockedByOverlay || !hasEnteredRef.current) {
+        return;
+      }
+
+      if (!isLiveBroadcastDeliverable(record, seenBroadcastIdsRef.current, Date.now())) {
+        return;
+      }
+
+      // Mark seen immediately in both memory and sessionStorage so reloads never replay
+      seenBroadcastIdsRef.current = markLiveBroadcastIdSeen(record.broadcastId);
+
+      // If Modino was tucked away, auto-untuck first and deliver cleanly once mounted
+      if (isTuckedRef.current) {
+        pendingLiveBroadcastRef.current = record;
+        setIsTucked(false);
+        return;
+      }
+
+      deliverLiveBroadcastNow(record);
+    },
+    [deliverLiveBroadcastNow, isBlockedByOverlay, isReadyAfterCurtain, isSiteRevealed],
   );
 
   // Track document visibility so timers pause cleanly when tab is hidden
@@ -544,6 +739,58 @@ export function ModinoPet({
       window.removeEventListener(MODINO_EVENT_NAME, handleBusEvent);
     };
   }, [showReaction, triggerCategoryReaction, wakeUpStartled]);
+
+  // Flush any live broadcast that triggered an auto-untuck once Modino is untucked and active
+  useEffect(() => {
+    if (!isActive || isTucked || !hasEntered) return;
+    const pending = pendingLiveBroadcastRef.current;
+    if (!pending) return;
+    pendingLiveBroadcastRef.current = null;
+    const frameId = window.requestAnimationFrame(() => {
+      deliverLiveBroadcastNow(pending);
+    });
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [deliverLiveBroadcastNow, hasEntered, isActive, isTucked]);
+
+  // Real-time Firestore listener for Remote Modino Live Broadcasts (/site_config/live_broadcast).
+  // Strictly gated to Stage 4 after Modino's +2s post-curtain arrival (never interrupts Stages 1, 2, or 3).
+  // Remains active even when Modino is sleeping or tucked so live messages auto-wake and untuck her.
+  useEffect(() => {
+    if (!isSiteRevealed || !isReadyAfterCurtain || isBlockedByOverlay || !hasEntered) {
+      return;
+    }
+
+    const unsubscribe = subscribeToLiveBroadcast(
+      (record) => {
+        handleIncomingLiveBroadcast(record);
+      },
+      () => {
+        // Silent graceful fallback on transient offline or rule rejections
+      },
+    );
+
+    const onLocalBroadcast = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      const parsed = parseLiveBroadcastData(detail);
+      if (parsed) {
+        handleIncomingLiveBroadcast(parsed);
+      }
+    };
+    window.addEventListener(LIVE_BROADCAST_LOCAL_EVENT, onLocalBroadcast);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener(LIVE_BROADCAST_LOCAL_EVENT, onLocalBroadcast);
+    };
+  }, [
+    handleIncomingLiveBroadcast,
+    hasEntered,
+    isBlockedByOverlay,
+    isReadyAfterCurtain,
+    isSiteRevealed,
+  ]);
 
   // Global passive activity tracker for 3.5s inactivity sleep & instant wake-up
   useEffect(() => {
@@ -727,6 +974,9 @@ export function ModinoPet({
 
   const handleDismissBubble = useCallback(() => {
     clearTimer(bubbleTimerRef);
+    isLiveBroadcastActiveRef.current = false;
+    setIsBubbleLive(false);
+    setActiveLiveMood(null);
     setBubbleText(null);
     setIsBubbleSleepy(false);
     if (moodRef.current === 'sleepy_zzz') {
@@ -793,30 +1043,123 @@ export function ModinoPet({
           type="button"
           data-testid="modino-speech-bubble"
           data-sleepy={isBubbleSleepy ? 'true' : 'false'}
+          data-live-broadcast={isBubbleLive ? 'true' : 'false'}
+          data-live-mood={isBubbleLive && activeLiveMood ? activeLiveMood : ''}
           onClick={handleDismissBubble}
-          aria-label="Dismiss Modino speech bubble"
-          className={`animate-modino-bubble pointer-events-auto absolute left-[4px] right-auto z-10 w-max max-w-[min(195px,calc(100vw-32px))] sm:max-w-[min(260px,calc(100vw-32px))] lg:max-w-[min(285px,calc(100vw-32px))] origin-bottom-left rounded-[18px] border-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB] px-3.5 py-2 sm:px-4 sm:py-2.5 text-left text-[12px] sm:text-[14px] lg:text-[14.5px] leading-[1.35] font-semibold text-[#3A1233] shadow-[0_10px_26px_-10px_rgba(176,62,106,0.24)] cursor-pointer transition-opacity duration-200 ${
-            isBubbleSleepy ? 'opacity-85' : 'opacity-100'
-          }`}
+          aria-label={isBubbleLive ? 'Dismiss live broadcast message' : 'Dismiss Modino speech bubble'}
+          className={`animate-modino-bubble pointer-events-auto absolute left-[4px] right-auto z-10 w-max origin-bottom-left rounded-[18px] px-3.5 py-2 sm:px-4 sm:py-2.5 text-left text-[12px] sm:text-[14px] lg:text-[14.5px] leading-[1.35] font-semibold text-[#3A1233] cursor-pointer transition-opacity duration-200 ${
+            isBubbleLive
+              ? 'border-[1.5px] border-[rgba(230,184,92,0.72)] bg-[#FFFDF8] shadow-[0_14px_30px_-8px_rgba(217,156,64,0.34),0_6px_14px_-6px_rgba(217,75,125,0.2)]'
+              : 'max-w-[min(195px,calc(100vw-32px))] sm:max-w-[min(260px,calc(100vw-32px))] lg:max-w-[min(285px,calc(100vw-32px))] border-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB] shadow-[0_10px_26px_-10px_rgba(176,62,106,0.24)]'
+          } ${isBubbleSleepy ? 'opacity-85' : 'opacity-100'}`}
           style={{
             bottom: 'calc(clamp(58px, 10.5vmin, 100px) + 28px)',
+            ...(isBubbleLive
+              ? {
+                  maxWidth: 'min(300px, calc(100vw - 32px - var(--safe-left) - var(--safe-right)))',
+                }
+              : {}),
           }}
         >
-          <span className="block break-words">{bubbleText}</span>
+          {isBubbleLive && (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 overflow-hidden rounded-[17px]"
+            >
+              <span className="modino-live-shimmer-sweep absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-[#FBE9C0]/45 to-transparent" />
+            </span>
+          )}
+          {isBubbleLive && (
+            <span
+              data-testid="modino-live-badge"
+              className="modino-live-badge-pulse relative z-[1] mb-1 inline-flex items-center gap-1 rounded-full border border-[rgba(230,184,92,0.58)] bg-gradient-to-r from-[#FFF3DB] to-[#FFE9F1] px-2 py-[1.5px] text-[9.5px] font-extrabold tracking-[0.08em] text-[#9A5B1A] shadow-[0_2px_8px_-3px_rgba(230,184,92,0.55)]"
+            >
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 rounded-full bg-[#E05387]"
+              />
+              <span>LIVE ✨</span>
+            </span>
+          )}
+          <span className="relative z-[1] block break-words">{bubbleText}</span>
           {/* Tiny rotated cream pointer tail aiming straight down toward Modino's head */}
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute left-[22px] sm:left-[28px] right-auto -bottom-[6px] h-3 w-3 rotate-45 rounded-[2px] border-r-[1.2px] border-b-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB]"
+            className={`pointer-events-none absolute left-[22px] sm:left-[28px] right-auto -bottom-[6px] h-3 w-3 rotate-45 rounded-[2px] ${
+              isBubbleLive
+                ? 'border-r-[1.5px] border-b-[1.5px] border-[rgba(230,184,92,0.72)] bg-[#FFFDF8]'
+                : 'border-r-[1.2px] border-b-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB]'
+            }`}
           />
         </button>
       )}
 
-      {/* Main Tappable Modino Character + Floating Micro-Hearts Emitter */}
+      {/* Main Tappable Modino Character + Floating Micro-Hearts & Mini Confetti Emitter */}
       <div
         className={`relative flex flex-col items-center ${
           hasEntered ? 'pointer-events-auto' : 'pointer-events-none'
         }`}
       >
+        {/* Lightweight GPU-only Mini Confetti Burst Layer for Live Broadcasts */}
+        {liveConfetti.length > 0 && (
+          <div
+            data-testid="modino-live-confetti"
+            aria-hidden="true"
+            className="pointer-events-none absolute top-[6px] left-1/2 z-[5] h-0 w-0 overflow-visible"
+          >
+            {liveConfetti.map((p) => {
+              const pStyle = {
+                '--lc-dx': `${p.dx}px`,
+                '--lc-dy': `${p.dy}px`,
+                '--lc-rot': `${p.rot}deg`,
+                '--lc-dur': `${p.durationMs}ms`,
+                '--lc-delay': `${p.delayMs}ms`,
+              } as CSSProperties;
+              return (
+                <span
+                  key={p.id}
+                  data-testid="modino-live-confetti-particle"
+                  style={pStyle}
+                  className="animate-modino-live-confetti pointer-events-none absolute -top-[4px] -left-[4px] inline-flex items-center justify-center opacity-0"
+                >
+                  {p.shape === 'star' ? (
+                    <svg
+                      viewBox="0 0 12 12"
+                      width={p.size}
+                      height={p.size}
+                      aria-hidden="true"
+                      className="block overflow-visible"
+                    >
+                      <path
+                        d="M6 0.5L7.4 4.3L11.4 6L7.4 7.7L6 11.5L4.6 7.7L0.6 6L4.6 4.3Z"
+                        fill={p.color}
+                      />
+                    </svg>
+                  ) : p.shape === 'petal' ? (
+                    <span
+                      style={{
+                        width: `${p.size}px`,
+                        height: `${Math.max(4, Math.round(p.size * 0.62))}px`,
+                        backgroundColor: p.color,
+                      }}
+                      className="block rounded-full"
+                    />
+                  ) : (
+                    <span
+                      style={{
+                        width: `${Math.max(4, p.size - 2)}px`,
+                        height: `${Math.max(4, p.size - 2)}px`,
+                        backgroundColor: p.color,
+                      }}
+                      className="block rounded-full"
+                    />
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
         {/* 60fps Progressive-Fade Pastel Micro-Hearts Layer above Modino's ears/head */}
         <div
           data-testid="modino-micro-hearts"
@@ -863,11 +1206,14 @@ export function ModinoPet({
         </div>
 
         <button
+          key={isBubbleLive && activeLiveMood ? `live-${liveAnimKey}` : 'normal'}
           type="button"
           data-testid="modino-avatar-btn"
           onClick={handlePetTap}
           aria-label="Tap Modino companion pet"
-          className="relative flex items-center justify-center rounded-full border-0 bg-transparent p-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
+          className={`relative flex items-center justify-center rounded-full border-0 bg-transparent p-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] ${
+            isBubbleLive && activeLiveMood ? LIVE_MOOD_ANIM_CLASS[activeLiveMood] : ''
+          }`}
           style={{
             width: 'clamp(58px, 10.5vmin, 100px)',
             height: 'clamp(58px, 10.5vmin, 100px)',

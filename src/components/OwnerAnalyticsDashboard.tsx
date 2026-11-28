@@ -36,6 +36,7 @@ import {
   MapPin,
   MessageSquareHeart,
   Monitor,
+  Radio,
   RotateCcw,
   ShieldCheck,
   Smartphone,
@@ -46,6 +47,7 @@ import {
   Vibrate,
   Wifi,
   X,
+  Zap,
 } from 'lucide-react';
 import {
   auth,
@@ -90,6 +92,18 @@ import {
   type SiteVisitRecord,
   type VisitEventRecord,
 } from '../utils/analyticsCore';
+import {
+  LIVE_BROADCAST_MAX_CHARS,
+  LIVE_BROADCAST_MOODS,
+  LIVE_BROADCAST_PRESETS,
+  clearActiveLiveBroadcast,
+  computeLiveBroadcastRemainingSec,
+  sanitizeLiveBroadcastMessage,
+  sendLiveBroadcast,
+  subscribeToLiveBroadcast,
+  type LiveBroadcastMood,
+  type LiveBroadcastRecord,
+} from '../utils/liveBroadcastService';
 
 interface OwnerAnalyticsDashboardProps {
   onClose: () => void;
@@ -478,6 +492,20 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
   >(null);
   const [cleanSlateToast, setCleanSlateToast] = useState<string | null>(null);
   const cleanToastTimerRef = useRef<number | null>(null);
+
+  // Remote Modino Live Broadcast Studio state (verified owner only)
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastMood, setBroadcastMood] = useState<LiveBroadcastMood>('cheer');
+  const [broadcastConfetti, setBroadcastConfetti] = useState(true);
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
+  const [clearingBroadcast, setClearingBroadcast] = useState(false);
+  const [broadcastToast, setBroadcastToast] = useState<string | null>(null);
+  const [broadcastError, setBroadcastError] = useState<string | null>(null);
+  const [activeBroadcast, setActiveBroadcast] = useState<LiveBroadcastRecord | null>(null);
+  const [lastBeamedBroadcast, setLastBeamedBroadcast] = useState<LiveBroadcastRecord | null>(null);
+  const [broadcastNowMs, setBroadcastNowMs] = useState(() => Date.now());
+  const broadcastToastTimerRef = useRef<number | null>(null);
+  const broadcastTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [dbDiagnostic, setDbDiagnostic] = useState<FirestoreDiagnosticStatus>(() => ({
     status: 'checking',
     code: null,
@@ -559,6 +587,9 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
       if (cleanToastTimerRef.current !== null) {
         window.clearTimeout(cleanToastTimerRef.current);
       }
+      if (broadcastToastTimerRef.current !== null) {
+        window.clearTimeout(broadcastToastTimerRef.current);
+      }
     };
   }, [onClose]);
 
@@ -580,6 +611,130 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
       isAuthorizedOwnerEmail(authUser.email) &&
       authUser.emailVerified,
   );
+
+  const showBroadcastToast = useCallback((text: string) => {
+    setBroadcastToast(text);
+    if (broadcastToastTimerRef.current !== null) {
+      window.clearTimeout(broadcastToastTimerRef.current);
+    }
+    broadcastToastTimerRef.current = window.setTimeout(() => {
+      broadcastToastTimerRef.current = null;
+      setBroadcastToast(null);
+    }, 3400);
+  }, []);
+
+  // Subscribe to /site_config/live_broadcast while verified owner studio is open
+  useEffect(() => {
+    if (!pinUnlocked || !isVerifiedOwner || !db) return;
+
+    const unsubscribe = subscribeToLiveBroadcast(
+      (record) => {
+        setActiveBroadcast(record);
+        if (record) {
+          setLastBeamedBroadcast((prev) =>
+            prev && prev.sentAtMs > record.sentAtMs ? prev : record,
+          );
+        }
+      },
+      () => {
+        // Silent fallback on transient network hiccups
+      },
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [isVerifiedOwner, pinUnlocked]);
+
+  // 1s ticker for live broadcast 90s TTL countdown display
+  useEffect(() => {
+    if (!pinUnlocked || !isVerifiedOwner) return;
+    const activeTarget = activeBroadcast ?? lastBeamedBroadcast;
+    if (!activeTarget) return;
+    if (computeLiveBroadcastRemainingSec(activeTarget.expiresAtMs, Date.now()) <= 0) {
+      return;
+    }
+
+    setBroadcastNowMs(Date.now());
+    const intervalId = window.setInterval(() => {
+      const now = Date.now();
+      setBroadcastNowMs(now);
+      if (computeLiveBroadcastRemainingSec(activeTarget.expiresAtMs, now) <= 0) {
+        window.clearInterval(intervalId);
+      }
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [activeBroadcast, isVerifiedOwner, lastBeamedBroadcast, pinUnlocked]);
+
+  const activeBroadcastRemainingSec = useMemo(() => {
+    const target = activeBroadcast ?? lastBeamedBroadcast;
+    if (!target) return 0;
+    return computeLiveBroadcastRemainingSec(target.expiresAtMs, broadcastNowMs);
+  }, [activeBroadcast, broadcastNowMs, lastBeamedBroadcast]);
+
+  const sanitizedBroadcastPreview = useMemo(
+    () => sanitizeLiveBroadcastMessage(broadcastMessage),
+    [broadcastMessage],
+  );
+
+  const handleBeamLiveBroadcast = useCallback(async () => {
+    if (sendingBroadcast || !sanitizedBroadcastPreview) return;
+    setSendingBroadcast(true);
+    setBroadcastError(null);
+    try {
+      const sent = await sendLiveBroadcast({
+        message: sanitizedBroadcastPreview,
+        mood: broadcastMood,
+        confetti: broadcastConfetti,
+      });
+      setActiveBroadcast(sent);
+      setLastBeamedBroadcast(sent);
+      setBroadcastNowMs(Date.now());
+      setBroadcastMessage('');
+      showBroadcastToast('Beamed to Modino! ✨');
+    } catch (err) {
+      const summary = parseFirestoreErrorSummary(err);
+      setBroadcastError(
+        summary.detail || summary.label || 'Could not beam live broadcast. Check connection and try again.',
+      );
+    } finally {
+      setSendingBroadcast(false);
+    }
+  }, [
+    broadcastConfetti,
+    broadcastMood,
+    sanitizedBroadcastPreview,
+    sendingBroadcast,
+    showBroadcastToast,
+  ]);
+
+  const handleClearLiveBroadcast = useCallback(async () => {
+    if (clearingBroadcast) return;
+    setClearingBroadcast(true);
+    setBroadcastError(null);
+    try {
+      await clearActiveLiveBroadcast();
+      setActiveBroadcast(null);
+      setLastBeamedBroadcast(null);
+      showBroadcastToast('Active live broadcast cleared.');
+    } catch (err) {
+      const summary = parseFirestoreErrorSummary(err);
+      setBroadcastError(summary.detail || summary.label || 'Could not clear active live broadcast.');
+    } finally {
+      setClearingBroadcast(false);
+    }
+  }, [clearingBroadcast, showBroadcastToast]);
+
+  const handleSelectBroadcastPreset = useCallback((preset: string) => {
+    setBroadcastMessage(preset);
+    setBroadcastError(null);
+    window.requestAnimationFrame(() => {
+      broadcastTextareaRef.current?.focus();
+    });
+  }, []);
 
   // Subscribe to Firestore site_visits ONLY after PIN 9876 AND verified owner auth
   useEffect(() => {
@@ -1442,6 +1597,214 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
                 </p>
               </div>
             </div>
+
+            {/* Modino Live Broadcast Studio (Verified Owner Only) */}
+            <section
+              data-testid="owner-live-broadcast-studio"
+              className="space-y-3.5 rounded-2xl border border-[#E6C690]/35 bg-gradient-to-br from-[#1C1322] via-[#18111D] to-[#211321] p-4 shadow-[0_14px_34px_-16px_rgba(217,75,125,0.28)]"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E6C690]/45 bg-[#D94B7D]/20 text-[#F8BBD0]">
+                    <Radio className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-sm font-semibold text-[#FAF3EA] sm:text-base">
+                      Modino Live Broadcast Studio ✨
+                    </h2>
+                    <p className="text-[11px] text-[#B9A7C0]">
+                      Type a live note and beam it straight to Modino on her screen
+                    </p>
+                  </div>
+                </div>
+
+                <span
+                  data-testid="live-broadcast-status-pill"
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-semibold tabular-nums ${
+                    activeBroadcastRemainingSec > 0
+                      ? 'border-emerald-400/45 bg-emerald-500/15 text-emerald-200'
+                      : 'border-white/15 bg-white/5 text-[#B9A7C0]'
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      activeBroadcastRemainingSec > 0
+                        ? 'animate-pulse bg-emerald-300'
+                        : 'bg-[#9C8BA3]'
+                    }`}
+                  />
+                  {activeBroadcastRemainingSec > 0
+                    ? `Live Window · ${activeBroadcastRemainingSec}s left`
+                    : 'Standby'}
+                </span>
+              </div>
+
+              {/* Message Composer */}
+              <div className="space-y-1.5">
+                <textarea
+                  ref={broadcastTextareaRef}
+                  data-testid="live-broadcast-textarea"
+                  rows={3}
+                  maxLength={LIVE_BROADCAST_MAX_CHARS}
+                  value={broadcastMessage}
+                  onChange={(e) => {
+                    setBroadcastMessage(e.target.value);
+                    if (broadcastError) setBroadcastError(null);
+                  }}
+                  placeholder="Type a live message for Modino to say on her screen right now..."
+                  className="w-full resize-none rounded-xl border border-[#E6C690]/25 bg-[#120C16]/90 px-3.5 py-2.5 text-[13px] leading-relaxed text-[#FAF3EA] placeholder:text-[#8E7C96] focus:border-[#E6C690]/70 focus:outline-none"
+                />
+                <div className="flex items-center justify-between text-[11px] text-[#9C8BA3]">
+                  <span>Auto wakes Modino even if sleeping or tucked</span>
+                  <span
+                    data-testid="live-broadcast-char-count"
+                    className={`tabular-nums font-medium ${
+                      broadcastMessage.length >= LIVE_BROADCAST_MAX_CHARS - 20
+                        ? 'text-amber-300'
+                        : 'text-[#B9A7C0]'
+                    }`}
+                  >
+                    {broadcastMessage.length} / {LIVE_BROADCAST_MAX_CHARS}
+                  </span>
+                </div>
+              </div>
+
+              {/* Mood Selector Row + Mini Confetti Switch */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div
+                  role="radiogroup"
+                  aria-label="Broadcast mood"
+                  className="flex flex-wrap items-center gap-1.5"
+                >
+                  {LIVE_BROADCAST_MOODS.map((option) => {
+                    const selected = broadcastMood === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        data-testid={`live-mood-${option.id}`}
+                        onClick={() => setBroadcastMood(option.id)}
+                        className={`cursor-pointer rounded-full border px-3 py-1.5 text-[11.5px] font-semibold transition-all active:scale-96 ${
+                          selected
+                            ? 'border-[#F4A6C1] bg-[#FDE4EE] text-[#4A1432] shadow-[0_4px_14px_-4px_rgba(244,166,193,0.55)]'
+                            : 'border-white/12 bg-white/6 text-[#DACCE0] hover:border-[#E6C690]/40 hover:bg-white/10'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-[11.5px] font-medium text-[#EFE3F4]">
+                  <span>Pop Mini Confetti 🎊</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={broadcastConfetti}
+                    data-testid="live-broadcast-confetti-toggle"
+                    onClick={() => setBroadcastConfetti((prev) => !prev)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+                      broadcastConfetti ? 'bg-[#D94B7D]' : 'bg-white/20'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                        broadcastConfetti ? 'translate-x-4.5' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </label>
+              </div>
+
+              {/* 5 Quick 1-Tap Presets */}
+              <div className="space-y-1.5">
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#A998B0]">
+                  Quick 1 Tap Presets
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {LIVE_BROADCAST_PRESETS.map((preset, idx) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      data-testid={`live-preset-${idx + 1}`}
+                      onClick={() => handleSelectBroadcastPreset(preset)}
+                      className="cursor-pointer rounded-xl border border-[#E6C690]/20 bg-white/5 px-2.5 py-1.5 text-left text-[11px] leading-snug text-[#E5D9EA] transition-colors hover:border-[#E6C690]/50 hover:bg-[#E6C690]/12 active:scale-98"
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Primary Beam + Secondary Clear Buttons */}
+              <div className="flex flex-wrap items-center gap-2.5 pt-0.5">
+                <button
+                  type="button"
+                  data-testid="beam-live-broadcast-btn"
+                  disabled={sendingBroadcast || !sanitizedBroadcastPreview}
+                  onClick={() => void handleBeamLiveBroadcast()}
+                  className="inline-flex min-h-[42px] flex-1 sm:flex-none cursor-pointer items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#D94B7D] via-[#C83D71] to-[#B53166] px-5 py-2 text-[12.5px] font-bold text-[#FFF9FB] shadow-[0_10px_22px_-8px_rgba(217,75,125,0.65)] transition-all hover:brightness-110 active:scale-97 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  <Zap className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>{sendingBroadcast ? 'Beaming Live...' : 'Beam to Modino Live ⚡'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  data-testid="clear-live-broadcast-btn"
+                  disabled={clearingBroadcast || (!activeBroadcast && !lastBeamedBroadcast)}
+                  onClick={() => void handleClearLiveBroadcast()}
+                  className="inline-flex min-h-[42px] cursor-pointer items-center justify-center gap-1.5 rounded-full border border-white/18 bg-white/5 px-4 py-2 text-[12px] font-semibold text-[#D6C7DC] transition-colors hover:border-rose-300/45 hover:bg-rose-500/12 hover:text-rose-100 active:scale-97 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>{clearingBroadcast ? 'Clearing...' : 'Clear Active'}</span>
+                </button>
+              </div>
+
+              {/* Feedback Toast or Error */}
+              {broadcastToast && (
+                <div
+                  data-testid="live-broadcast-toast"
+                  role="status"
+                  className="rounded-xl border border-emerald-400/35 bg-emerald-500/12 px-3 py-2 text-[11.5px] font-semibold text-emerald-200"
+                >
+                  {broadcastToast}
+                </div>
+              )}
+
+              {broadcastError && (
+                <div
+                  role="alert"
+                  className="rounded-xl border border-rose-400/40 bg-rose-500/12 px-3 py-2 text-[11.5px] font-medium text-rose-200"
+                >
+                  {broadcastError}
+                </div>
+              )}
+
+              {/* Last Beamed Preview Card */}
+              {(activeBroadcast ?? lastBeamedBroadcast) && (
+                <div
+                  data-testid="live-broadcast-last-preview"
+                  className="rounded-xl border border-[#E6C690]/25 bg-[#120C16]/75 px-3.5 py-2.5"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[10.5px] font-semibold text-[#E6C690]">
+                    <span>Last Beamed · {(activeBroadcast ?? lastBeamedBroadcast)?.mood.toUpperCase()}</span>
+                    <span className="tabular-nums text-[#B9A7C0]">
+                      {activeBroadcastRemainingSec > 0
+                        ? `Active for ${activeBroadcastRemainingSec}s`
+                        : 'Window expired'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[12px] leading-snug text-[#FAF3EA]">
+                    {(activeBroadcast ?? lastBeamedBroadcast)?.message}
+                  </p>
+                </div>
+              )}
+            </section>
 
             {/* Owner Controls Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#17111B] px-4 py-3">

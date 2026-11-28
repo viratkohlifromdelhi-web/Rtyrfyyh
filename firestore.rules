@@ -313,8 +313,35 @@ service cloud.firestore {
         && data.updatedAtMs < 4102444800000;
     }
 
+    function isValidLiveBroadcast(data) {
+      return data.keys().hasAll([
+          'broadcastId', 'message', 'mood', 'confetti',
+          'sentAt', 'sentAtMs', 'expiresAtMs'
+        ])
+        && data.keys().hasOnly([
+          'broadcastId', 'message', 'mood', 'confetti',
+          'sentAt', 'sentAtMs', 'expiresAtMs'
+        ])
+        && isValidId(data.broadcastId)
+        && data.message is string
+        && data.message.size() >= 1
+        && data.message.size() <= 220
+        && data.mood is string
+        && data.mood in ['cheer', 'tease', 'hype', 'whisper']
+        && data.confetti is bool
+        && data.sentAt is timestamp
+        && data.sentAt == request.time
+        && data.sentAtMs is int
+        && data.sentAtMs > 1700000000000
+        && data.sentAtMs < 4102444800000
+        && data.expiresAtMs is int
+        && data.expiresAtMs >= data.sentAtMs
+        && data.expiresAtMs <= data.sentAtMs + 600000;
+    }
+
     match /site_config/{docId} {
-      allow get: if isValidId(docId) && (docId == 'gift_vault' || docId == 'tapli_counter');
+      allow get: if isValidId(docId)
+        && (docId == 'gift_vault' || docId == 'tapli_counter' || docId == 'live_broadcast');
       allow list: if false;
       allow create: if isValidId(docId)
         && (
@@ -326,6 +353,7 @@ service cloud.firestore {
               || (isOwner() && isValidTapliCounterOwnerReset(incoming()))
             )
           )
+          || (docId == 'live_broadcast' && isOwner() && isValidLiveBroadcast(incoming()))
         );
       allow update: if isValidId(docId)
         && (
@@ -347,8 +375,17 @@ service cloud.firestore {
               || (isOwner() && isValidTapliCounterOwnerReset(incoming()))
             )
           )
+          || (
+            docId == 'live_broadcast'
+            && isOwner()
+            && isValidLiveBroadcast(incoming())
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'broadcastId', 'message', 'mood', 'confetti',
+              'sentAt', 'sentAtMs', 'expiresAtMs'
+            ])
+          )
         );
-      allow delete: if false;
+      allow delete: if isValidId(docId) && docId == 'live_broadcast' && isOwner();
     }
 
     // =========================================================================
