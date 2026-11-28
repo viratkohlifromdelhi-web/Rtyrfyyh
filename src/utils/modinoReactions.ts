@@ -340,6 +340,39 @@ export const MODINO_REACTION_BANKS: Record<ModinoReactionCategory, readonly Modi
     },
   ],
 
+  tapli_milestone: [
+    {
+      text: 'Oye! Poora tamatar bana diya Anamika ko! 🍅😂',
+      mood: 'laugh',
+      sfx: 'giggle',
+      priority: true,
+    },
+    {
+      text: 'Tapli combo unlocked! Haath halka rakho! 👋😆',
+      mood: 'jump',
+      sfx: 'jump',
+      priority: true,
+    },
+    {
+      text: "5'2 se 4'11 kar doge kya birthday pe?! 😂🎀",
+      mood: 'surprised',
+      sfx: 'surprise_bling',
+      priority: true,
+    },
+    {
+      text: '100 taplis?! Aatma nikal gayi Anamika ki! 👻😂',
+      mood: 'surprised',
+      sfx: 'confetti_burst',
+      priority: true,
+    },
+    {
+      text: 'Tapli Zen Queen ban gayi wo ab, haar maan le! 👑✨',
+      mood: 'happy_smile',
+      sfx: 'confetti_burst',
+      priority: true,
+    },
+  ],
+
   ending: [
     { text: 'byeee bachhaww 👋💗✨', mood: 'kiss', sfx: 'kiss_pop', priority: true },
     { text: 'Hechehehe byeee bachhaww! 😘🎀', mood: 'kiss', sfx: 'kiss_pop', priority: true },
@@ -745,6 +778,7 @@ const POSITIVE_MILESTONE_CATEGORIES: ReadonlySet<ModinoReactionCategory> = new S
   'spin',
   'friends_and_banter',
   'last_playback',
+  'tapli_milestone',
 ]);
 
 /**

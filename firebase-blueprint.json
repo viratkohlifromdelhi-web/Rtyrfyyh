@@ -286,6 +286,158 @@
         "updatedAt",
         "updatedAtMs"
       ]
+    },
+    "TapliCounter": {
+      "title": "TapliCounter",
+      "description": "Global atomic Tapli mini-game counter document stored at site_config/tapli_counter.",
+      "type": "object",
+      "properties": {
+        "totalTaplis": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAtMs": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "totalTaplis",
+        "updatedAt",
+        "updatedAtMs"
+      ]
+    },
+    "DeveloperReview": {
+      "title": "DeveloperReview",
+      "description": "Append-only birthday review, favorite picks, and keepsake postcard note for the developer stored in /developer_reviews/{reviewId}.",
+      "type": "object",
+      "properties": {
+        "reviewId": {
+          "type": "string"
+        },
+        "rating": {
+          "type": "integer",
+          "enum": [1, 2, 3, 4, 5, 10]
+        },
+        "isBonusRating": {
+          "type": "boolean"
+        },
+        "bestThings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "message": {
+          "type": "string"
+        },
+        "noteNumber": {
+          "type": "integer"
+        },
+        "submittedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "submittedAtMs": {
+          "type": "integer"
+        },
+        "submittedAtIST": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "deviceType": {
+          "type": "string",
+          "enum": ["Mobile", "Tablet", "Desktop"]
+        },
+        "sessionTaplis": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "reviewId",
+        "rating",
+        "isBonusRating",
+        "bestThings",
+        "message",
+        "noteNumber",
+        "submittedAt",
+        "submittedAtMs",
+        "submittedAtIST",
+        "sessionId",
+        "deviceType",
+        "sessionTaplis"
+      ]
+    },
+    "TimeCapsule": {
+      "title": "TimeCapsule",
+      "description": "Append-only wax-sealed 18th birthday time capsule letter scheduled to open on 03 Dec 2027, stored in /time_capsules/{capsuleId}.",
+      "type": "object",
+      "properties": {
+        "capsuleId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Big 18th Wish ✨",
+            "Chaotic Prediction 😂",
+            "Promise to Myself 🎀",
+            "Note to Future Me 💌"
+          ]
+        },
+        "letter": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 1200
+        },
+        "capsuleNumber": {
+          "type": "integer"
+        },
+        "unlockDate": {
+          "type": "string",
+          "enum": ["03 Dec 2027"]
+        },
+        "sealedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sealedAtMs": {
+          "type": "integer"
+        },
+        "sealedAtIST": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "sessionId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128
+        },
+        "deviceType": {
+          "type": "string",
+          "enum": ["Mobile", "Tablet", "Desktop"]
+        }
+      },
+      "required": [
+        "capsuleId",
+        "category",
+        "letter",
+        "capsuleNumber",
+        "unlockDate",
+        "sealedAt",
+        "sealedAtMs",
+        "sealedAtIST",
+        "sessionId",
+        "deviceType"
+      ]
     }
   },
   "firestore": {
@@ -306,6 +458,24 @@
         "$ref": "#/entities/GiftVaultConfig"
       },
       "description": "Publicly readable gift_vault live code override configuration with strict schema validation and zero deletes."
+    },
+    "/site_config/tapli_counter": {
+      "schema": {
+        "$ref": "#/entities/TapliCounter"
+      },
+      "description": "Publicly readable global Tapli Arena counter accepting strictly monotonic bounded (+1..500) atomic increments with zero deletes."
+    },
+    "/developer_reviews/{reviewId}": {
+      "schema": {
+        "$ref": "#/entities/DeveloperReview"
+      },
+      "description": "Append-only birthday review & keepsake notes submitted by public visitors. Create-only with strict schema validation; read/list/delete strictly restricted to verified site owners."
+    },
+    "/time_capsules/{capsuleId}": {
+      "schema": {
+        "$ref": "#/entities/TimeCapsule"
+      },
+      "description": "Append-only wax-sealed 18th birthday time capsule letters for 03 Dec 2027. Public create-only with strict schema validation; read/list/delete strictly restricted to verified site owners."
     }
   }
 }

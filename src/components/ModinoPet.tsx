@@ -365,7 +365,7 @@ export function ModinoPet({
       setBubbleKey((k) => k + 1);
 
       try {
-        haptics.vibrateSafe(10);
+        haptics.light();
       } catch {
         // silent
       }
@@ -515,6 +515,25 @@ export function ModinoPet({
         setHasEntered(true);
       }
 
+      if (detail.customReaction) {
+        const custom = detail.customReaction;
+        const deliverCustom = () => {
+          showReaction(custom, {
+            triggerRipple: true,
+            logAnalytics: false,
+            heartTrigger: 'category',
+            heartMood: custom.mood,
+            category: detail.category,
+          });
+        };
+        if (moodRef.current === 'sleepy_zzz') {
+          wakeUpStartled(deliverCustom);
+        } else {
+          deliverCustom();
+        }
+        return;
+      }
+
       triggerCategoryReaction(detail.category, {
         logAnalytics: detail.category === 'direct_tap',
       });
@@ -524,7 +543,7 @@ export function ModinoPet({
     return () => {
       window.removeEventListener(MODINO_EVENT_NAME, handleBusEvent);
     };
-  }, [triggerCategoryReaction]);
+  }, [showReaction, triggerCategoryReaction, wakeUpStartled]);
 
   // Global passive activity tracker for 3.5s inactivity sleep & instant wake-up
   useEffect(() => {
@@ -751,7 +770,7 @@ export function ModinoPet({
       data-modino-entered={hasEntered ? 'true' : 'false'}
       data-sleep-state={mood === 'sleepy_zzz' ? 'sleeping' : 'awake'}
       aria-hidden={!hasEntered || undefined}
-      className={`pointer-events-none fixed left-[12px] bottom-[calc(16px+env(safe-area-inset-bottom,0px))] z-[36] flex flex-col items-start ${
+      className={`pointer-events-none fixed left-[12px] bottom-[calc(14px+env(safe-area-inset-bottom,0px))] sm:left-[20px] sm:bottom-[calc(22px+env(safe-area-inset-bottom,0px))] lg:left-[24px] lg:bottom-[calc(24px+env(safe-area-inset-bottom,0px))] z-[36] flex flex-col items-start ${
         hasEntered
           ? 'animate-modino-entrance opacity-100'
           : 'translate-y-[22px] opacity-0'
@@ -766,7 +785,7 @@ export function ModinoPet({
           data-sleepy={isBubbleSleepy ? 'true' : 'false'}
           onClick={handleDismissBubble}
           aria-label="Dismiss Modino speech bubble"
-          className={`animate-modino-bubble pointer-events-auto absolute left-[4px] right-auto bottom-[92px] z-10 w-max max-w-[min(76vw,252px)] origin-bottom-left rounded-[18px] border-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB] px-3.5 py-2 text-left text-[12.5px] leading-[1.35] font-semibold text-[#3A1233] shadow-[0_10px_26px_-10px_rgba(176,62,106,0.24)] cursor-pointer transition-opacity duration-200 ${
+          className={`animate-modino-bubble pointer-events-auto absolute left-[4px] right-auto bottom-[88px] sm:bottom-[114px] lg:bottom-[128px] z-10 w-max max-w-[min(195px,calc(100vw-32px))] sm:max-w-[min(260px,calc(100vw-32px))] lg:max-w-[min(285px,calc(100vw-32px))] origin-bottom-left rounded-[18px] border-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB] px-3.5 py-2 sm:px-4 sm:py-2.5 text-left text-[12px] sm:text-[14px] lg:text-[14.5px] leading-[1.35] font-semibold text-[#3A1233] shadow-[0_10px_26px_-10px_rgba(176,62,106,0.24)] cursor-pointer transition-opacity duration-200 ${
             isBubbleSleepy ? 'opacity-85' : 'opacity-100'
           }`}
         >
@@ -774,7 +793,7 @@ export function ModinoPet({
           {/* Tiny rotated cream pointer tail aiming straight down toward Modino's head */}
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute left-[22px] right-auto -bottom-[6px] h-3 w-3 rotate-45 rounded-[2px] border-r-[1.2px] border-b-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB]"
+            className="pointer-events-none absolute left-[22px] sm:left-[28px] right-auto -bottom-[6px] h-3 w-3 rotate-45 rounded-[2px] border-r-[1.2px] border-b-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB]"
           />
         </button>
       )}
@@ -835,7 +854,7 @@ export function ModinoPet({
           data-testid="modino-avatar-btn"
           onClick={handlePetTap}
           aria-label="Tap Modino companion pet"
-          className="relative flex h-[68px] w-[68px] items-center justify-center rounded-full border-0 bg-transparent p-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
+          className="relative flex h-[64px] w-[64px] sm:h-[84px] sm:w-[84px] lg:h-[96px] lg:w-[96px] items-center justify-center rounded-full border-0 bg-transparent p-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
         >
           <ModinoAvatarSvg mood={mood} tapRippleKey={tapRippleKey} paused={!isActive} />
         </button>
@@ -844,7 +863,7 @@ export function ModinoPet({
         <div className="-mt-2 flex items-center justify-center">
           <span
             data-testid="modino-name-pill"
-            className="inline-flex items-center rounded-full border border-[rgba(217,75,125,0.18)] bg-[rgba(255,253,250,0.92)] px-[6px] py-[1.5px] text-[8px] leading-[1.1] font-bold tracking-[0.04em] text-[#3A1233]/90 shadow-[0_2px_6px_-2px_rgba(176,62,106,0.16)] select-none"
+            className="inline-flex items-center rounded-full border border-[rgba(217,75,125,0.18)] bg-[rgba(255,253,250,0.92)] px-[7px] py-[2px] sm:px-[10px] sm:py-[3px] text-[8.5px] sm:text-[10.5px] leading-[1.1] font-bold tracking-[0.04em] text-[#3A1233]/90 shadow-[0_2px_6px_-2px_rgba(176,62,106,0.16)] select-none"
           >
             Modino
           </span>
@@ -855,10 +874,10 @@ export function ModinoPet({
             onClick={handleTuck}
             aria-label="Hide Modino to left edge"
             title="Hide Modino"
-            className="-ml-0.5 group flex h-8 w-8 items-center justify-center rounded-full cursor-pointer focus-visible:outline-2 focus-visible:outline-[#D94B7D]"
+            className="-ml-0.5 group flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full cursor-pointer focus-visible:outline-2 focus-visible:outline-[#D94B7D]"
           >
-            <span className="flex h-[20px] w-[20px] items-center justify-center rounded-full border border-[rgba(217,75,125,0.22)] bg-[rgba(255,253,250,0.95)] text-[#7A4A63] shadow-xs transition-colors group-hover:border-[#D94B7D] group-hover:text-[#3A1233] group-active:scale-95">
-              <X className="h-2.5 w-2.5" aria-hidden="true" />
+            <span className="flex h-[20px] w-[20px] sm:h-[24px] sm:w-[24px] items-center justify-center rounded-full border border-[rgba(217,75,125,0.22)] bg-[rgba(255,253,250,0.95)] text-[#7A4A63] shadow-xs transition-colors group-hover:border-[#D94B7D] group-hover:text-[#3A1233] group-active:scale-95">
+              <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" aria-hidden="true" />
             </span>
           </button>
         </div>

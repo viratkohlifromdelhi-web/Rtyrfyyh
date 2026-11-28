@@ -292,16 +292,25 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
       data-testid="backstory-section"
       className="relative z-[2] scroll-mt-16 overflow-x-clip bg-transparent px-4 py-14 sm:px-6 sm:py-18 lg:px-8"
     >
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto w-full max-w-[var(--card-wide-max)]">
         {/* Airy Centered Editorial Header Directly on Warm Page Canvas */}
-        <div className="mx-auto max-w-xl text-center">
-          <p className="text-[10.5px] font-semibold tracking-[0.16em] text-[#C93B6B] uppercase">
+        <div className="mx-auto max-w-2xl text-center">
+          <p
+            className="font-semibold tracking-[0.16em] text-[#C93B6B] uppercase"
+            style={{ fontSize: 'var(--text-eyebrow)' }}
+          >
             HOW WE GOT HERE
           </p>
-          <h2 className="font-display mt-2.5 text-balance text-[27px] leading-[1.15] font-semibold tracking-tight text-[#3A1233] sm:text-4xl">
+          <h2
+            className="font-display mt-2.5 text-balance leading-[1.15] font-semibold tracking-tight text-[#3A1233]"
+            style={{ fontSize: 'clamp(26px, 4.2vw, 40px)' }}
+          >
             From Classmates to Greatest HG
           </h2>
-          <p className="mx-auto mt-2.5 max-w-md text-[13.5px] leading-relaxed text-[#7A4A63] sm:text-[15px]">
+          <p
+            className="mx-auto mt-2.5 max-w-xl leading-relaxed text-[#7A4A63]"
+            style={{ fontSize: 'var(--text-body)' }}
+          >
             Scroll through the notebook, or tap any divider tab to jump back.
           </p>
         </div>
@@ -349,7 +358,7 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
                   data-testid={`backstory-chapter-${chapter.numeral}`}
                   className="sticky"
                   style={{
-                    top: `${chapter.stickyTopPx}px`,
+                    top: `calc(${chapter.stickyTopPx}px + clamp(0px, 1.5vw, 18px))`,
                     zIndex: index + 1,
                   }}
                 >
@@ -368,7 +377,7 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
                         data-testid={`notebook-tab-${chapter.numeral}`}
                         onClick={() => handleTabJump(index, chapter)}
                         aria-label={`Jump to ${chapter.tabLabel}`}
-                        className="relative inline-flex h-[34px] cursor-pointer items-center whitespace-nowrap rounded-t-[12px] px-[14px] text-[11.5px] font-semibold tracking-[0.04em] transition-transform duration-150 active:translate-y-[1px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C93B6B]"
+                        className="relative inline-flex h-[34px] sm:h-[42px] cursor-pointer items-center whitespace-nowrap rounded-t-[12px] sm:rounded-t-[14px] px-[14px] sm:px-[18px] text-[11.5px] sm:text-[13.5px] font-semibold tracking-[0.04em] transition-transform duration-150 active:translate-y-[1px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C93B6B]"
                         style={{
                           marginBottom: '-1px',
                           backgroundColor: theme.tabBg,
@@ -423,8 +432,8 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
                     {/* Pastel Stationery Postcard Body */}
                     <article
                       data-testid={`notebook-card-${chapter.numeral}`}
-                      className={`relative z-[1] min-h-[245px] overflow-hidden px-5 sm:px-7 ${
-                        isClimax ? 'py-[24px] sm:py-6' : 'pt-[44px] pb-[22px] sm:pt-[44px] sm:pb-6'
+                      className={`relative z-[1] min-h-[245px] sm:min-h-[290px] overflow-hidden px-5 sm:px-9 lg:px-10 ${
+                        isClimax ? 'py-[24px] sm:py-8' : 'pt-[44px] pb-[24px] sm:pt-[52px] sm:pb-8'
                       } ${theme.cardRadiusClass}`}
                       style={theme.cardStyle}
                     >
@@ -432,7 +441,7 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
                       {theme.hasRuledMargin && (
                         <span
                           aria-hidden="true"
-                          className="pointer-events-none absolute top-0 bottom-0 left-[16px] w-px sm:left-[22px]"
+                          className="pointer-events-none absolute top-0 bottom-0 left-[16px] w-px sm:left-[26px]"
                           style={{ backgroundColor: 'rgba(217, 75, 125, 0.16)' }}
                         />
                       )}
@@ -440,8 +449,8 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
                       {/* Subtle Top-Right Faint Archival Serif Numeral */}
                       <span
                         aria-hidden="true"
-                        className={`font-display pointer-events-none absolute right-4 select-none text-[50px] leading-none font-semibold tracking-tight sm:right-6 sm:text-[56px] ${
-                          isClimax ? 'top-3 sm:top-3.5' : 'top-[42px] sm:top-[42px]'
+                        className={`font-display pointer-events-none absolute right-4 select-none text-[50px] leading-none font-semibold tracking-tight sm:right-7 sm:text-[64px] ${
+                          isClimax ? 'top-3 sm:top-4' : 'top-[42px] sm:top-[48px]'
                         }`}
                         style={{
                           color: theme.watermarkColor,
@@ -452,17 +461,20 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
                       </span>
 
                       <div
-                        className={`relative z-10 ${theme.hasRuledMargin ? 'pl-3 sm:pl-4' : ''}`}
+                        className={`relative z-10 ${theme.hasRuledMargin ? 'pl-3 sm:pl-5' : ''}`}
                       >
                         <p
                           data-testid={`chapter-eyebrow-${chapter.numeral}`}
-                          className="pr-12 text-[10.5px] leading-snug font-semibold tracking-[0.14em] uppercase sm:text-[11px]"
-                          style={{ color: theme.eyebrowColor }}
+                          className="pr-12 leading-snug font-semibold tracking-[0.14em] uppercase"
+                          style={{ color: theme.eyebrowColor, fontSize: 'var(--text-eyebrow)' }}
                         >
                           {chapter.eyebrow}
                         </p>
 
-                        <h3 className="font-display mt-2 text-[22px] leading-snug font-semibold tracking-tight text-[#3A1233] sm:text-[26px]">
+                        <h3
+                          className="font-display mt-2 leading-snug font-semibold tracking-tight text-[#3A1233]"
+                          style={{ fontSize: 'clamp(22px, 2.9vw, 31px)' }}
+                        >
                           {chapter.title}
                         </h3>
 
@@ -470,7 +482,7 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
                           <p className="mt-2.5">
                             <span
                               data-testid="chapter-3-meta-pill"
-                              className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.03em] text-[#B52C5C]"
+                              className="inline-flex items-center rounded-full px-3.5 py-1 text-[11px] sm:text-[13px] font-semibold tracking-[0.03em] text-[#B52C5C]"
                               style={{
                                 backgroundColor: 'rgba(255, 255, 255, 0.78)',
                                 border: '1px solid rgba(209, 68, 118, 0.24)',
@@ -481,22 +493,25 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
                           </p>
                         )}
 
-                        <p className="mt-3 max-w-xl text-[14.5px] leading-[1.68] text-[#4F2547] sm:text-[15.5px]">
+                        <p
+                          className="mt-3.5 max-w-[60ch] leading-[1.7] text-[#4F2547]"
+                          style={{ fontSize: 'clamp(14.5px, 1.9vw, 18px)' }}
+                        >
                           {chapter.description}
                         </p>
 
                         {/* Chapter 3 Interactive Jump Pill to Case File #0721 */}
                         {isClimax && (
-                          <div className="mt-5">
+                          <div className="mt-5 sm:mt-6">
                             <button
                               type="button"
                               data-testid="timeline-receipt-jump-btn"
                               onClick={handleJumpToReceipt}
-                              className="inline-flex min-h-[40px] cursor-pointer items-center gap-2 rounded-full bg-[#FFFFFF] px-4 py-2 text-xs font-semibold tracking-[0.02em] text-[#B52F5E] shadow-[0_6px_16px_-8px_rgba(181,47,94,0.28)] transition-all duration-150 hover:bg-[#FFF8FB] active:translate-y-[1px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C93B6B]"
+                              className="inline-flex min-h-[42px] sm:min-h-[48px] cursor-pointer items-center gap-2 rounded-full bg-[#FFFFFF] px-5 py-2.5 text-xs sm:text-sm font-semibold tracking-[0.02em] text-[#B52F5E] shadow-[0_6px_16px_-8px_rgba(181,47,94,0.28)] transition-all duration-150 hover:bg-[#FFF8FB] active:translate-y-[1px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C93B6B]"
                               style={{ border: '1px solid rgba(201, 59, 107, 0.34)' }}
                             >
                               <span>See the 12:29 AM receipt</span>
-                              <DownwardReceiptArrowSvg className="h-[13px] w-[13px] shrink-0 text-[#C93B6B]" />
+                              <DownwardReceiptArrowSvg className="h-[14px] w-[14px] shrink-0 text-[#C93B6B]" />
                             </button>
                           </div>
                         )}

@@ -14,6 +14,8 @@ import {
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
+  setDoc,
   writeBatch,
   type Unsubscribe,
 } from 'firebase/firestore';
@@ -25,16 +27,23 @@ import {
   ChevronUp,
   Cpu,
   Delete,
+  Eye,
   EyeOff,
   Globe,
   Lock,
   LogOut,
+  Mail,
   MapPin,
+  MessageSquareHeart,
   Monitor,
+  RotateCcw,
   ShieldCheck,
   Smartphone,
+  Sparkles,
+  Star,
   Tablet,
   Trash2,
+  Vibrate,
   Wifi,
   X,
 } from 'lucide-react';
@@ -56,6 +65,20 @@ import {
   isOwnerDeviceIgnoredFlag,
   setOwnerAnalyticsIgnored,
 } from '../utils/analytics';
+import {
+  DEVELOPER_REVIEW_COLLECTION,
+  computeDeveloperReviewSummary,
+  formatReviewISTTimestamp,
+  stripVisibleDashes,
+  type DeveloperReviewDashboardRecord,
+} from '../utils/developerReviewCore';
+import {
+  DEFAULT_TIME_CAPSULE_CATEGORY,
+  TIME_CAPSULE_COLLECTION,
+  formatCapsuleISTTimestamp,
+  isValidTimeCapsuleCategory,
+  type SealedTimeCapsuleRecord,
+} from '../utils/timeCapsuleCore';
 import {
   computeDashboardSummary,
   evaluateOwnerPin,
@@ -436,6 +459,25 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
   const [feedError, setFeedError] = useState<string | null>(null);
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<DeveloperReviewDashboardRecord[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+  const [confirmDeleteReviewId, setConfirmDeleteReviewId] = useState<string | null>(null);
+  const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
+  const [capsules, setCapsules] = useState<SealedTimeCapsuleRecord[]>([]);
+  const [loadingCapsules, setLoadingCapsules] = useState(false);
+  const [capsulesError, setCapsulesError] = useState<string | null>(null);
+  const [revealedCapsuleIds, setRevealedCapsuleIds] = useState<Record<string, boolean>>({});
+  const [confirmDeleteCapsuleId, setConfirmDeleteCapsuleId] = useState<string | null>(null);
+  const [deletingCapsuleId, setDeletingCapsuleId] = useState<string | null>(null);
+  const [confirmCleanAction, setConfirmCleanAction] = useState<
+    'tapli' | 'reviews' | 'visits' | 'capsules' | null
+  >(null);
+  const [runningCleanAction, setRunningCleanAction] = useState<
+    'tapli' | 'reviews' | 'visits' | 'capsules' | null
+  >(null);
+  const [cleanSlateToast, setCleanSlateToast] = useState<string | null>(null);
+  const cleanToastTimerRef = useRef<number | null>(null);
   const [dbDiagnostic, setDbDiagnostic] = useState<FirestoreDiagnosticStatus>(() => ({
     status: 'checking',
     code: null,
@@ -445,6 +487,35 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
     databaseId: firebaseDatabaseId,
     checkedAtMs: Date.now(),
   }));
+
+  const [hapticTestResult, setHapticTestResult] = useState<
+    'idle' | 'accepted' | 'blocked' | 'unsupported'
+  >('idle');
+
+  const hapticDiagnostics = useMemo(() => {
+    const vibrateSupported =
+      typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+    let inIframe = false;
+    try {
+      inIframe = typeof window !== 'undefined' && window.self !== window.top;
+    } catch {
+      inIframe = true;
+    }
+    return { vibrateSupported, inIframe };
+  }, []);
+
+  const handleTestHapticBuzz = useCallback(() => {
+    try {
+      if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
+        setHapticTestResult('unsupported');
+        return;
+      }
+      const accepted = Boolean(navigator.vibrate([35, 50, 50]));
+      setHapticTestResult(accepted ? 'accepted' : 'blocked');
+    } catch {
+      setHapticTestResult('blocked');
+    }
+  }, []);
 
   const resetPinTimerRef = useRef<number | null>(null);
   const copiedDomainTimerRef = useRef<number | null>(null);
@@ -484,6 +555,9 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
       }
       if (copiedDomainTimerRef.current !== null) {
         window.clearTimeout(copiedDomainTimerRef.current);
+      }
+      if (cleanToastTimerRef.current !== null) {
+        window.clearTimeout(cleanToastTimerRef.current);
       }
     };
   }, [onClose]);
@@ -608,6 +682,149 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
     };
   }, [pinUnlocked, isVerifiedOwner]);
 
+  // Subscribe to Firestore developer_reviews ONLY after PIN 9876 AND verified owner auth
+  useEffect(() => {
+    if (!pinUnlocked || !isVerifiedOwner || !db) return;
+
+    setLoadingReviews(true);
+    setReviewsError(null);
+
+    let unsub: Unsubscribe | null = null;
+    try {
+      const q = query(
+        collection(db, DEVELOPER_REVIEW_COLLECTION),
+        orderBy('submittedAtMs', 'desc'),
+        limit(50),
+      );
+      unsub = onSnapshot(
+        q,
+        (snapshot) => {
+          const rows: DeveloperReviewDashboardRecord[] = snapshot.docs.map((docSnap) => {
+            const d = docSnap.data();
+            const submittedAtMs =
+              typeof d.submittedAtMs === 'number' ? d.submittedAtMs : Date.now();
+            const rating = typeof d.rating === 'number' ? d.rating : 5;
+            const deviceType =
+              d.deviceType === 'Mobile' || d.deviceType === 'Tablet' || d.deviceType === 'Desktop'
+                ? d.deviceType
+                : 'Mobile';
+            const bestThings = Array.isArray(d.bestThings)
+              ? d.bestThings.filter((item): item is string => typeof item === 'string')
+              : [];
+            return {
+              reviewId: typeof d.reviewId === 'string' ? d.reviewId : docSnap.id,
+              rating,
+              isBonusRating: Boolean(d.isBonusRating) || rating === 10,
+              bestThings,
+              message: typeof d.message === 'string' ? d.message : '',
+              noteNumber: typeof d.noteNumber === 'number' ? d.noteNumber : 1,
+              submittedAtMs,
+              submittedAtIST:
+                typeof d.submittedAtIST === 'string' && d.submittedAtIST.trim()
+                  ? stripVisibleDashes(d.submittedAtIST)
+                  : formatReviewISTTimestamp(submittedAtMs),
+              sessionId: typeof d.sessionId === 'string' ? d.sessionId : 'direct_session',
+              deviceType,
+              sessionTaplis: typeof d.sessionTaplis === 'number' ? d.sessionTaplis : 0,
+            };
+          });
+          setReviews(rows);
+          setLoadingReviews(false);
+          setReviewsError(null);
+        },
+        (error) => {
+          const info = buildFirestoreErrorInfo(
+            error,
+            OperationType.LIST,
+            DEVELOPER_REVIEW_COLLECTION,
+          );
+          setReviewsError(info.error);
+          setLoadingReviews(false);
+        },
+      );
+    } catch (error) {
+      const info = buildFirestoreErrorInfo(
+        error,
+        OperationType.LIST,
+        DEVELOPER_REVIEW_COLLECTION,
+      );
+      setReviewsError(info.error);
+      setLoadingReviews(false);
+    }
+
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [pinUnlocked, isVerifiedOwner]);
+
+  // Subscribe to Firestore time_capsules ONLY after PIN 9876 AND verified owner auth
+  useEffect(() => {
+    if (!pinUnlocked || !isVerifiedOwner || !db) return;
+
+    setLoadingCapsules(true);
+    setCapsulesError(null);
+
+    let unsub: Unsubscribe | null = null;
+    try {
+      const q = query(
+        collection(db, TIME_CAPSULE_COLLECTION),
+        orderBy('sealedAtMs', 'desc'),
+        limit(100),
+      );
+      unsub = onSnapshot(
+        q,
+        (snapshot) => {
+          const rows: SealedTimeCapsuleRecord[] = snapshot.docs.map((docSnap) => {
+            const d = docSnap.data();
+            const sealedAtMs = typeof d.sealedAtMs === 'number' ? d.sealedAtMs : Date.now();
+            const deviceType =
+              d.deviceType === 'Mobile' || d.deviceType === 'Tablet' || d.deviceType === 'Desktop'
+                ? d.deviceType
+                : 'Mobile';
+            return {
+              capsuleId: typeof d.capsuleId === 'string' ? d.capsuleId : docSnap.id,
+              category: isValidTimeCapsuleCategory(d.category)
+                ? d.category
+                : DEFAULT_TIME_CAPSULE_CATEGORY,
+              letter: typeof d.letter === 'string' ? d.letter : '',
+              capsuleNumber: typeof d.capsuleNumber === 'number' ? d.capsuleNumber : 1,
+              unlockDate: '03 Dec 2027',
+              sealedAtMs,
+              sealedAtIST:
+                typeof d.sealedAtIST === 'string' && d.sealedAtIST.trim()
+                  ? stripVisibleDashes(d.sealedAtIST)
+                  : formatCapsuleISTTimestamp(sealedAtMs),
+              sessionId: typeof d.sessionId === 'string' ? d.sessionId : 'direct_session',
+              deviceType,
+            };
+          });
+          setCapsules(rows);
+          setLoadingCapsules(false);
+          setCapsulesError(null);
+        },
+        (error) => {
+          const info = buildFirestoreErrorInfo(
+            error,
+            OperationType.LIST,
+            TIME_CAPSULE_COLLECTION,
+          );
+          setCapsulesError(info.error);
+          setLoadingCapsules(false);
+        },
+      );
+    } catch (error) {
+      const info = buildFirestoreErrorInfo(error, OperationType.LIST, TIME_CAPSULE_COLLECTION);
+      setCapsulesError(info.error);
+      setLoadingCapsules(false);
+    }
+
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [pinUnlocked, isVerifiedOwner]);
+
+  const reviewSummary = useMemo(() => computeDeveloperReviewSummary(reviews), [reviews]);
+
   const submitPin = useCallback((fourDigits: string) => {
     if (evaluateOwnerPin(fourDigits)) {
       setPinError(null);
@@ -720,6 +937,141 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
       setDeletingSessionId(null);
     }
   }, [deletingSessionId]);
+
+  const handleDeleteReview = useCallback(
+    async (reviewId: string) => {
+      if (!db || deletingReviewId) return;
+      setDeletingReviewId(reviewId);
+      setReviewsError(null);
+      try {
+        await deleteDoc(doc(db, DEVELOPER_REVIEW_COLLECTION, reviewId));
+        setConfirmDeleteReviewId((curr) => (curr === reviewId ? null : curr));
+      } catch (error) {
+        const info = buildFirestoreErrorInfo(
+          error,
+          OperationType.DELETE,
+          `${DEVELOPER_REVIEW_COLLECTION}/${reviewId}`,
+        );
+        setReviewsError(info.error);
+      } finally {
+        setDeletingReviewId(null);
+      }
+    },
+    [deletingReviewId],
+  );
+
+  const showCleanToast = useCallback((message: string) => {
+    setCleanSlateToast(message);
+    if (cleanToastTimerRef.current !== null) {
+      window.clearTimeout(cleanToastTimerRef.current);
+    }
+    cleanToastTimerRef.current = window.setTimeout(() => {
+      setCleanSlateToast(null);
+      cleanToastTimerRef.current = null;
+    }, 3200);
+  }, []);
+
+  const handleDeleteCapsule = useCallback(
+    async (capsuleId: string) => {
+      if (!db || deletingCapsuleId) return;
+      setDeletingCapsuleId(capsuleId);
+      setCapsulesError(null);
+      try {
+        await deleteDoc(doc(db, TIME_CAPSULE_COLLECTION, capsuleId));
+        setConfirmDeleteCapsuleId((curr) => (curr === capsuleId ? null : curr));
+      } catch (error) {
+        const info = buildFirestoreErrorInfo(
+          error,
+          OperationType.DELETE,
+          `${TIME_CAPSULE_COLLECTION}/${capsuleId}`,
+        );
+        setCapsulesError(info.error);
+      } finally {
+        setDeletingCapsuleId(null);
+      }
+    },
+    [deletingCapsuleId],
+  );
+
+  const handleRunCleanSlateAction = useCallback(
+    async (action: 'tapli' | 'reviews' | 'visits' | 'capsules') => {
+      if (!db || runningCleanAction) return;
+      setRunningCleanAction(action);
+      try {
+        if (action === 'tapli') {
+          await setDoc(doc(db, 'site_config', 'tapli_counter'), {
+            totalTaplis: 0,
+            updatedAt: serverTimestamp(),
+            updatedAtMs: Date.now(),
+          });
+          showCleanToast('Tapli counter reset to 0');
+        } else if (action === 'reviews') {
+          const snap = await getDocs(collection(db, DEVELOPER_REVIEW_COLLECTION));
+          const docs = snap.docs;
+          for (let i = 0; i < docs.length; i += 400) {
+            const batch = writeBatch(db);
+            for (const d of docs.slice(i, i + 400)) {
+              batch.delete(d.ref);
+            }
+            await batch.commit();
+          }
+          showCleanToast(`Deleted ${docs.length} test ${docs.length === 1 ? 'review' : 'reviews'}`);
+        } else if (action === 'capsules') {
+          const snap = await getDocs(collection(db, TIME_CAPSULE_COLLECTION));
+          const docs = snap.docs;
+          for (let i = 0; i < docs.length; i += 400) {
+            const batch = writeBatch(db);
+            for (const d of docs.slice(i, i + 400)) {
+              batch.delete(d.ref);
+            }
+            await batch.commit();
+          }
+          showCleanToast(
+            `Deleted ${docs.length} test ${docs.length === 1 ? 'capsule' : 'capsules'}`,
+          );
+        } else if (action === 'visits') {
+          const visitsSnap = await getDocs(collection(db, 'site_visits'));
+          for (const visitDoc of visitsSnap.docs) {
+            const eventsSnap = await getDocs(
+              collection(db, 'site_visits', visitDoc.id, 'events'),
+            );
+            const eventDocs = eventsSnap.docs;
+            for (let i = 0; i < eventDocs.length; i += 400) {
+              const batch = writeBatch(db);
+              for (const evDoc of eventDocs.slice(i, i + 400)) {
+                batch.delete(evDoc.ref);
+              }
+              await batch.commit();
+            }
+            await deleteDoc(visitDoc.ref);
+          }
+          setExpandedSessionId(null);
+          showCleanToast(
+            `Deleted ${visitsSnap.docs.length} test ${visitsSnap.docs.length === 1 ? 'visit' : 'visits'}`,
+          );
+        }
+        setConfirmCleanAction(null);
+      } catch (error) {
+        const path =
+          action === 'tapli'
+            ? 'site_config/tapli_counter'
+            : action === 'reviews'
+              ? DEVELOPER_REVIEW_COLLECTION
+              : action === 'capsules'
+                ? TIME_CAPSULE_COLLECTION
+                : 'site_visits';
+        const info = buildFirestoreErrorInfo(
+          error,
+          action === 'tapli' ? OperationType.WRITE : OperationType.DELETE,
+          path,
+        );
+        setFeedError(info.error);
+      } finally {
+        setRunningCleanAction(null);
+      }
+    },
+    [runningCleanAction, showCleanToast],
+  );
 
   const handleSwitchAccount = useCallback(async () => {
     if (!auth) return;
@@ -839,15 +1191,15 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
           /* Step 1: 4-Digit Owner PIN Gate (9876) */
           <div
             data-testid="dashboard-pin-gate"
-            className="mx-auto mt-4 flex w-full max-w-[330px] flex-col items-center rounded-3xl border border-[#E6C690]/25 bg-[#17111B] p-6 text-center shadow-2xl sm:mt-10"
+            className="mx-auto mt-4 flex w-full max-w-[min(92vw,440px)] flex-col items-center rounded-3xl border border-[#E6C690]/25 bg-[#17111B] p-6 sm:p-8 text-center shadow-2xl sm:mt-10"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[#E6C690]/35 bg-[#E6C690]/10 text-[#E6C690]">
-              <Lock className="h-5 w-5" aria-hidden="true" />
+            <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full border border-[#E6C690]/35 bg-[#E6C690]/10 text-[#E6C690]">
+              <Lock className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
             </div>
-            <h2 className="font-display mt-3.5 text-xl font-semibold text-[#FAF3EA]">
+            <h2 className="font-display mt-3.5 text-xl sm:text-2xl font-semibold text-[#FAF3EA]">
               Owner Verification
             </h2>
-            <p className="mt-1 text-xs text-[#A998B0]">
+            <p className="mt-1 text-xs sm:text-sm text-[#A998B0]">
               Enter your 4 digit owner PIN to unlock live analytics.
             </p>
 
@@ -904,7 +1256,7 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
             </div>
 
             {/* 3x4 Keypad */}
-            <div className="grid w-full max-w-[240px] grid-cols-3 gap-2.5">
+            <div className="grid w-full max-w-[280px] grid-cols-3 gap-2.5 sm:gap-3">
               {PIN_KEYS.map((key) => (
                 <button
                   key={key}
@@ -918,9 +1270,9 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
                         ? 'Clear PIN'
                         : `Owner PIN digit ${key}`
                   }
-                  className={`flex h-13 w-full cursor-pointer items-center justify-center rounded-full border text-base font-medium transition-colors active:scale-95 ${
+                  className={`flex h-13 sm:h-14 w-full cursor-pointer items-center justify-center rounded-full border text-base sm:text-lg font-medium transition-colors active:scale-95 ${
                     key === 'CLEAR' || key === 'BACK'
-                      ? 'border-transparent bg-transparent text-xs font-semibold text-[#D7B57E] hover:bg-white/5'
+                      ? 'border-transparent bg-transparent text-xs sm:text-sm font-semibold text-[#D7B57E] hover:bg-white/5'
                       : 'border-[#E6C690]/22 bg-white/[0.03] text-[#FAF3EA] hover:border-[#E6C690]/55 hover:bg-[#E6C690]/10'
                   }`}
                 >
@@ -943,7 +1295,7 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
           /* Step 2: Firebase Owner Google Sign-In Gate (enforces PII-safe Firestore rules) */
           <div
             data-testid="dashboard-auth-gate"
-            className="mx-auto mt-8 flex w-full max-w-md flex-col items-center rounded-3xl border border-[#E6C690]/25 bg-[#17111B] p-6 text-center shadow-2xl"
+            className="mx-auto mt-8 flex w-full max-w-lg flex-col items-center rounded-3xl border border-[#E6C690]/25 bg-[#17111B] p-6 sm:p-8 text-center shadow-2xl"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-full border border-emerald-400/35 bg-emerald-500/12 text-emerald-300">
               <ShieldCheck className="h-6 w-6" aria-hidden="true" />
@@ -1050,7 +1402,7 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
           </div>
         ) : (
           /* Step 3: Live Real-Time Owner Dashboard Feed */
-          <div className="mx-auto max-w-4xl space-y-5 pb-10">
+          <div className="mx-auto max-w-[1040px] space-y-5 pb-10">
             {/* Top Summary Stats Row + Ignore My Own Device Switch */}
             <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
               <div className="rounded-2xl border border-[#E6C690]/20 bg-[#17111B] p-3.5 sm:p-4">
@@ -1130,6 +1482,513 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
                 </button>
               </div>
             </div>
+
+            {/* Private Owner Haptics Diagnostic Row (strictly inside ?insights=9876 verified view) */}
+            <div
+              data-testid="owner-haptics-diagnostic"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#17111B] px-4 py-3"
+            >
+              <div className="flex items-start gap-2.5">
+                <Vibrate className="mt-0.5 h-4 w-4 shrink-0 text-[#E6C690]" aria-hidden="true" />
+                <div>
+                  <p className="text-xs font-semibold text-[#FAF3EA]">Test Haptics</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#C7B8CC]">
+                    <span>
+                      Vibrate API:{' '}
+                      <strong
+                        data-testid="haptic-api-status"
+                        className={
+                          hapticDiagnostics.vibrateSupported ? 'text-emerald-300' : 'text-rose-300'
+                        }
+                      >
+                        {hapticDiagnostics.vibrateSupported ? 'Supported' : 'Not Supported'}
+                      </strong>
+                    </span>
+                    <span aria-hidden="true" className="text-white/25">
+                      &middot;
+                    </span>
+                    <span>
+                      Context:{' '}
+                      <strong
+                        data-testid="haptic-context-status"
+                        className={
+                          hapticDiagnostics.inIframe ? 'text-amber-300' : 'text-emerald-300'
+                        }
+                      >
+                        {hapticDiagnostics.inIframe ? 'Blocked in Iframe' : 'Top Window'}
+                      </strong>
+                    </span>
+                    {hapticTestResult !== 'idle' && (
+                      <>
+                        <span aria-hidden="true" className="text-white/25">
+                          &middot;
+                        </span>
+                        <span>
+                          Result:{' '}
+                          <strong
+                            data-testid="haptic-test-result"
+                            className={
+                              hapticTestResult === 'accepted'
+                                ? 'text-emerald-300'
+                                : hapticTestResult === 'unsupported'
+                                  ? 'text-rose-300'
+                                  : 'text-amber-300'
+                            }
+                          >
+                            {hapticTestResult === 'accepted'
+                              ? 'Accepted'
+                              : hapticTestResult === 'unsupported'
+                                ? 'Not Supported'
+                                : 'Blocked by browser'}
+                          </strong>
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                data-testid="test-haptic-buzz-btn"
+                onClick={handleTestHapticBuzz}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E6C690]/45 bg-[#E6C690]/15 px-3.5 py-1.5 text-[11.5px] font-semibold text-[#F6DFB0] transition-colors hover:bg-[#E6C690]/25 active:scale-97"
+              >
+                <Vibrate className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Test Haptic Buzz</span>
+              </button>
+            </div>
+
+            {/* Pre Launch Clean Slate Utility Card (Strictly Verified Owner Only) */}
+            <section
+              data-testid="owner-clean-slate-card"
+              className="space-y-3 rounded-2xl border border-[#E6C690]/25 bg-[#17111B] p-4"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E6C690]/35 bg-[#E6C690]/12 text-[#E6C690]">
+                    <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-sm font-semibold text-[#FAF3EA] sm:text-base">
+                      Pre Launch Clean Slate
+                    </h2>
+                    <p className="text-[11px] text-[#A998B0]">
+                      Wipe test activity cleanly before midnight on 03 Dec 2026
+                    </p>
+                  </div>
+                </div>
+                {cleanSlateToast && (
+                  <span
+                    role="status"
+                    data-testid="clean-slate-toast"
+                    className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-[11px] font-semibold text-emerald-200"
+                  >
+                    {cleanSlateToast}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {(
+                  [
+                    {
+                      id: 'tapli',
+                      label: 'Reset Global Tapli Counter to 0',
+                      confirmLabel: 'Confirm Reset?',
+                      busyLabel: 'Resetting...',
+                    },
+                    {
+                      id: 'reviews',
+                      label: 'Delete All Test Reviews',
+                      confirmLabel: 'Confirm Reset?',
+                      busyLabel: 'Deleting...',
+                    },
+                    {
+                      id: 'visits',
+                      label: 'Delete All Test Visits',
+                      confirmLabel: 'Confirm Reset?',
+                      busyLabel: 'Deleting...',
+                    },
+                    {
+                      id: 'capsules',
+                      label: 'Delete All Test Capsules',
+                      confirmLabel: 'Confirm Reset?',
+                      busyLabel: 'Deleting...',
+                    },
+                  ] as const
+                ).map((item) => {
+                  const isConfirming = confirmCleanAction === item.id;
+                  const isBusy = runningCleanAction === item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2.5"
+                    >
+                      <span className="text-xs font-semibold text-[#FAF3EA]">{item.label}</span>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {isConfirming ? (
+                          <>
+                            <button
+                              type="button"
+                              data-testid={`clean-slate-confirm-${item.id}`}
+                              disabled={Boolean(runningCleanAction)}
+                              onClick={() => void handleRunCleanSlateAction(item.id)}
+                              className="cursor-pointer rounded-full border border-rose-400/50 bg-rose-500/20 px-2.5 py-1 text-[11px] font-semibold text-rose-200 hover:bg-rose-500/30 disabled:opacity-50"
+                            >
+                              {isBusy ? item.busyLabel : item.confirmLabel}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={Boolean(runningCleanAction)}
+                              onClick={() => setConfirmCleanAction(null)}
+                              className="cursor-pointer rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-[#C7B8CC] hover:bg-white/10"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            data-testid={`clean-slate-trigger-${item.id}`}
+                            disabled={Boolean(runningCleanAction)}
+                            onClick={() => setConfirmCleanAction(item.id)}
+                            className="cursor-pointer rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-[#E6D9EA] transition-colors hover:border-rose-400/45 hover:bg-rose-500/15 hover:text-rose-200 disabled:opacity-50"
+                          >
+                            {item.id === 'tapli' ? 'Reset' : 'Clear'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Ratings & Notes Panel (live stream from /developer_reviews) */}
+            <section
+              data-testid="dashboard-developer-reviews-panel"
+              className="space-y-3.5 rounded-2xl border border-[#E6C690]/25 bg-[#17111B] p-4 sm:p-5"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E6C690]/35 bg-[#E6C690]/12 text-[#E6C690]">
+                    <MessageSquareHeart className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-base font-semibold text-[#FAF3EA]">
+                      Ratings &amp; Notes
+                    </h2>
+                    <p className="text-[11px] text-[#A998B0]">
+                      Live birthday reviews and postcard notes sent to adinomide
+                    </p>
+                  </div>
+                </div>
+                <span className="rounded-full border border-[#E6C690]/28 bg-[#E6C690]/10 px-2.5 py-0.5 text-[11px] font-semibold text-[#F0D5A0]">
+                  {reviewSummary.totalNotes} {reviewSummary.totalNotes === 1 ? 'Note' : 'Notes'}
+                </span>
+              </div>
+
+              {/* Summary Strip: Total Notes · Average Rating · Top Favorite Feature */}
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                <div className="rounded-xl border border-white/10 bg-black/25 px-3.5 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#A998B0]">
+                    Total Notes
+                  </p>
+                  <p
+                    data-testid="reviews-stat-total"
+                    className="font-display mt-1 text-xl font-semibold tabular-nums text-[#FAF3EA]"
+                  >
+                    {reviewSummary.totalNotes}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/25 px-3.5 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#A998B0]">
+                    Average Rating
+                  </p>
+                  <p
+                    data-testid="reviews-stat-avg"
+                    className="font-display mt-1 text-xl font-semibold tabular-nums text-[#F4C86A]"
+                  >
+                    {reviewSummary.averageRatingLabel}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/25 px-3.5 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#A998B0]">
+                    Top Favorite Feature
+                  </p>
+                  <p
+                    data-testid="reviews-stat-top-fav"
+                    className="mt-1 truncate text-sm font-semibold text-[#F5A8C7]"
+                  >
+                    {reviewSummary.topFavorite}
+                  </p>
+                </div>
+              </div>
+
+              {reviewsError && (
+                <div className="rounded-xl border border-rose-400/35 bg-rose-500/12 px-3.5 py-2.5 text-xs text-rose-200">
+                  Reviews stream error: {reviewsError}
+                </div>
+              )}
+
+              {loadingReviews ? (
+                <p className="py-5 text-center text-xs text-[#C7B8CC]">
+                  Loading live ratings &amp; notes...
+                </p>
+              ) : reviews.length === 0 ? (
+                <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-6 text-center">
+                  <p className="text-sm font-semibold text-[#FAF3EA]">No notes received yet</p>
+                  <p className="mt-1 text-xs text-[#A998B0]">
+                    Submitted ratings and postcard notes will stream here in real time.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {reviews.map((rev) => {
+                    const isConfirming = confirmDeleteReviewId === rev.reviewId;
+                    const isDeleting = deletingReviewId === rev.reviewId;
+                    return (
+                      <article
+                        key={rev.reviewId}
+                        data-testid={`dashboard-review-card-${rev.reviewId}`}
+                        className="rounded-xl border border-white/10 bg-black/25 p-3.5"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold ${
+                                rev.isBonusRating
+                                  ? 'border-[#F4C86A]/60 bg-[#F4C86A]/18 text-[#FCE19D]'
+                                  : 'border-[#E6C690]/35 bg-[#E6C690]/12 text-[#F0D5A0]'
+                              }`}
+                            >
+                              <Star className="h-3 w-3 fill-current" aria-hidden="true" />
+                              <span>
+                                {rev.rating} / 5 ★{rev.isBonusRating ? ' · Bonus' : ''}
+                              </span>
+                            </span>
+                            <span className="text-xs font-semibold text-[#FAF3EA]">
+                              Note #{rev.noteNumber}
+                            </span>
+                            <span className="text-[11px] text-[#A998B0]">
+                              {rev.submittedAtIST}
+                            </span>
+                          </div>
+
+                          {/* Two-step inline delete confirmation (no window.confirm) */}
+                          <div className="flex items-center gap-1.5">
+                            {isConfirming ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={isDeleting}
+                                  onClick={() => void handleDeleteReview(rev.reviewId)}
+                                  className="cursor-pointer rounded-full border border-rose-400/50 bg-rose-500/20 px-2.5 py-1 text-[11px] font-semibold text-rose-200 hover:bg-rose-500/30 disabled:opacity-50"
+                                >
+                                  {isDeleting ? 'Deleting...' : 'Confirm Delete'}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isDeleting}
+                                  onClick={() => setConfirmDeleteReviewId(null)}
+                                  className="cursor-pointer rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-[#C7B8CC] hover:bg-white/10"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteReviewId(rev.reviewId)}
+                                className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-[#C7B8CC] hover:border-rose-400/40 hover:bg-rose-500/15 hover:text-rose-200"
+                              >
+                                <Trash2 className="h-3 w-3" aria-hidden="true" />
+                                <span>Delete</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Metadata line: Device Type · Tapli Count */}
+                        <p className="mt-2 text-[11px] text-[#A998B0]">
+                          Device: <span className="text-[#E6D9EA]">{rev.deviceType}</span> &middot;{' '}
+                          Taplis: <span className="tabular-nums text-[#E6D9EA]">{rev.sessionTaplis}</span>
+                        </p>
+
+                        {/* Favorite Chips */}
+                        {rev.bestThings.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {rev.bestThings.map((fav) => (
+                              <span
+                                key={fav}
+                                className="rounded-full border border-pink-300/25 bg-pink-400/12 px-2.5 py-0.5 text-[11px] font-medium text-pink-200"
+                              >
+                                {fav}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Full Written Message */}
+                        <div className="mt-2.5 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5 text-xs leading-relaxed text-[#FAF3EA]">
+                          {rev.message ? (
+                            <p className="whitespace-pre-wrap break-words">{rev.message}</p>
+                          ) : (
+                            <p className="italic text-[#9C8BA3]">No written message included</p>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {/* 18th Birthday Time Capsules Panel (live stream from /time_capsules) */}
+            <section
+              data-testid="dashboard-time-capsules-panel"
+              className="space-y-3.5 rounded-2xl border border-[#E6C690]/25 bg-[#17111B] p-4 sm:p-5"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E6C690]/35 bg-[#E6C690]/12 text-[#E6C690]">
+                    <Mail className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-base font-semibold text-[#FAF3EA]">
+                      18th Birthday Time Capsules
+                    </h2>
+                    <p className="text-[11px] text-[#A998B0]">
+                      Wax sealed letters scheduled for 03 Dec 2027 · blurred by default for privacy
+                    </p>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1 rounded-full border border-[#E6C690]/28 bg-[#E6C690]/10 px-2.5 py-0.5 text-[11px] font-semibold text-[#F0D5A0]">
+                  <Sparkles className="h-3 w-3" aria-hidden="true" />
+                  <span>
+                    {capsules.length} {capsules.length === 1 ? 'Capsule' : 'Capsules'}
+                  </span>
+                </span>
+              </div>
+
+              {capsulesError && (
+                <div className="rounded-xl border border-rose-400/35 bg-rose-500/12 px-3.5 py-2.5 text-xs text-rose-200">
+                  Time capsules stream error: {capsulesError}
+                </div>
+              )}
+
+              {loadingCapsules ? (
+                <p className="py-5 text-center text-xs text-[#C7B8CC]">
+                  Loading sealed 2027 capsules...
+                </p>
+              ) : capsules.length === 0 ? (
+                <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-6 text-center">
+                  <p className="text-sm font-semibold text-[#FAF3EA]">No time capsules sealed yet</p>
+                  <p className="mt-1 text-xs text-[#A998B0]">
+                    Wax sealed letters for 03 Dec 2027 will stream here in real time.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {capsules.map((cap) => {
+                    const isRevealed = Boolean(revealedCapsuleIds[cap.capsuleId]);
+                    const isConfirming = confirmDeleteCapsuleId === cap.capsuleId;
+                    const isDeleting = deletingCapsuleId === cap.capsuleId;
+                    return (
+                      <article
+                        key={cap.capsuleId}
+                        data-testid={`dashboard-capsule-card-${cap.capsuleId}`}
+                        className="rounded-xl border border-white/10 bg-black/25 p-3.5"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-pink-300/30 bg-pink-400/15 px-2.5 py-0.5 text-[11px] font-bold text-pink-200">
+                              {cap.category}
+                            </span>
+                            <span className="text-xs font-semibold text-[#FAF3EA]">
+                              Capsule #{cap.capsuleNumber}
+                            </span>
+                            <span className="text-[11px] text-[#A998B0]">{cap.sealedAtIST}</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              data-testid={`dashboard-capsule-reveal-${cap.capsuleId}`}
+                              onClick={() =>
+                                setRevealedCapsuleIds((prev) => ({
+                                  ...prev,
+                                  [cap.capsuleId]: !prev[cap.capsuleId],
+                                }))
+                              }
+                              className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-[#E6C690]/35 bg-[#E6C690]/12 px-2.5 py-1 text-[11px] font-semibold text-[#F6DFB0] hover:bg-[#E6C690]/22"
+                            >
+                              {isRevealed ? (
+                                <>
+                                  <EyeOff className="h-3 w-3" aria-hidden="true" />
+                                  <span>Hide Letter</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="h-3 w-3" aria-hidden="true" />
+                                  <span>Reveal Letter</span>
+                                </>
+                              )}
+                            </button>
+
+                            {isConfirming ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={isDeleting}
+                                  onClick={() => void handleDeleteCapsule(cap.capsuleId)}
+                                  className="cursor-pointer rounded-full border border-rose-400/50 bg-rose-500/20 px-2.5 py-1 text-[11px] font-semibold text-rose-200 hover:bg-rose-500/30 disabled:opacity-50"
+                                >
+                                  {isDeleting ? 'Deleting...' : 'Confirm Delete'}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isDeleting}
+                                  onClick={() => setConfirmDeleteCapsuleId(null)}
+                                  className="cursor-pointer rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-[#C7B8CC] hover:bg-white/10"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteCapsuleId(cap.capsuleId)}
+                                className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-[#C7B8CC] hover:border-rose-400/40 hover:bg-rose-500/15 hover:text-rose-200"
+                              >
+                                <Trash2 className="h-3 w-3" aria-hidden="true" />
+                                <span>Delete</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <p className="mt-2 text-[11px] text-[#A998B0]">
+                          Device: <span className="text-[#E6D9EA]">{cap.deviceType}</span> &middot;{' '}
+                          Unlocks: <span className="text-[#F0D5A0]">{cap.unlockDate}</span>
+                        </p>
+
+                        <div className="mt-2.5 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5 text-xs leading-relaxed text-[#FAF3EA]">
+                          <p
+                            className={`whitespace-pre-wrap break-words transition-[filter] duration-200 ${
+                              isRevealed ? 'blur-0' : 'blur-[5px] select-none'
+                            }`}
+                          >
+                            {cap.letter}
+                          </p>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
 
             {/* Live Feed List */}
             {feedError && (

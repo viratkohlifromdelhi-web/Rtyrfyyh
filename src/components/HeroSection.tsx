@@ -343,7 +343,7 @@ export function HeroSection({
       id="top"
       data-testid="hero-section"
       data-animations-active={String(animationsActive)}
-      className={`hero-pastel-mesh relative scroll-mt-16 overflow-hidden pt-8 pb-14 sm:pt-12 sm:pb-20 lg:pt-14 lg:pb-22 ${
+      className={`hero-pastel-mesh hero-short-landscape-section relative scroll-mt-16 overflow-hidden pt-8 pb-14 sm:pt-12 sm:pb-20 lg:pt-14 lg:pb-22 ${
         animationsActive ? '' : 'anim-paused'
       }`}
     >
@@ -416,11 +416,11 @@ export function HeroSection({
       </div>
 
       <div className="pointer-events-none relative z-[3] mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        {/* Balanced 2x2 Top Tag Pills on mobile (max-w-340px), single clean row on desktop */}
+        {/* Balanced 2x2 Top Tag Pills on mobile, generous row on tablet & desktop */}
         <div
           data-testid="hero-tag-pills"
           aria-label="Anamika's official titles"
-          className="mx-auto mb-7 flex max-w-[340px] flex-wrap items-center justify-center gap-2 lg:mx-0 lg:max-w-none lg:justify-start lg:gap-3"
+          className="hero-short-landscape-pills mx-auto mb-7 flex max-w-[340px] sm:max-w-[640px] flex-wrap items-center justify-center gap-2 sm:gap-3 lg:mx-0 lg:max-w-none lg:justify-start"
         >
           {HERO_STICKERS.map((sticker, idx) => (
             <button
@@ -461,7 +461,8 @@ export function HeroSection({
 
             <h1
               aria-label={`Happy ${ANAMIKA.age}th Birthday, ${ANAMIKA.firstName}!`}
-              className="font-display pointer-events-auto mx-auto block w-fit text-balance text-[2.65rem] leading-[1.06] font-semibold tracking-tight text-[#3B1535] sm:text-6xl lg:mx-0 lg:text-[4.25rem]"
+              className="hero-short-landscape-h1 font-display pointer-events-auto mx-auto block w-fit text-balance leading-[1.06] font-semibold tracking-tight text-[#3B1535] lg:mx-0"
+              style={{ fontSize: 'clamp(2.5rem, 6.2vw, 4.1rem)' }}
             >
               <span className="block">
                 {lineOneWords.map((w, wi) => (
@@ -491,12 +492,12 @@ export function HeroSection({
               <RibbonSquiggleSvg className="h-5 w-28 text-[#E089B6]" />
             </div>
 
-            <p className="pointer-events-auto mx-auto mt-5 max-w-xl text-base leading-relaxed text-[#52244B] sm:text-lg lg:mx-0">
+            <p className="hero-short-landscape-sub pointer-events-auto mx-auto mt-5 max-w-xl text-base leading-relaxed text-[#52244B] sm:text-lg lg:mx-0">
               {ANAMIKA.heroSubtitle}
             </p>
 
             {/* Luxury Tactile Stationery CTA Button Pair (Preserved untouched) */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5 sm:gap-4 lg:justify-start">
+            <div className="hero-short-landscape-ctas mt-8 flex flex-wrap items-center justify-center gap-3.5 sm:gap-4 lg:justify-start">
               {/* Primary Tactile Confetti Popper Button */}
               <div className="pointer-events-auto relative inline-flex">
                 {popBurstCount > 0 && (
@@ -573,7 +574,7 @@ export function HeroSection({
 
           {/* Right Column: Anamika's Authentic Printed Photo Card */}
           <div className="relative z-[3] mx-auto flex w-full justify-center lg:col-span-5">
-            <div className="pointer-events-auto">
+            <div className="hero-short-landscape-photo pointer-events-auto w-full flex justify-center">
               <AnamikaEditorialCard onLightboxChange={onPhotoLightboxChange} />
             </div>
           </div>

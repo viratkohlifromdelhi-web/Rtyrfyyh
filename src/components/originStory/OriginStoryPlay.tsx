@@ -387,7 +387,7 @@ export default function OriginStoryPlay({
         setKissPhase('kissing');
         setKissBeat('kissing');
         try {
-          haptics.vibrateSafe(10);
+          haptics.light();
         } catch {
           // silent haptic fallback
         }
@@ -469,7 +469,7 @@ export default function OriginStoryPlay({
             if (step.age >= 10) {
               setScene9SecondaryActive(true);
               audioRef.current?.playYearTick(step.age);
-              haptics.vibrateSafe(10);
+              haptics.light();
             } else {
               audioRef.current?.playMonthFlipTick(step.age);
             }
@@ -492,7 +492,7 @@ export default function OriginStoryPlay({
       // Age 14 · 2023 · 5'2" (0.0s -> 1.0s): Padlock barrier snaps cleanly above her crown
       schedule(() => {
         audioRef.current?.playPadlockSlam();
-        haptics.vibrateSafe(22);
+        haptics.medium();
       }, 120);
 
       // Age 15 · 2024 · Still 5'2" (1.0s -> 2.0s): Year flips + cute question sparkle pops
@@ -500,7 +500,7 @@ export default function OriginStoryPlay({
         setActiveGrowthStep(SCENE_10_FREEZE_STEPS[1]);
         setTeenExpression('happy');
         audioRef.current?.playYearTick(15);
-        haptics.vibrateSafe(10);
+        haptics.light();
       }, 1000);
 
       // Age 16 · 2025 · Still 5'2" (2.0s -> 3.0s): Tiptoe jump & bonk against the level 5'2" barrier
@@ -511,24 +511,24 @@ export default function OriginStoryPlay({
         audioRef.current?.playYearTick(16);
       }, 2000);
 
-      // Peak of Age 16 -10px tiptoe hop: crown taps underside of level barrier + comic boing SFX + 18ms haptic
+      // Peak of Age 16 -10px tiptoe hop: crown taps underside of level barrier + comic boing SFX + bonk haptic
       schedule(() => {
         setTeenExpression('bonkBlush');
         setBarrierJiggleKey((k) => k + 1);
         audioRef.current?.playComicBonk();
-        haptics.vibrateSafe(18);
+        haptics.bonk();
       }, 2240);
 
       schedule(() => {
         setIsBonkHopping(false);
       }, 2820);
 
-      // Age 17 · 2026 · Still 5'2" (3.0s+): Cheeky blush smile, golden shimmer telemetry lock, then STOP on Scene 10
+      // Age 17 · 2026 · Still 5'2" (3.0s+): Cheeky proud 5'2" pose, golden shimmer telemetry lock, then STOP on Scene 10
       schedule(() => {
         setActiveGrowthStep(SCENE_10_FREEZE_STEPS[3]);
-        setTeenExpression('happy');
+        setTeenExpression('proud52');
         audioRef.current?.playYearTick(17);
-        haptics.vibrateSafe(12);
+        haptics.light();
       }, 3000);
 
       // Pulse Next › softly once Scene 10 settles (NEVER auto-advances to Scene 11!)
@@ -561,8 +561,8 @@ export default function OriginStoryPlay({
 
   const handleNext = useCallback(() => {
     if (exitingRef.current) return;
-    unlockKissAudioContext();
     haptics.tap();
+    unlockKissAudioContext();
 
     if (sceneIndex < ORIGIN_TOTAL_SCENES - 1) {
       const nextScene = ORIGIN_SCENES[sceneIndex + 1];
@@ -581,8 +581,8 @@ export default function OriginStoryPlay({
 
   const handleBack = useCallback(() => {
     if (exitingRef.current || sceneIndex <= 0) return;
-    unlockKissAudioContext();
     haptics.tap();
+    unlockKissAudioContext();
 
     const prevScene = ORIGIN_SCENES[sceneIndex - 1];
     if (prevScene?.id === 'starry_kiss') {
@@ -599,8 +599,8 @@ export default function OriginStoryPlay({
 
   const handleReplayScene = useCallback(() => {
     if (exitingRef.current) return;
-    unlockKissAudioContext();
     haptics.tap();
+    unlockKissAudioContext();
 
     if (ORIGIN_SCENES[sceneIndex]?.id === 'starry_kiss') {
       // Direct user-gesture restart for "Replay Kiss"
@@ -791,19 +791,19 @@ export default function OriginStoryPlay({
       </div>
 
       {/* Top Chrome: Single-line Sound On/Muted pill, 11-Scene Progress Counter, Single-line Skip Story pill */}
-      <header className="relative z-30 mx-auto flex w-full max-w-[440px] shrink-0 items-center justify-between gap-2 px-4 pt-[max(12px,env(safe-area-inset-top))] sm:pt-4">
+      <header className="relative z-30 mx-auto flex w-[min(94vw,640px)] shrink-0 items-center justify-between gap-2 px-1 pt-[max(10px,env(safe-area-inset-top))] sm:pt-3.5">
         <button
           type="button"
           onClick={handleToggleMute}
           data-testid="origin-mute-btn"
           aria-label={isMuted ? 'Unmute story audio' : 'Mute story audio'}
-          className={`inline-flex min-h-[32px] shrink-0 items-center gap-[5px] rounded-full border px-[11px] py-[6px] text-[11px] font-semibold tracking-wide whitespace-nowrap transition-colors cursor-pointer ${
+          className={`inline-flex min-h-[34px] sm:min-h-[38px] shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] sm:text-[13px] font-semibold tracking-wide whitespace-nowrap transition-colors cursor-pointer ${
             isStarryScene
               ? 'border-white/25 bg-white/15 text-[#FFF8FB] hover:bg-white/25'
               : 'border-[#D94B7D]/20 bg-[#FFFDFB]/92 text-[#3A1233] shadow-2xs hover:bg-white'
           }`}
         >
-          {isMuted ? <VolumeX className="h-3.5 w-3.5 shrink-0" /> : <Volume2 className="h-3.5 w-3.5 shrink-0" />}
+          {isMuted ? <VolumeX className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> : <Volume2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />}
           <span>{isMuted ? 'Muted' : 'Sound On'}</span>
         </button>
 
@@ -813,31 +813,31 @@ export default function OriginStoryPlay({
           aria-live="polite"
         >
           <span
-            className={`text-[10.5px] font-bold tracking-[0.12em] whitespace-nowrap uppercase ${
+            className={`text-[10.5px] sm:text-[12.5px] font-bold tracking-[0.12em] whitespace-nowrap uppercase ${
               isStarryScene ? 'text-[#FFE7B8]' : 'text-[#A03D67]'
             }`}
           >
             Scene {currentScene.sceneNumber} of {ORIGIN_TOTAL_SCENES}
           </span>
-          <div className="flex items-center gap-[3px]" aria-hidden="true">
+          <div className="flex items-center gap-[3px] sm:gap-[4px]" aria-hidden="true">
             {ORIGIN_SCENES.map((s) => {
               const isCompleted = s.index < sceneIndex;
               const isCurrent = s.index === sceneIndex;
               return (
                 <span
                   key={s.id}
-                  className={`h-[5px] rounded-full transition-all duration-300 ${
+                  className={`h-[5px] sm:h-[6px] rounded-full transition-all duration-300 ${
                     isCurrent
                       ? isStarryScene
-                        ? 'w-3.5 bg-[#F7D994]'
-                        : 'w-3.5 bg-[#D94B7D]'
+                        ? 'w-3.5 sm:w-5 bg-[#F7D994]'
+                        : 'w-3.5 sm:w-5 bg-[#D94B7D]'
                       : isCompleted
                         ? isStarryScene
-                          ? 'w-1.5 bg-[#F7D994]/70'
-                          : 'w-1.5 bg-[#E6B85C]'
+                          ? 'w-1.5 sm:w-2 bg-[#F7D994]/70'
+                          : 'w-1.5 sm:w-2 bg-[#E6B85C]'
                         : isStarryScene
-                          ? 'w-1.5 bg-white/30'
-                          : 'w-1.5 bg-[#D94B7D]/20'
+                          ? 'w-1.5 sm:w-2 bg-white/30'
+                          : 'w-1.5 sm:w-2 bg-[#D94B7D]/20'
                   }`}
                 />
               );
@@ -849,21 +849,21 @@ export default function OriginStoryPlay({
           type="button"
           onClick={handleSkipStory}
           data-testid="origin-skip-btn"
-          className={`inline-flex min-h-[32px] shrink-0 items-center gap-[5px] rounded-full border px-[11px] py-[6px] text-[11px] font-semibold tracking-wide whitespace-nowrap transition-colors cursor-pointer ${
+          className={`inline-flex min-h-[34px] sm:min-h-[38px] shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] sm:text-[13px] font-semibold tracking-wide whitespace-nowrap transition-colors cursor-pointer ${
             isStarryScene
               ? 'border-white/25 bg-white/15 text-[#FFF8FB] hover:bg-white/25'
               : 'border-[#D94B7D]/20 bg-[#FFFDFB]/92 text-[#3A1233] shadow-2xs hover:bg-white'
           }`}
         >
           <span>Skip Story</span>
-          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+          <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
         </button>
       </header>
 
       {/* Main Illustrated Storybook Cinema Stage */}
-      <main className="relative z-10 mx-auto flex min-h-0 w-full max-w-[440px] flex-1 items-center justify-center px-4">
+      <main className="relative z-10 mx-auto flex min-h-0 w-[min(94vw,640px)] flex-1 items-center justify-center px-1">
         <div
-          className={`relative flex h-full max-h-[min(425px,56dvh)] w-full flex-col items-center justify-end overflow-hidden rounded-[28px] border transition-all duration-700 sm:max-h-[min(460px,59dvh)] ${
+          className={`relative flex h-full w-full flex-col items-center justify-end overflow-hidden rounded-[var(--card-radius)] border transition-all duration-700 ${
             isRomanticPeak
               ? 'border-[#F9B5D2]/55 shadow-[0_22px_58px_rgba(244,114,182,0.38)]'
               : isStarryScene
@@ -872,6 +872,10 @@ export default function OriginStoryPlay({
                   ? 'border-[#E6B85C]/55 shadow-[0_20px_50px_rgba(217,75,125,0.18)]'
                   : 'border-[#D94B7D]/20 shadow-[0_18px_45px_rgba(181,74,119,0.12)]'
           }`}
+          style={{
+            height: 'var(--origin-stage-h)',
+            maxHeight: '100%',
+          }}
         >
           {/* 5-Layer Depth-Staged Atmospheric Backdrop Engine */}
           <OriginStageBackdrop
@@ -1347,7 +1351,7 @@ export default function OriginStoryPlay({
                 </div>
 
                 {/* Unified 230-unit proportional growth & height-ruler coordinate frame */}
-                <div className="relative mx-auto flex h-[86%] w-full max-w-[360px] items-end justify-center">
+                <div className="relative mx-auto flex h-[86%] w-full max-w-[360px] sm:max-w-[460px] items-end justify-center">
                   {/* Right-edge pastel height ruler (renders ALL foot ticks 1'0" through 6'0" + pixel-aligned 5'2") */}
                   <div
                     aria-hidden="true"
@@ -1602,10 +1606,10 @@ export default function OriginStoryPlay({
                     className="font-display font-bold tracking-[-0.01em] text-[#3A1233]"
                     style={{
                       fontFamily: "'Fraunces', Georgia, serif",
-                      fontSize: 'clamp(20px, 5.4vw, 24px)',
-                      lineHeight: 1.24,
+                      fontSize: 'clamp(20px, 3.6vw, 30px)',
+                      lineHeight: 1.22,
                       textWrap: 'balance',
-                      maxWidth: '290px',
+                      maxWidth: 'min(88%, 420px)',
                       margin: '8px auto 0',
                       textShadow: '0 2px 14px rgba(255, 248, 251, 0.95)',
                     }}
@@ -1627,11 +1631,11 @@ export default function OriginStoryPlay({
       </main>
 
       {/* Bottom Editorial Storybook Subtitle Card + Redesigned Rose-Berry Satin Controls */}
-      <footer className="relative z-30 mx-auto w-full max-w-[440px] shrink-0 px-4 pb-[max(14px,env(safe-area-inset-bottom))] sm:pb-5">
+      <footer className="relative z-30 mx-auto w-[min(94vw,640px)] shrink-0 px-1 pb-[max(12px,env(safe-area-inset-bottom))] sm:pb-4">
         <div
           key={`caption_${currentScene.id}_${scene9SecondaryActive ? 's2' : 's1'}`}
           data-testid="origin-caption-box"
-          className="origin-story-caption-in px-4 py-2.5 text-center sm:py-3"
+          className="origin-story-caption-in px-4 py-2.5 text-center sm:px-6 sm:py-3.5"
           style={{
             background: 'rgba(255, 253, 250, 0.9)',
             backdropFilter: 'blur(12px)',
@@ -1641,7 +1645,10 @@ export default function OriginStoryPlay({
             boxShadow: '0 12px 30px -14px rgba(130, 42, 82, 0.18)',
           }}
         >
-          <p className="text-[13.5px] leading-[1.48] font-medium text-[#3A1233] sm:text-[14.5px]">
+          <p
+            className="leading-[1.46] font-medium text-[#3A1233]"
+            style={{ fontSize: 'clamp(13.5px, 1.85vw, 17px)' }}
+          >
             {renderHighlightedCaption(activeCaption)}
           </p>
         </div>
@@ -1655,7 +1662,7 @@ export default function OriginStoryPlay({
                 onClick={handleBack}
                 data-testid="origin-back-btn"
                 aria-label="Previous scene"
-                className={`inline-flex min-h-[42px] items-center gap-1 rounded-full border px-3.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer active:scale-[0.97] ${
+                className={`inline-flex min-h-[42px] sm:min-h-[46px] items-center gap-1 rounded-full border px-4 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer active:scale-[0.97] ${
                   isStarryScene
                     ? 'border-white/25 bg-white/15 text-[#FFF8FB] backdrop-blur-xs hover:bg-white/25'
                     : 'border-[#D94B7D]/22 bg-[#FFFDFB] text-[#3A1233] shadow-2xs hover:bg-white'
@@ -1675,13 +1682,13 @@ export default function OriginStoryPlay({
                 data-testid="origin-replay-scene-btn"
                 aria-label="Replay current scene"
                 title="Replay scene"
-                className={`inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full border transition-all cursor-pointer active:scale-[0.96] ${
+                className={`inline-flex h-[42px] w-[42px] sm:h-[46px] sm:w-[46px] shrink-0 items-center justify-center rounded-full border transition-all cursor-pointer active:scale-[0.96] ${
                   isStarryScene
                     ? 'border-white/25 bg-white/15 text-[#FFF8FB] backdrop-blur-xs hover:bg-white/25'
                     : 'border-[#D94B7D]/22 bg-[#FFFDFB] text-[#3A1233] shadow-2xs hover:bg-white'
                 }`}
               >
-                <RotateCcw className="h-3.5 w-3.5" />
+                <RotateCcw className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -1691,7 +1698,7 @@ export default function OriginStoryPlay({
               type="button"
               onClick={handleEnterBirthdayWorld}
               data-testid="origin-enter-world-btn"
-              className="relative inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full px-[18px] py-[10px] text-[13.5px] font-bold tracking-[0.01em] whitespace-nowrap text-[#FFFDFB] transition-transform cursor-pointer active:scale-[0.97]"
+              className="relative inline-flex min-h-[44px] sm:min-h-[48px] shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full px-5 sm:px-6 py-2.5 text-[13.5px] sm:text-[15.5px] font-bold tracking-[0.01em] whitespace-nowrap text-[#FFFDFB] transition-transform cursor-pointer active:scale-[0.97]"
               style={{
                 background: 'linear-gradient(135deg, #DE4F82 0%, #B82E60 100%)',
                 border: '1.5px solid rgba(246, 211, 138, 0.72)',
@@ -1712,7 +1719,7 @@ export default function OriginStoryPlay({
               onClick={handleNext}
               data-testid="origin-next-btn"
               data-settled={sceneSettled ? 'true' : 'false'}
-              className={`inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-full px-[18px] py-[10px] text-[13.5px] font-bold tracking-[0.01em] whitespace-nowrap text-[#FFFDFB] transition-transform cursor-pointer active:scale-[0.97] ${
+              className={`inline-flex min-h-[44px] sm:min-h-[48px] shrink-0 items-center justify-center gap-1.5 rounded-full px-5 sm:px-6 py-2.5 text-[13.5px] sm:text-[15.5px] font-bold tracking-[0.01em] whitespace-nowrap text-[#FFFDFB] transition-transform cursor-pointer active:scale-[0.97] ${
                 sceneSettled ? 'origin-story-next-glow' : ''
               }`}
               style={{

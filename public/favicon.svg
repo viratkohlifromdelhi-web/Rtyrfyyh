@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="favBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFDF9"/>
+      <stop offset="55%" stop-color="#FCE8F1"/>
+      <stop offset="100%" stop-color="#F7C7DC"/>
+    </linearGradient>
+    <linearGradient id="favGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5D78E"/>
+      <stop offset="50%" stop-color="#E6B85C"/>
+      <stop offset="100%" stop-color="#C9933B"/>
+    </linearGradient>
+    <linearGradient id="favSeal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EC6A99"/>
+      <stop offset="100%" stop-color="#C73467"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#favBg)" stroke="url(#favGold)" stroke-width="2.5"/>
+  <circle cx="32" cy="33" r="20" fill="url(#favSeal)" stroke="#F6D88C" stroke-width="1.8"/>
+  <circle cx="32" cy="33" r="16.2" fill="none" stroke="rgba(255,244,248,0.45)" stroke-width="1" stroke-dasharray="2 2"/>
+  <text x="32" y="40" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="21" font-weight="700" fill="#FFFDF9" letter-spacing="-0.5">17</text>
+  <path d="M51 11 L52.6 14.8 L56.4 16.4 L52.6 18 L51 21.8 L49.4 18 L45.6 16.4 L49.4 14.8 Z" fill="#E6B85C"/>
+  <circle cx="14" cy="14" r="2" fill="#E889AE" opacity="0.8"/>
+</svg>

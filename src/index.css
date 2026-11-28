@@ -12,13 +12,137 @@
   --color-rose-berry: #D94B7D;
 }
 
+:root {
+  --card-max: min(94vw, 410px);
+  --card-wide-max: min(94vw, 420px);
+  --header-max: min(96vw, 430px);
+  --card-pad-y: 22px;
+  --card-pad-x: 18px;
+  --card-radius: 26px;
+  --section-gap: 24px;
+  --text-eyebrow: 10.5px;
+  --text-body: 13.5px;
+  --text-sub: 12.5px;
+  --text-h2: 22px;
+  --text-h1: 30px;
+  --btn-min-h: 44px;
+  --stage-pad-y: 18px;
+  --origin-stage-h: clamp(280px, 48dvh, 380px);
+  --theatre-stage-w: min(92vw, 560px);
+}
+
+@media (min-width: 640px) {
+  :root {
+    --card-max: min(86vw, 620px);
+    --card-wide-max: min(88vw, 660px);
+    --header-max: min(92vw, 720px);
+    --card-pad-y: 34px;
+    --card-pad-x: 32px;
+    --card-radius: 32px;
+    --section-gap: 36px;
+    --text-eyebrow: 12.5px;
+    --text-body: 16.5px;
+    --text-sub: 15px;
+    --text-h2: 30px;
+    --text-h1: 44px;
+    --btn-min-h: 52px;
+    --stage-pad-y: 24px;
+    --origin-stage-h: clamp(380px, 50dvh, 540px);
+    --theatre-stage-w: min(88vw, 760px);
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --card-max: min(74vw, 700px);
+    --card-wide-max: min(80vw, 760px);
+    --header-max: min(90vw, 840px);
+    --card-pad-y: 38px;
+    --card-pad-x: 38px;
+    --card-radius: 34px;
+    --section-gap: 44px;
+    --text-eyebrow: 13px;
+    --text-body: 17.5px;
+    --text-sub: 16px;
+    --text-h2: 34px;
+    --text-h1: 50px;
+    --btn-min-h: 54px;
+    --stage-pad-y: 24px;
+    --origin-stage-h: clamp(360px, 54dvh, 520px);
+    --theatre-stage-w: min(84vw, 900px);
+  }
+}
+
+@media (max-height: 760px) and (min-width: 768px) {
+  :root {
+    --stage-pad-y: 12px;
+    --origin-stage-h: clamp(250px, 46dvh, 360px);
+    --theatre-stage-w: min(88vw, calc((100dvh - 220px) * 16 / 9), 760px);
+  }
+
+  .stage-short-landscape-header {
+    margin-bottom: 12px !important;
+  }
+
+  .stage-short-landscape-footer {
+    margin-top: 12px !important;
+    min-height: 64px !important;
+  }
+
+  .stage-short-landscape-card {
+    padding-top: 20px !important;
+    padding-bottom: 20px !important;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 1024px) {
+  .hero-short-landscape-section {
+    padding-top: 1.25rem !important;
+    padding-bottom: 2.25rem !important;
+  }
+
+  .hero-short-landscape-pills {
+    margin-bottom: 0.9rem !important;
+  }
+
+  .hero-short-landscape-h1 {
+    font-size: clamp(2.15rem, 3.9vw, 3.05rem) !important;
+  }
+
+  .hero-short-landscape-sub {
+    margin-top: 0.75rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  .hero-short-landscape-ctas {
+    margin-top: 1.15rem !important;
+  }
+
+  .hero-short-landscape-photo {
+    max-width: 315px !important;
+  }
+}
+
 @layer base {
   html {
+    font-size: 16px;
     font-family: var(--font-sans);
     background-color: #FFF8FB;
     color: #3A1233;
-    scroll-padding-top: 4.5rem;
+    scroll-padding-top: clamp(4.5rem, 8vw, 5.75rem);
     overflow-x: clip;
+  }
+
+  @media (min-width: 640px) {
+    html {
+      font-size: 18px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    html {
+      font-size: 19px;
+    }
   }
 
   h1, h2, h3, .font-display {
@@ -1274,8 +1398,112 @@
 }
 
 .animate-chibi-breathe {
-  transform-origin: 130px 140px;
+  transform-origin: 130px 186px;
   animation: chibi-idle-breathe 3.6s ease-in-out infinite;
+}
+
+@keyframes footer-eye-blink {
+  0%, 92%, 100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.08);
+  }
+}
+
+.animate-footer-eye-blink {
+  animation: footer-eye-blink var(--footer-blink-dur, 4.4s) ease-in-out var(--footer-blink-delay, 0.8s) infinite;
+}
+
+@keyframes footer-stage-replay-hop {
+  0% {
+    opacity: 0.9;
+    transform: translate3d(0, 7px, 0) scale(0.95);
+  }
+  38% {
+    opacity: 1;
+    transform: translate3d(0, -6px, 0) scale(1.03);
+  }
+  70% {
+    opacity: 1;
+    transform: translate3d(0, 1.5px, 0) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes footer-replay-sparkle-float {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.32) rotate(-14deg);
+  }
+  24% {
+    opacity: 1;
+    transform: translate3d(calc(var(--fsp-dx, 0px) * 0.35), -8px, 0) scale(1.14) rotate(12deg);
+  }
+  74% {
+    opacity: 0.92;
+    transform: translate3d(calc(var(--fsp-dx, 0px) * 0.82), calc(var(--fsp-dy, -26px) * 0.78), 0) scale(0.95) rotate(24deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--fsp-dx, 0px), var(--fsp-dy, -26px), 0) scale(0.45) rotate(36deg);
+  }
+}
+
+@keyframes footer-replay-icon-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  45% {
+    transform: rotate(-205deg) scale(1.14);
+  }
+  100% {
+    transform: rotate(-360deg) scale(1);
+  }
+}
+
+@keyframes footer-reduced-replay-pulse {
+  0% {
+    opacity: 0.68;
+  }
+  48% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes footer-reduced-sparkle-cue {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.92;
+  }
+  75% {
+    opacity: 0.78;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.footer-stage-replay-hop {
+  transform-origin: 50% 92%;
+  animation: footer-stage-replay-hop 540ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.footer-replay-sparkle {
+  opacity: 0;
+  animation: footer-replay-sparkle-float 1220ms cubic-bezier(0.16, 1, 0.3, 1) var(--fsp-delay, 0ms) forwards;
+}
+
+.footer-replay-icon-spin {
+  animation: footer-replay-icon-spin 540ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* ============================================================
@@ -1669,6 +1897,7 @@
   .animate-hero-emoji-spark,
   .animate-notebook-fleck,
   .animate-chibi-breathe,
+  .animate-footer-eye-blink,
   .animate-coop-cloud-a,
   .animate-coop-cloud-b,
   .animate-coop-waddle-left,
@@ -3483,6 +3712,419 @@
   animation: baad-me-unfold 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@keyframes tapli-steam-rise-left {
+  0% {
+    opacity: 0;
+    transform: translate3d(4px, 6px, 0) scale(0.7);
+  }
+  28% {
+    opacity: 0.92;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-12px, -22px, 0) scale(1.18);
+  }
+}
+
+@keyframes tapli-steam-rise-right {
+  0% {
+    opacity: 0;
+    transform: translate3d(-4px, 6px, 0) scale(0.7);
+  }
+  28% {
+    opacity: 0.92;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(12px, -22px, 0) scale(1.18);
+  }
+}
+
+@keyframes tapli-zen-halo-bob {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -4.5px, 0);
+  }
+}
+
+@keyframes tapli-orbit-twinkle {
+  0%, 100% {
+    opacity: 0.85;
+    transform: translate3d(0, 0, 0) scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: translate3d(0, -3px, 0) scale(1.08);
+  }
+}
+
+.tapli-steam-left {
+  transform-origin: 48px 86px;
+  animation: tapli-steam-rise-left 1.35s ease-out infinite;
+}
+
+.tapli-steam-right {
+  transform-origin: 172px 86px;
+  animation: tapli-steam-rise-right 1.35s ease-out 0.45s infinite;
+}
+
+.tapli-zen-halo-bob {
+  transform-origin: 110px 24px;
+  animation: tapli-zen-halo-bob 2.2s ease-in-out infinite;
+}
+
+.tapli-orbit-stars {
+  transform-origin: 110px 36px;
+  animation: tapli-orbit-twinkle 1.8s ease-in-out infinite;
+}
+
+@keyframes tapli-anger-pulse {
+  0%, 100% {
+    transform: scale(0.92);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.16);
+    opacity: 1;
+  }
+}
+
+@keyframes tapli-spiral-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes tapli-orbit-ring-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.04);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes tapli-ghost-float {
+  0%, 100% {
+    transform: translate3d(0, 2px, 0) rotate(-3deg);
+    opacity: 0.82;
+  }
+  50% {
+    transform: translate3d(0, -8px, 0) rotate(3deg);
+    opacity: 0.96;
+  }
+}
+
+@keyframes tapli-zen-rays-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes tapli-teardrop-glint {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(0.92);
+    opacity: 0.78;
+  }
+  50% {
+    transform: translate3d(0, 2.5px, 0) scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes tapli-icepack-drop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -34px, 0) scale(0.82) rotate(-8deg);
+  }
+  22% {
+    opacity: 1;
+    transform: translate3d(0, 2px, 0) scale(1.05, 0.94) rotate(2deg);
+  }
+  36% {
+    opacity: 1;
+    transform: translate3d(0, -2px, 0) scale(0.98, 1.02) rotate(-1deg);
+  }
+  78% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -14px, 0) scale(0.9) rotate(4deg);
+  }
+}
+
+@keyframes tapli-ice-sparkle {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.4);
+  }
+  32% {
+    opacity: 1;
+    transform: translate3d(0, -5px, 0) scale(1.12);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -20px, 0) scale(0.5);
+  }
+}
+
+.tapli-anger-pulse {
+  transform-origin: 138px 70px;
+  animation: tapli-anger-pulse 0.95s ease-in-out infinite;
+}
+
+.tapli-spiral-left {
+  transform-origin: 91px 95px;
+  animation: tapli-spiral-spin 1.15s linear infinite;
+}
+
+.tapli-spiral-right {
+  transform-origin: 129px 95px;
+  animation: tapli-spiral-spin 1.15s linear reverse infinite;
+}
+
+.tapli-dizzy-orbit {
+  transform-origin: 110px 38px;
+  animation: tapli-orbit-ring-spin 2.8s linear infinite;
+}
+
+.tapli-ghost-soul {
+  transform-origin: 110px 26px;
+  animation: tapli-ghost-float 2.1s ease-in-out infinite;
+}
+
+.tapli-zen-rays {
+  transform-origin: 110px 102px;
+  animation: tapli-zen-rays-spin 18s linear infinite;
+}
+
+.tapli-teardrop-glint {
+  transform-origin: center;
+  animation: tapli-teardrop-glint 1.3s ease-in-out infinite;
+}
+
+.tapli-icepack-drop {
+  transform-origin: 110px 44px;
+  animation: tapli-icepack-drop 960ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.tapli-ice-sparkle {
+  animation: tapli-ice-sparkle 860ms ease-out forwards;
+}
+
+/* Before You Say Bye — Developer Review & Postcard GPU-Composited Keyframes */
+@keyframes review-stamp-slam {
+  0% {
+    opacity: 0;
+    transform: scale(1.35) rotate(-8deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(0.96) rotate(-5.5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-6deg);
+  }
+}
+
+@keyframes review-star-pop {
+  0% {
+    transform: scale(0.84);
+  }
+  52% {
+    transform: scale(1.24);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes review-star-shake {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  18% {
+    transform: translate3d(-6px, 0, 0);
+  }
+  38% {
+    transform: translate3d(6px, 0, 0);
+  }
+  58% {
+    transform: translate3d(-4px, 0, 0);
+  }
+  78% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+@keyframes review-receipt-sparkle {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.4) rotate(-12deg);
+  }
+  24% {
+    opacity: 0.92;
+    transform: translate3d(calc(var(--rsp-dx, 0px) * 0.4), -8px, 0) scale(1.08) rotate(12deg);
+  }
+  76% {
+    opacity: 0.72;
+    transform: translate3d(calc(var(--rsp-dx, 0px) * 0.85), calc(var(--rsp-dy, -34px) * 0.8), 0) scale(0.88) rotate(24deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--rsp-dx, 0px), var(--rsp-dy, -34px), 0) scale(0.35) rotate(36deg);
+  }
+}
+
+.review-stamp-slam {
+  animation: review-stamp-slam 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.review-star-pop {
+  animation: review-star-pop 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.review-star-shake {
+  animation: review-star-shake 340ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.review-receipt-sparkle {
+  opacity: 0;
+  animation: review-receipt-sparkle var(--rsp-dur, 1850ms) cubic-bezier(0.16, 1, 0.3, 1) var(--rsp-delay, 0ms) infinite;
+}
+
+/* Midnight Auto-Unlock Celebratory Pastel Confetti Burst */
+@keyframes midnight-confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -14vh, 0) rotate(0deg) scale(0.75);
+  }
+  12% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 0.92;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--mc-dx, 20px), 104vh, 0) rotate(var(--mc-rot, 240deg)) scale(0.95);
+  }
+}
+
+.animate-midnight-confetti {
+  animation: midnight-confetti-fall var(--mc-dur, 1550ms) cubic-bezier(0.18, 0.62, 0.28, 1) var(--mc-delay, 0ms) forwards;
+}
+
+/* Time Capsule for 18 Year Old Anamika — GPU-Composited Wax Seal Sequence */
+@keyframes tc-letter-tuck {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, -28px, 0) scale(0.96);
+  }
+  58% {
+    opacity: 1;
+    transform: translate3d(0, 6px, 0) scale(0.92);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 22px, 0) scale(0.84);
+  }
+}
+
+@keyframes tc-flap-close {
+  0% {
+    opacity: 0.4;
+    transform: translate3d(0, -16px, 0) scaleY(0.42);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scaleY(1);
+  }
+}
+
+@keyframes tc-wax-stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.45) rotate(-10deg);
+  }
+  62% {
+    opacity: 1;
+    transform: scale(0.96) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes tc-gold-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.68);
+  }
+  30% {
+    opacity: 0.92;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.95);
+  }
+}
+
+@keyframes tc-sparkle-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.45) rotate(-14deg);
+  }
+  26% {
+    opacity: 1;
+    transform: translate3d(calc(var(--tc-dx, 0px) * 0.45), -14px, 0) scale(1.12) rotate(12deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--tc-dx, 0px), var(--tc-dy, -68px), 0) scale(0.32) rotate(36deg);
+  }
+}
+
+.tc-letter-tuck {
+  transform-origin: center top;
+  animation: tc-letter-tuck 420ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.tc-flap-close {
+  transform-origin: 140px 28px;
+  animation: tc-flap-close 380ms cubic-bezier(0.22, 1, 0.36, 1) 180ms both;
+}
+
+.tc-wax-stamp {
+  transform-origin: 140px 104px;
+  animation: tc-wax-stamp 460ms cubic-bezier(0.22, 1, 0.36, 1) 420ms both;
+}
+
+.tc-gold-ring {
+  transform-origin: 140px 104px;
+  animation: tc-gold-ring 680ms cubic-bezier(0.16, 1, 0.3, 1) 480ms both;
+}
+
+.tc-sparkle-rise {
+  opacity: 0;
+  animation: tc-sparkle-rise 820ms cubic-bezier(0.16, 1, 0.3, 1) var(--tc-delay, 460ms) forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stage-bridge-veil-gather,
   .stage-bridge-veil-parting,
@@ -3492,7 +4134,39 @@
   .stage-bridge-particle,
   .stage-bridge-hero-settle,
   .animate-modino-entrance,
-  .animate-baad-me-unfold {
+  .animate-baad-me-unfold,
+  .tapli-steam-left,
+  .tapli-steam-right,
+  .tapli-zen-halo-bob,
+  .tapli-orbit-stars,
+  .tapli-anger-pulse,
+  .tapli-spiral-left,
+  .tapli-spiral-right,
+  .tapli-dizzy-orbit,
+  .tapli-ghost-soul,
+  .tapli-zen-rays,
+  .tapli-teardrop-glint,
+  .tapli-icepack-drop,
+  .tapli-ice-sparkle,
+  .footer-replay-icon-spin,
+  .review-stamp-slam,
+  .review-star-pop,
+  .review-star-shake,
+  .review-receipt-sparkle,
+  .animate-midnight-confetti,
+  .tc-letter-tuck,
+  .tc-flap-close,
+  .tc-wax-stamp,
+  .tc-gold-ring,
+  .tc-sparkle-rise {
     animation: none !important;
+  }
+
+  .footer-stage-replay-hop {
+    animation: footer-reduced-replay-pulse 480ms ease-out both !important;
+  }
+
+  .footer-replay-sparkle {
+    animation: footer-reduced-sparkle-cue 680ms ease-out both !important;
   }
 }

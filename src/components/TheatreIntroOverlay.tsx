@@ -1582,24 +1582,33 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
           className={
             isAudioOnly
               ? 'h-[1px] w-[1px] overflow-hidden'
-              : 'relative z-10 flex w-full max-w-2xl flex-col items-center justify-center'
+              : 'relative z-10 flex w-full max-w-[960px] flex-col items-center justify-center'
           }
         >
           {/* SPACE ABOVE THE 16:9 WINDOW */}
           {!isAudioOnly && (
             <header
               ref={headerRef}
-              className="relative z-10 mb-6 flex flex-col items-center text-center will-change-[opacity] sm:mb-8"
+              className="stage-short-landscape-header relative z-10 mb-5 flex flex-col items-center text-center will-change-[opacity] sm:mb-7"
             >
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#F2C3D8] bg-[#FFE6F0] px-3.5 py-1 text-[11px] font-bold tracking-[0.08em] text-[#D94B7D] sm:text-xs">
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#F2C3D8] bg-[#FFE6F0] px-3.5 py-1 font-bold tracking-[0.08em] text-[#D94B7D]"
+                style={{ fontSize: 'var(--text-eyebrow)' }}
+              >
                 <span>🎀 03 DECEMBER 2026</span>
               </span>
 
-              <h1 className="font-display mt-3 text-balance text-2xl font-semibold tracking-tight text-[#3A1233] sm:text-4xl">
+              <h1
+                className="font-display mt-2.5 text-balance font-semibold tracking-tight text-[#3A1233]"
+                style={{ fontSize: 'clamp(24px, 3.8vw, 42px)', lineHeight: 1.15 }}
+              >
                 Happy 17th Birthday, Morgan
               </h1>
 
-              <p className="mt-1.5 max-w-md text-sm font-medium text-[#6B3B64] sm:text-[15px]">
+              <p
+                className="mt-1.5 max-w-lg font-medium text-[#6B3B64]"
+                style={{ fontSize: 'var(--text-body)' }}
+              >
                 Hold on, your actual birthday site is right behind this.
               </p>
             </header>
@@ -1612,12 +1621,12 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
             className={
               isAudioOnly
                 ? 'h-[1px] w-[1px] overflow-hidden'
-                : 'relative z-20 mx-auto will-change-[transform,opacity]'
+                : 'relative z-20 mx-auto max-h-[84dvh] will-change-[transform,opacity]'
             }
             style={
               isAudioOnly
                 ? undefined
-                : { width: 'min(92vw, 560px)', transformOrigin: 'center center' }
+                : { width: 'var(--theatre-stage-w)', transformOrigin: 'center center' }
             }
           >
             {/* 12.5s - 13.5s Outer Border Pastel Sparkle Glints (never cover the red mark) */}
@@ -1643,7 +1652,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
               className={
                 isAudioOnly
                   ? 'h-[1px] w-[1px] overflow-hidden'
-                  : 'relative w-full overflow-hidden rounded-[18px] border border-[#E7B7C8] bg-[#FFFDFB] shadow-[0_18px_40px_-18px_rgba(58,18,51,0.22)]'
+                  : 'relative w-full overflow-hidden rounded-[clamp(18px,2.5vw,28px)] border border-[#E7B7C8] bg-[#FFFDFB] shadow-[0_18px_40px_-18px_rgba(58,18,51,0.22)]'
               }
             >
               {/* Soft Top Pastel Window-Bar Accent with 3 Tiny Blush / Cream Dots */}
@@ -1681,6 +1690,10 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
                   preload="auto"
                   loop={false}
                   playsInline
+                  {...({
+                    'webkit-playsinline': 'true',
+                    'x5-playsinline': 'true',
+                  } as Record<string, string>)}
                   onTimeUpdate={(e) => evaluatePlaybackMilestones(e.currentTarget.currentTime)}
                   onError={() => {
                     videoMissingRef.current = true;
@@ -1702,7 +1715,7 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
                   className={
                     isAudioOnly
                       ? 'h-[1px] w-[1px]'
-                      : `h-full w-full bg-[#FFF6F9] object-cover ${videoMissingFallback ? 'hidden' : 'block'}`
+                      : `h-full w-full bg-[#FFF6F9] object-contain ${videoMissingFallback ? 'hidden' : 'block'}`
                   }
                 />
 
@@ -1875,13 +1888,14 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
           {!isAudioOnly && (
             <div
               ref={footerCaptionRef}
-              className="relative z-10 mt-6 flex min-h-[108px] flex-col items-center gap-3 text-center will-change-[opacity] sm:mt-7"
+              className="stage-short-landscape-footer relative z-10 mt-5 flex min-h-[88px] flex-col items-center gap-3 text-center will-change-[opacity] sm:mt-7"
             >
               {/* Smooth Opacity Crossfade Caption Slot (0s-12.5s -> 12.5s-13.5s) */}
               <div
                 data-testid="theatre-caption"
                 data-caption-phase={captionPhase}
-                className="relative grid place-items-center text-sm font-semibold text-[#5A1E4E] sm:text-[15px]"
+                className="relative grid place-items-center font-semibold text-[#5A1E4E]"
+                style={{ fontSize: 'var(--text-body)' }}
               >
                 <span
                   className={`col-start-1 row-start-1 transition-opacity duration-500 ${

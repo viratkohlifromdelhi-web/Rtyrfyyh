@@ -39,6 +39,7 @@ import {
   loadBaadMeRevealSection,
   loadChickenFarmSection,
   loadClosingSignOffFooter,
+  loadDeveloperReviewSection,
   loadInfinityVaultSection,
   loadInteractiveTogglesSection,
   loadKeepsakePreviewModal,
@@ -51,6 +52,8 @@ import {
   loadSpinWheelSection,
   loadStarterPackGrid,
   loadSurpriseGiftSection,
+  loadTapliArenaSection,
+  loadTimeCapsuleSection,
 } from './utils/sectionLoaders';
 import {
   StageBridgeTransition,
@@ -115,8 +118,17 @@ const MakeAWishCake = lazy(() =>
 const BirthdaySummaryCard = lazy(() =>
   loadBirthdaySummaryCard().then((m) => ({ default: m.BirthdaySummaryCard })),
 );
+const TapliArenaSection = lazy(() =>
+  loadTapliArenaSection().then((m) => ({ default: m.TapliArenaSection })),
+);
 const ChickenFarmSection = lazy(() =>
   loadChickenFarmSection().then((m) => ({ default: m.ChickenFarmSection })),
+);
+const TimeCapsuleSection = lazy(() =>
+  loadTimeCapsuleSection().then((m) => ({ default: m.TimeCapsuleSection })),
+);
+const DeveloperReviewSection = lazy(() =>
+  loadDeveloperReviewSection().then((m) => ({ default: m.DeveloperReviewSection })),
 );
 const ClosingSignOffFooter = lazy(() =>
   loadClosingSignOffFooter().then((m) => ({ default: m.ClosingSignOffFooter })),
@@ -646,12 +658,12 @@ function BirthdayWebsiteShell() {
   );
 
   const handleReplayOriginStory = useCallback(() => {
-    unlockKissAudioContext();
     try {
-      haptics.vibrateSafe(12);
+      haptics.tap();
     } catch {
       // silent
     }
+    unlockKissAudioContext();
     try {
       trackEvent('origin_story_replayed', 'Origin Story Play');
     } catch {
@@ -847,7 +859,7 @@ function BirthdayWebsiteShell() {
         }`}
       >
         {/* CRITICAL: Keep <main> free of content-visibility / contain / overflow:hidden so Backstory sticky stacking never breaks */}
-        <main className="overflow-x-clip pt-14">
+        <main className="overflow-x-clip" style={{ paddingTop: 'clamp(56px, 7vw, 70px)' }}>
           {/* Keep Main Page DOM pre-painting starting cleanly behind Stage 3 (after 450ms breather),
               never competing with Stage 2 Intro Video decoding — while benefiting from 100% pre-fetched
               JS chunks, GPU-decoded images, and buffered songs already warm in memory from Stage 2. */}
@@ -1006,9 +1018,24 @@ function BirthdayWebsiteShell() {
 
         {(shouldPreMountMain || stage === 'main') && (
           <>
-            {/* Bonus Canon Lore Mini Pastel Chicken Farm Comic Card (directly above Closing Sign-Off Footer) */}
+            {/* Interactive Digitapli-inspired Tapli Arena Mini-Game (directly above Mini Chicken Farm) */}
+            <Suspense fallback={null}>
+              <TapliArenaSection />
+            </Suspense>
+
+            {/* Bonus Canon Lore Mini Pastel Chicken Farm Comic Card */}
             <Suspense fallback={<SectionPlaceholder id="little-coop" minHeight={360} />}>
               <ChickenFarmSection isSiteRevealed={isMainStageActive} />
+            </Suspense>
+
+            {/* Wax-Sealed Time Capsule for 18 Year Old Anamika (03 Dec 2027) */}
+            <Suspense fallback={null}>
+              <TimeCapsuleSection />
+            </Suspense>
+
+            {/* Final Pastel Stationery Review & Postcard Card (directly above Closing Sign-Off Footer) */}
+            <Suspense fallback={null}>
+              <DeveloperReviewSection />
             </Suspense>
 
             <Suspense fallback={<SectionPlaceholder id="closing-signoff" minHeight={260} />}>
@@ -1097,6 +1124,7 @@ export default function App() {
 
   const handleMidnightUnlock = useCallback(() => {
     unlockKissAudioContext();
+    bgMusicPlayer.warmUp();
     setIsMidnightLocked(false);
   }, []);
 

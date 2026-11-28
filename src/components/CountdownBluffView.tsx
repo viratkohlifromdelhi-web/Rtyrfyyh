@@ -27,7 +27,7 @@ function PastelClownSvg() {
         role="img"
         aria-label="Playful soft pastel storybook clown grinning"
         data-testid="countdown-bluff-clown-svg"
-        className="h-auto w-[212px] overflow-visible select-none"
+        className="h-auto w-[clamp(200px,34vw,270px)] overflow-visible select-none"
       >
         <defs>
           <radialGradient id={auraId} cx="50%" cy="54%" r="50%">
@@ -228,7 +228,7 @@ function PastelMiddleFingerSvg() {
         role="img"
         aria-label="Playful soft pastel cartoon hand giving the middle finger"
         data-testid="countdown-bluff-hand-svg"
-        className="h-auto w-[212px] overflow-visible select-none"
+        className="h-auto w-[clamp(200px,34vw,270px)] overflow-visible select-none"
       >
         <defs>
           <radialGradient id={auraId} cx="50%" cy="50%" r="50%">
@@ -518,10 +518,10 @@ export function CountdownBluffView({
     >
       <div
         data-testid="countdown-bluff-card"
-        className="animate-bluff-reveal flex w-full max-w-[370px] flex-col items-center text-center"
+        className="animate-bluff-reveal stage-short-landscape-card flex max-h-[88dvh] w-[min(90vw,480px)] flex-col items-center overflow-y-auto text-center"
         style={{
-          padding: '28px 22px',
-          borderRadius: '26px',
+          padding: 'var(--card-pad-y) var(--card-pad-x)',
+          borderRadius: 'var(--card-radius)',
           background: 'linear-gradient(180deg, #FFFDF9 0%, #FFF5F8 100%)',
           border: '1px solid rgba(217, 75, 125, 0.20)',
           boxShadow: '0 18px 40px -18px rgba(176, 62, 106, 0.18)',
@@ -529,7 +529,8 @@ export function CountdownBluffView({
       >
         <p
           data-testid="countdown-bluff-eyebrow"
-          className="text-[10px] font-bold tracking-[0.18em] text-[#C93B6B] uppercase"
+          className="font-bold tracking-[0.18em] text-[#C93B6B] uppercase"
+          style={{ fontSize: 'var(--text-eyebrow)' }}
         >
           {copy.eyebrow}
         </p>
@@ -540,7 +541,8 @@ export function CountdownBluffView({
 
         <h1
           data-testid="countdown-bluff-headline"
-          className="font-display mt-3 text-[26px] leading-[1.2] font-bold tracking-tight text-[#3A1233]"
+          className="font-display mt-3 leading-[1.18] font-bold tracking-tight text-[#3A1233]"
+          style={{ fontSize: 'clamp(24px, 3.8vw, 34px)' }}
         >
           <span>{copy.headlineLead} </span>
           <span className="text-[#C93B6B]">{copy.headlinePunch}</span>
@@ -550,9 +552,10 @@ export function CountdownBluffView({
           data-testid="countdown-bluff-subtext"
           className={
             isClown
-              ? 'mt-2.5 max-w-[300px] text-[13.5px] leading-relaxed font-medium text-[#7A4A63]'
-              : 'mt-2.5 max-w-[300px] text-[14.5px] leading-relaxed font-semibold text-[#7A4A63]'
+              ? 'mt-2.5 max-w-[36ch] leading-relaxed font-medium text-[#7A4A63]'
+              : 'mt-2.5 max-w-[36ch] leading-relaxed font-semibold text-[#7A4A63]'
           }
+          style={{ fontSize: 'var(--text-body)' }}
         >
           {copy.subtext}
         </p>
@@ -560,7 +563,8 @@ export function CountdownBluffView({
         {!isClown && (
           <p
             data-testid="countdown-bluff-footnote"
-            className="mt-2 max-w-[290px] text-[12px] leading-relaxed font-medium text-[#9A6B82]"
+            className="mt-2 max-w-[36ch] leading-relaxed font-medium text-[#9A6B82]"
+            style={{ fontSize: 'var(--text-sub)' }}
           >
             {COUNTDOWN_BLUFF_COPY['0312'].footnote}
           </p>
@@ -570,7 +574,8 @@ export function CountdownBluffView({
           type="button"
           data-testid="countdown-bluff-back-btn"
           onClick={onBackToCountdown}
-          className="mt-6 inline-flex min-h-[44px] cursor-pointer items-center justify-center rounded-full border border-[#E5B8CC] bg-[#FFFDF8] px-6 py-2.5 text-[13px] font-semibold text-[#5E2846] shadow-[0_6px_16px_-10px_rgba(176,62,106,0.28)] transition-all duration-150 hover:border-[#D94B7D]/60 hover:bg-[#FFF3F7] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
+          className="mt-6 inline-flex cursor-pointer items-center justify-center rounded-full border border-[#E5B8CC] bg-[#FFFDF8] px-7 py-2.5 font-semibold text-[#5E2846] shadow-[0_6px_16px_-10px_rgba(176,62,106,0.28)] transition-all duration-150 hover:border-[#D94B7D]/60 hover:bg-[#FFF3F7] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
+          style={{ minHeight: 'var(--btn-min-h)', fontSize: 'var(--text-body)' }}
         >
           {copy.returnLabel}
         </button>

@@ -274,21 +274,204 @@ service cloud.firestore {
         && data.updatedAtMs < 4102444800000;
     }
 
+    function isValidTapliCounterCreate(data) {
+      return data.keys().hasAll(['totalTaplis', 'updatedAt', 'updatedAtMs'])
+        && data.keys().hasOnly(['totalTaplis', 'updatedAt', 'updatedAtMs'])
+        && data.totalTaplis is int
+        && data.totalTaplis >= 1
+        && data.totalTaplis <= 500
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time
+        && data.updatedAtMs is int
+        && data.updatedAtMs > 1700000000000
+        && data.updatedAtMs < 4102444800000;
+    }
+
+    function isValidTapliCounterUpdate(data, prev) {
+      return data.keys().hasAll(['totalTaplis', 'updatedAt', 'updatedAtMs'])
+        && data.keys().hasOnly(['totalTaplis', 'updatedAt', 'updatedAtMs'])
+        && data.totalTaplis is int
+        && prev.totalTaplis is int
+        && data.totalTaplis > prev.totalTaplis
+        && data.totalTaplis <= prev.totalTaplis + 500
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time
+        && data.updatedAtMs is int
+        && data.updatedAtMs > 1700000000000
+        && data.updatedAtMs < 4102444800000;
+    }
+
+    function isValidTapliCounterOwnerReset(data) {
+      return data.keys().hasAll(['totalTaplis', 'updatedAt', 'updatedAtMs'])
+        && data.keys().hasOnly(['totalTaplis', 'updatedAt', 'updatedAtMs'])
+        && data.totalTaplis is int
+        && data.totalTaplis == 0
+        && data.updatedAt is timestamp
+        && data.updatedAt == request.time
+        && data.updatedAtMs is int
+        && data.updatedAtMs > 1700000000000
+        && data.updatedAtMs < 4102444800000;
+    }
+
     match /site_config/{docId} {
-      allow get: if isValidId(docId) && docId == 'gift_vault';
+      allow get: if isValidId(docId) && (docId == 'gift_vault' || docId == 'tapli_counter');
       allow list: if false;
       allow create: if isValidId(docId)
-        && docId == 'gift_vault'
-        && isOwner()
-        && isValidGiftVaultConfig(incoming());
+        && (
+          (docId == 'gift_vault' && isOwner() && isValidGiftVaultConfig(incoming()))
+          || (
+            docId == 'tapli_counter'
+            && (
+              isValidTapliCounterCreate(incoming())
+              || (isOwner() && isValidTapliCounterOwnerReset(incoming()))
+            )
+          )
+        );
       allow update: if isValidId(docId)
-        && docId == 'gift_vault'
-        && isOwner()
-        && isValidGiftVaultConfig(incoming())
-        && incoming().diff(existing()).affectedKeys().hasOnly([
-          'code', 'isRealCode', 'updatedAt', 'updatedAtMs'
-        ]);
+        && (
+          (
+            docId == 'gift_vault'
+            && isOwner()
+            && isValidGiftVaultConfig(incoming())
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'code', 'isRealCode', 'updatedAt', 'updatedAtMs'
+            ])
+          )
+          || (
+            docId == 'tapli_counter'
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'totalTaplis', 'updatedAt', 'updatedAtMs'
+            ])
+            && (
+              isValidTapliCounterUpdate(incoming(), existing())
+              || (isOwner() && isValidTapliCounterOwnerReset(incoming()))
+            )
+          )
+        );
       allow delete: if false;
+    }
+
+    // =========================================================================
+    // Validation Blueprint & Collection Rules: /developer_reviews/{reviewId}
+    // =========================================================================
+    function isValidDeveloperReview(data, reviewId) {
+      return data.keys().hasAll([
+          'reviewId', 'rating', 'isBonusRating', 'bestThings', 'message',
+          'noteNumber', 'submittedAt', 'submittedAtMs', 'submittedAtIST',
+          'sessionId', 'deviceType', 'sessionTaplis'
+        ])
+        && data.keys().hasOnly([
+          'reviewId', 'rating', 'isBonusRating', 'bestThings', 'message',
+          'noteNumber', 'submittedAt', 'submittedAtMs', 'submittedAtIST',
+          'sessionId', 'deviceType', 'sessionTaplis'
+        ])
+        && data.reviewId is string
+        && data.reviewId == reviewId
+        && data.rating is int
+        && data.rating in [1, 2, 3, 4, 5, 10]
+        && data.isBonusRating is bool
+        && (
+          (data.rating == 10 && data.isBonusRating == true)
+          || (data.rating != 10 && data.isBonusRating == false)
+        )
+        && data.bestThings is list
+        && data.bestThings.size() <= 3
+        && (
+          data.bestThings.size() == 0
+          || data.bestThings.hasOnly([
+            'Origin Story Play',
+            'Modino Pet',
+            'Baad Me Reveal',
+            'Tapli Arena',
+            'Mini Chicken Farm',
+            'Friend List',
+            'Cake & Gift Vault',
+            'Literally Everything'
+          ])
+        )
+        && data.message is string
+        && data.message.size() <= 1000
+        && data.noteNumber is int
+        && data.noteNumber >= 1
+        && data.noteNumber <= 1000
+        && data.submittedAt is timestamp
+        && data.submittedAt == request.time
+        && data.submittedAtMs is int
+        && data.submittedAtMs > 1700000000000
+        && data.submittedAtMs < 4102444800000
+        && data.submittedAtIST is string
+        && data.submittedAtIST.size() >= 1
+        && data.submittedAtIST.size() <= 64
+        && data.sessionId is string
+        && data.sessionId.size() >= 4
+        && data.sessionId.size() <= 128
+        && data.deviceType is string
+        && data.deviceType in ['Mobile', 'Tablet', 'Desktop']
+        && data.sessionTaplis is int
+        && data.sessionTaplis >= 0
+        && data.sessionTaplis <= 100000;
+    }
+
+    match /developer_reviews/{reviewId} {
+      allow get: if isValidId(reviewId) && isOwner();
+      allow list: if isOwner();
+      allow create: if isValidId(reviewId)
+        && isValidDeveloperReview(incoming(), reviewId);
+      allow update: if false;
+      allow delete: if isValidId(reviewId) && isOwner();
+    }
+
+    // =========================================================================
+    // Validation Blueprint & Collection Rules: /time_capsules/{capsuleId}
+    // =========================================================================
+    function isValidTimeCapsule(data, capsuleId) {
+      return data.keys().hasAll([
+          'capsuleId', 'category', 'letter', 'capsuleNumber', 'unlockDate',
+          'sealedAt', 'sealedAtMs', 'sealedAtIST', 'sessionId', 'deviceType'
+        ])
+        && data.keys().hasOnly([
+          'capsuleId', 'category', 'letter', 'capsuleNumber', 'unlockDate',
+          'sealedAt', 'sealedAtMs', 'sealedAtIST', 'sessionId', 'deviceType'
+        ])
+        && data.capsuleId is string
+        && data.capsuleId == capsuleId
+        && data.category is string
+        && data.category in [
+          'Big 18th Wish ✨',
+          'Chaotic Prediction 😂',
+          'Promise to Myself 🎀',
+          'Note to Future Me 💌'
+        ]
+        && data.letter is string
+        && data.letter.size() >= 3
+        && data.letter.size() <= 1200
+        && data.capsuleNumber is int
+        && data.capsuleNumber >= 1
+        && data.capsuleNumber <= 100
+        && data.unlockDate is string
+        && data.unlockDate == '03 Dec 2027'
+        && data.sealedAt is timestamp
+        && data.sealedAt == request.time
+        && data.sealedAtMs is int
+        && data.sealedAtMs > 1700000000000
+        && data.sealedAtMs < 4102444800000
+        && data.sealedAtIST is string
+        && data.sealedAtIST.size() >= 1
+        && data.sealedAtIST.size() <= 64
+        && data.sessionId is string
+        && data.sessionId.size() >= 4
+        && data.sessionId.size() <= 128
+        && data.deviceType is string
+        && data.deviceType in ['Mobile', 'Tablet', 'Desktop'];
+    }
+
+    match /time_capsules/{capsuleId} {
+      allow get: if isValidId(capsuleId) && isOwner();
+      allow list: if isOwner();
+      allow create: if isValidId(capsuleId)
+        && isValidTimeCapsule(incoming(), capsuleId);
+      allow update: if false;
+      allow delete: if isValidId(capsuleId) && isOwner();
     }
   }
 }

@@ -78,14 +78,9 @@ export function InteractiveTogglesSection({
   const orderedFriends = getOrderedFriendList(FRIEND_LEADERBOARD_BASE, friendOverride);
 
   // Map each friend to its visual slot index so GPU translate3d smoothly slides Morgan between #5 and #2
-  const ROW_HEIGHT = 66;
-  const ROW_GAP = 10;
   const indexById = new Map<string, number>();
   orderedFriends.forEach((f, idx) => indexById.set(f.id, idx));
-
-  const listTotalHeight =
-    FRIEND_LEADERBOARD_BASE.length * ROW_HEIGHT +
-    (FRIEND_LEADERBOARD_BASE.length - 1) * ROW_GAP;
+  const friendCount = FRIEND_LEADERBOARD_BASE.length;
 
   const setFriendOverrideState = (desired: boolean) => {
     if (desired !== friendOverride) {
@@ -313,13 +308,14 @@ export function InteractiveTogglesSection({
             {/* Smoothly Animated GPU-Composited Ranking Rows (Zero Descriptions, Static Handles) */}
             <div
               data-testid="friend-rankings-list"
-              className="relative mt-5"
-              style={{ height: `${listTotalHeight}px` }}
+              className="relative mt-5 [--friend-row-h:70px] [--friend-row-gap:10px] sm:[--friend-row-h:84px] sm:[--friend-row-gap:12px] lg:[--friend-row-h:88px]"
+              style={{
+                height: `calc(${friendCount} * var(--friend-row-h) + ${friendCount - 1} * var(--friend-row-gap))`,
+              }}
             >
               {FRIEND_LEADERBOARD_BASE.map((entry) => {
                 const rankIndex = indexById.get(entry.id) ?? 0;
                 const rankNum = rankIndex + 1;
-                const topPx = rankIndex * (ROW_HEIGHT + ROW_GAP);
                 const isMorganHighlighted = Boolean(entry.isAnamika && friendOverride);
                 const isRankOne = rankNum === 1;
                 const initial = entry.name.charAt(0).toUpperCase();
@@ -337,8 +333,8 @@ export function InteractiveTogglesSection({
                       emitModinoEvent('friends_and_banter', { source: `friend-row-${entry.id}` });
                     }}
                     style={{
-                      height: `${ROW_HEIGHT}px`,
-                      transform: `translate3d(0, ${topPx}px, 0)`,
+                      height: 'var(--friend-row-h)',
+                      transform: `translate3d(0, calc(${rankIndex} * (var(--friend-row-h) + var(--friend-row-gap))), 0)`,
                       transition:
                         'transform 480ms cubic-bezier(0.22, 1, 0.36, 1), background-color 320ms ease, border-color 320ms ease, box-shadow 320ms ease',
                       ...(isMorganHighlighted
@@ -348,12 +344,12 @@ export function InteractiveTogglesSection({
                           }
                         : undefined),
                     }}
-                    className={`absolute inset-x-0 top-0 flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border pr-3.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] sm:pr-4 ${
+                    className={`absolute inset-x-0 top-0 flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border pr-3.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] sm:pr-5 ${
                       isMorganHighlighted
                         ? 'z-20 pl-4 shadow-[0_10px_24px_-16px_rgba(217,75,125,0.34)] sm:pl-5'
                         : isRankOne
-                          ? 'z-10 border-[#EFE3C2] bg-[#FFFBF0] pl-3.5 sm:pl-4'
-                          : 'z-10 border-[#F0E3EC] bg-[#FFFFFF] pl-3.5 sm:pl-4'
+                          ? 'z-10 border-[#EFE3C2] bg-[#FFFBF0] pl-3.5 sm:pl-5'
+                          : 'z-10 border-[#F0E3EC] bg-[#FFFFFF] pl-3.5 sm:pl-5'
                     }`}
                   >
                     {/* Sleek 3px Warm Rose Berry Inset Left Accent Bar for Morgan's #2 Row */}
@@ -365,11 +361,11 @@ export function InteractiveTogglesSection({
                       />
                     )}
 
-                    <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+                    <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
                       {/* Crisp Tabular Rank Numeral (No Clunky Box, Muted Gold #1) */}
                       <span
                         data-testid={`friend-rank-num-${entry.id}`}
-                        className={`w-6 shrink-0 text-center text-[13px] font-bold tracking-tight tabular-nums ${
+                        className={`w-7 shrink-0 text-center text-[clamp(13px,1.7vw,16px)] font-bold tracking-tight tabular-nums ${
                           isRankOne
                             ? 'text-[#A67C2E]'
                             : isMorganHighlighted
@@ -383,7 +379,7 @@ export function InteractiveTogglesSection({
                       {/* Crisp Circular Friend PFP with Pastel Stationery Ring & Per-Friend Fallback */}
                       {entry.avatarSrc && !failedAvatars[entry.id] ? (
                         <span
-                          className={`relative block h-10 w-10 shrink-0 overflow-hidden rounded-full border-[1.5px] bg-[#FFF5F9] sm:h-11 sm:w-11 ${
+                          className={`relative block h-[46px] w-[46px] shrink-0 overflow-hidden rounded-full border-[1.5px] bg-[#FFF5F9] sm:h-[60px] sm:w-[60px] lg:h-[64px] lg:w-[64px] ${
                             isRankOne
                               ? 'border-[#DFB958] shadow-[0_4px_14px_-4px_rgba(181,134,26,0.34)]'
                               : isMorganHighlighted
@@ -394,8 +390,8 @@ export function InteractiveTogglesSection({
                           <img
                             src={entry.avatarSrc}
                             alt={entry.name}
-                            width={44}
-                            height={44}
+                            width={64}
+                            height={64}
                             decoding="async"
                             data-testid={`friend-avatar-img-${entry.id}`}
                             onError={() =>
@@ -410,7 +406,7 @@ export function InteractiveTogglesSection({
                         <span
                           aria-hidden="true"
                           data-testid={`friend-avatar-fallback-${entry.id}`}
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-[1.5px] text-sm font-bold sm:h-11 sm:w-11 ${
+                          className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full border-[1.5px] text-sm font-bold sm:h-[60px] sm:w-[60px] sm:text-base lg:h-[64px] lg:w-[64px] ${
                             AVATAR_STYLES[entry.id] ?? 'bg-[#FFE6F0] text-[#3A1233] border-[#F2B5CC]'
                           }`}
                         >
@@ -420,15 +416,15 @@ export function InteractiveTogglesSection({
 
                       {/* Name + Clean Non-Clickable Plain-Text Instagram Handle Underneath */}
                       <div className="min-w-0">
-                        <p className="text-[14.5px] leading-tight font-bold text-[#3A1233]">
+                        <p className="text-[clamp(14.5px,2vw,18.5px)] leading-tight font-bold text-[#3A1233]">
                           {entry.name}
                         </p>
                         {entry.instagramHandle && (
                           <span
                             data-testid={`friend-ig-${entry.id}`}
-                            className="mt-0.5 inline-flex items-center gap-1 text-[12.5px] leading-snug font-medium text-[#8C5873]"
+                            className="mt-0.5 inline-flex items-center gap-1 text-[clamp(12px,1.5vw,14px)] leading-snug font-medium text-[#8C5873]"
                           >
-                            <MiniInstagramIcon className="h-3 w-3 shrink-0 opacity-70" />
+                            <MiniInstagramIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
                             <span>{entry.instagramHandle}</span>
                           </span>
                         )}
@@ -442,14 +438,14 @@ export function InteractiveTogglesSection({
                         className="flex shrink-0 flex-col items-end gap-1"
                       >
                         <span
-                          className="inline-block rounded-[6px] bg-[#FFFFFF] px-[9px] py-[3px] text-[10px] leading-none font-semibold tracking-[0.08em] text-[#B53263] uppercase whitespace-nowrap"
+                          className="inline-block rounded-[6px] bg-[#FFFFFF] px-[9px] py-[3px] text-[10px] leading-none font-semibold tracking-[0.08em] text-[#B53263] uppercase whitespace-nowrap sm:px-2.5 sm:py-1 sm:text-[11px]"
                           style={{ border: '1px solid rgba(217, 75, 125, 0.35)' }}
                         >
                           GREATEST HG
                         </span>
                         <span
                           data-testid="morgan-rank-up"
-                          className="inline-flex items-center gap-1 text-[11px] leading-none font-semibold whitespace-nowrap text-[#D94B7D]"
+                          className="inline-flex items-center gap-1 text-[11px] leading-none font-semibold whitespace-nowrap text-[#D94B7D] sm:text-xs"
                         >
                           <UpArrowMicroSvg className="h-[10px] w-[10px] shrink-0" />
                           <span>Up 3 spots</span>

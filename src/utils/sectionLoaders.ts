@@ -40,7 +40,13 @@ export const loadMakeAWishCake = () => import('../components/MakeAWishCake');
 
 export const loadBirthdaySummaryCard = () => import('../components/BirthdaySummaryCard');
 
+export const loadTapliArenaSection = () => import('../components/TapliArenaSection');
+
 export const loadChickenFarmSection = () => import('../components/ChickenFarmSection');
+
+export const loadTimeCapsuleSection = () => import('../components/TimeCapsuleSection');
+
+export const loadDeveloperReviewSection = () => import('../components/DeveloperReviewSection');
 
 export const loadClosingSignOffFooter = () => import('../components/ClosingSignOffFooter');
 
@@ -90,7 +96,10 @@ export const TIER2_MAIN_LOADERS: ReadonlyArray<() => Promise<unknown>> = [
   loadSurpriseGiftSection,
   loadMakeAWishCake,
   loadBirthdaySummaryCard,
+  loadTapliArenaSection,
   loadChickenFarmSection,
+  loadTimeCapsuleSection,
+  loadDeveloperReviewSection,
   loadClosingSignOffFooter,
 ];
 
@@ -103,7 +112,7 @@ export const TIER2_MAIN_LOADERS: ReadonlyArray<() => Promise<unknown>> = [
  *      Bakery Cake (MakeAWishCake), Case File #0721, BaadMeRevealSection
  *   3. Lower-page last: Infinity Gift Vault, Spin Wheel, Bauni Meter, Starter Pack,
  *      Runaway Agreement, Adoption Certificate, Scratch Coupons, Summary/Keepsake Card,
- *      Mini Chicken Farm, Closing Footer
+ *      Tapli Arena, Mini Chicken Farm, Developer Review Card, Closing Footer
  */
 export const WAVE3_MAIN_PAGE_LOADERS: ReadonlyArray<() => Promise<unknown>> = [
   // 1. Above-the-fold first
@@ -126,7 +135,10 @@ export const WAVE3_MAIN_PAGE_LOADERS: ReadonlyArray<() => Promise<unknown>> = [
   loadAdoptionCertificateSection,
   loadScratchCouponsSection,
   loadBirthdaySummaryCard,
+  loadTapliArenaSection,
   loadChickenFarmSection,
+  loadTimeCapsuleSection,
+  loadDeveloperReviewSection,
   loadClosingSignOffFooter,
 ];
 

@@ -109,14 +109,18 @@ export function TopBar({
 
   return (
     <>
-      <header className="fixed top-0 right-0 left-0 z-40 h-14 border-b border-[#EFE0EE] bg-[#FFFDF8]/95 backdrop-blur-md">
-        <div className="mx-auto flex h-full max-w-6xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6 lg:px-8">
+      <header
+        className="fixed top-0 right-0 left-0 z-40 border-b border-[#EFE0EE] bg-[#FFFDF8]/95 backdrop-blur-md"
+        style={{ height: 'clamp(56px, 7vw, 70px)' }}
+      >
+        <div className="mx-auto flex h-full w-full max-w-[var(--header-max)] lg:max-w-6xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6 lg:px-8">
           {/* Zone 1: Single-line Brand wordmark */}
           <button
             type="button"
             data-testid="header-brand-btn"
             onClick={handleBrandTap}
-            className="font-display border-0 bg-transparent p-0 text-left text-lg font-semibold italic tracking-tight text-[#3A1233] whitespace-nowrap shrink-0 cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D94B7D]"
+            className="font-display border-0 bg-transparent p-0 text-left font-semibold italic tracking-tight text-[#3A1233] whitespace-nowrap shrink-0 cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D94B7D]"
+            style={{ fontSize: 'clamp(18px, 2.5vw, 25px)' }}
           >
             Anamika&rsquo;s 17th
           </button>
@@ -124,7 +128,7 @@ export function TopBar({
         {/* Zone 2: Clean single-line navigation links */}
         <nav
           aria-label="Birthday sections"
-          className="hidden md:flex items-center gap-7 text-sm font-medium text-[#6B3B64]"
+          className="hidden lg:flex items-center gap-6 xl:gap-7 text-sm font-medium text-[#6B3B64]"
         >
           <a
             href="#toggles"
@@ -164,7 +168,7 @@ export function TopBar({
         </nav>
 
         {/* Zone 3: Compact SFX Toggle + Music Player Toggle */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           <button
             type="button"
             data-testid="sfx-toggle-btn"
@@ -172,16 +176,16 @@ export function TopBar({
             aria-pressed={sfxEnabled}
             aria-label={sfxEnabled ? 'Mute sound effects' : 'Unmute sound effects'}
             title={sfxEnabled ? 'Sound effects: On' : 'Sound effects: Muted'}
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition-all duration-150 shrink-0 cursor-pointer active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3A1233] ${
+            className={`inline-flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border transition-all duration-150 shrink-0 cursor-pointer active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3A1233] ${
               sfxEnabled
                 ? 'border-[#E6C5DF] bg-[#FFFDF8] text-[#D94B7D] hover:bg-[#FFE6F0]'
                 : 'border-[#E6C5DF] bg-[#F5EDF4] text-[#8E6A89] hover:bg-[#FFE6F0]/60'
             }`}
           >
             {sfxEnabled ? (
-              <Volume2 className="h-4 w-4" aria-hidden="true" />
+              <Volume2 className="h-4 w-4 sm:h-[18px] sm:w-[18px]" aria-hidden="true" />
             ) : (
-              <VolumeX className="h-4 w-4" aria-hidden="true" />
+              <VolumeX className="h-4 w-4 sm:h-[18px] sm:w-[18px]" aria-hidden="true" />
             )}
           </button>
 
@@ -191,7 +195,7 @@ export function TopBar({
             onClick={onToggleMusic}
             aria-pressed={isPlaying}
             aria-label={isPlaying ? 'Pause birthday tune' : 'Play birthday tune'}
-            className={`relative inline-flex min-h-[40px] items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer sm:px-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3A1233] ${
+            className={`relative inline-flex min-h-[40px] sm:min-h-[44px] items-center gap-2 rounded-full px-3.5 py-1.5 text-xs sm:text-[13.5px] font-semibold transition-all duration-200 whitespace-nowrap shrink-0 cursor-pointer sm:px-4.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3A1233] ${
               isPlaying
                 ? 'bg-[#3A1233] text-[#FFFDF8] shadow-sm'
                 : showMusicHint
@@ -233,9 +237,10 @@ export function TopBar({
           role="status"
           aria-live="polite"
           data-testid="header-easter-egg-toast"
-          className={`pointer-events-none fixed top-[64px] left-1/2 z-[60] w-max max-w-[92vw] -translate-x-1/2 rounded-full border border-[#E7A8C2] bg-[#FFFDF8]/98 px-4 py-2 text-center text-[11.5px] font-semibold tracking-tight text-[#3A1233] shadow-[0_14px_30px_-10px_rgba(184,50,101,0.34)] backdrop-blur-md transition-opacity duration-[240ms] ease-out sm:text-[13px] ${
+          className={`pointer-events-none fixed left-1/2 z-[60] w-max max-w-[92vw] -translate-x-1/2 rounded-full border border-[#E7A8C2] bg-[#FFFDF8]/98 px-4 py-2 text-center text-[11.5px] font-semibold tracking-tight text-[#3A1233] shadow-[0_14px_30px_-10px_rgba(184,50,101,0.34)] backdrop-blur-md transition-opacity duration-[240ms] ease-out sm:text-[14px] ${
             toastFading ? 'opacity-0' : 'opacity-100'
           }`}
+          style={{ top: 'calc(clamp(56px, 7vw, 70px) + 10px)' }}
         >
           {HEADER_EASTER_EGG_MESSAGE}
         </div>

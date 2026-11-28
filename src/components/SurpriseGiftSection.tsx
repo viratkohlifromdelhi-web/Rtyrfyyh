@@ -146,9 +146,9 @@ export function SurpriseGiftSection({ onRevealConfetti }: SurpriseGiftSectionPro
                 className="group relative flex cursor-pointer flex-col items-center rounded-3xl p-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C2377E]"
               >
                 <div className="animate-gift-wiggle transition-transform duration-200 group-hover:scale-105">
-                  <WrappedGiftBoxSvg className="h-44 w-44 sm:h-52 sm:w-52" />
+                  <WrappedGiftBoxSvg className="h-[clamp(180px,32vw,252px)] w-[clamp(180px,32vw,252px)]" />
                 </div>
-                <span className="btn-rose-berry mt-4 inline-flex min-h-[48px] items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold whitespace-nowrap">
+                <span className="btn-rose-berry mt-4 inline-flex min-h-[var(--btn-min-h)] items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold whitespace-nowrap sm:text-base">
                   <Gift className="h-4 w-4 text-[#FFF4DC]" aria-hidden="true" />
                   <span>Unwrap Gift Now</span>
                 </span>
@@ -159,7 +159,7 @@ export function SurpriseGiftSection({ onRevealConfetti }: SurpriseGiftSectionPro
               role="status"
               aria-live="polite"
               data-testid="gift-reveal-card"
-              className="animate-dramatic-reveal relative mx-auto mt-8 max-w-lg rounded-[22px] px-7 py-8 text-[#3A1233] sm:px-10 sm:py-10"
+              className="animate-dramatic-reveal relative mx-auto mt-8 max-w-xl rounded-[22px] px-7 py-8 text-[#3A1233] sm:px-10 sm:py-10"
               style={{
                 background: 'linear-gradient(155deg, #FFFBF3 0%, #FFF0F6 100%)',
                 border: '1.5px solid rgba(201, 59, 107, 0.28)',

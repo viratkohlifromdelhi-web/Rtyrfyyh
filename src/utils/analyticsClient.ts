@@ -762,6 +762,10 @@ export function trackAnalyticsEvent(
   }
 }
 
+export function getCurrentAnalyticsSessionId(): string | null {
+  return sessionId;
+}
+
 export function stopAnalyticsClientHeartbeatForTesting(): void {
   if (heartbeatIntervalId !== null) {
     window.clearInterval(heartbeatIntervalId);

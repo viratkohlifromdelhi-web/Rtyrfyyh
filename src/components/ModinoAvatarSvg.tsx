@@ -116,11 +116,10 @@ export function ModinoAvatarSvg({ mood, tapRippleKey, paused = false }: ModinoAv
   return (
     <svg
       viewBox="0 0 120 120"
-      width="68"
-      height="68"
+      preserveAspectRatio="xMidYMid meet"
       overflow="visible"
       aria-hidden="true"
-      className="block h-[68px] w-[68px] overflow-visible select-none"
+      className="block h-full w-full overflow-visible select-none"
     >
       <defs>
         <linearGradient id={bodyGradId} x1="0%" y1="0%" x2="0%" y2="100%">

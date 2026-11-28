@@ -395,7 +395,7 @@ export function AnamikaEditorialCard({ onLightboxChange }: AnamikaEditorialCardP
         onPointerCancel={resetTiltToRest}
         className="group relative cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D94B7D]"
         style={{
-          width: 'min(86vw, 370px)',
+          width: 'min(86vw, clamp(340px, 48vw, 430px))',
           maxWidth: '100%',
           touchAction: 'pan-y',
         }}

@@ -27,6 +27,7 @@ import {
 } from '../utils/celebration';
 import { trackEvent } from '../utils/analytics';
 import { haptics } from '../utils/haptics';
+import { isInAppBrowser, supportsMicrophoneBlow } from '../utils/inAppBrowser';
 import { emitModinoEvent } from '../utils/modinoBus';
 import { bgMusicPlayer } from '../utils/musicSynth';
 import { soundEngine } from '../utils/soundEngine';
@@ -403,30 +404,24 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
     if (blowModeRef.current !== 'idle') return;
     clearPendingTimer();
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    confettiOriginRef.current = { x: rect.left + rect.width / 2, y: rect.top };
-
     try {
       haptics.tap();
       soundEngine.playBubbleClick(1.06);
     } catch {
       // silent
     }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    confettiOriginRef.current = { x: rect.left + rect.width / 2, y: rect.top };
+
     emitModinoEvent('interaction_hype', { source: 'cake-blow-start' });
 
     blowStateRef.current = createInitialCakeBlowState();
     lastReportedPctRef.current = 0;
     setBlowProgressPct(0);
 
-    // Check Web Audio + MediaDevices microphone support cleanly
-    const canRequestMic =
-      typeof navigator !== 'undefined' &&
-      Boolean(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') &&
-      typeof window !== 'undefined' &&
-      Boolean(
-        window.AudioContext ||
-          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext,
-      );
+    // Skip microphone prompt inside WhatsApp/Instagram/WebView in-app browsers or unsupported runtimes
+    const canRequestMic = !isInAppBrowser() && supportsMicrophoneBlow();
 
     if (!canRequestMic) {
       enterHoldFallbackMode(false);
@@ -502,6 +497,11 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
 
   const handleHoldStart = useCallback(() => {
     if (!cake.candlesLit) return;
+    try {
+      haptics.tap();
+    } catch {
+      // silent
+    }
     if (blowModeRef.current === 'mic_listening') {
       enterHoldFallbackMode(true);
     } else {
@@ -512,11 +512,6 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
         setBlowMode('hold_fallback');
       }
       startBlowPhysicsLoop();
-    }
-    try {
-      haptics.tap();
-    } catch {
-      // silent
     }
     emitModinoEvent('interaction_hype', { source: 'cake-hold-blow' });
   }, [cake.candlesLit, enterHoldFallbackMode, startBlowPhysicsLoop]);
@@ -548,9 +543,9 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
 
   const handleRelight = () => {
     if (animPhase === 'relighting') return;
+    haptics.tap();
     clearPendingTimer();
     cleanupBlowResources();
-    haptics.tap();
     soundEngine.playBubbleClick(1.12);
     emitModinoEvent('friends_and_banter', { force: true, source: 'cake-relight' });
     setCake((prev) => relightCandles(prev));
@@ -565,6 +560,7 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
   };
 
   const isPhysicsBlowing = blowMode === 'mic_listening' || blowMode === 'hold_fallback';
+  const micSupported = !isInAppBrowser() && supportsMicrophoneBlow();
 
   const frostingGlowClass =
     animPhase === 'lit'
@@ -604,7 +600,7 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
           </p>
 
           {/* Soft Illustrated 2-Tier Bakery Cake SVG (Zero Thick Black Outlines) */}
-          <div className="relative mx-auto mt-5 flex max-w-sm flex-col items-center">
+          <div className="relative mx-auto mt-5 flex max-w-lg flex-col items-center">
             <button
               type="button"
               data-testid="cake-svg-button"
@@ -620,7 +616,7 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
                 viewBox="0 0 360 294"
                 fill="none"
                 data-testid="bakery-cake-svg"
-                className="h-auto w-72 sm:w-84"
+                className="h-auto w-[clamp(264px,46vw,370px)]"
               >
                 <defs>
                   {/* Soft warm ground shadow under ceramic pedestal */}
@@ -1175,19 +1171,64 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
               </svg>
             </button>
 
-            <div className="mt-4 flex w-full max-w-xs flex-col items-center justify-center gap-3">
+            <div className="mt-4 flex w-full max-w-sm flex-col items-center justify-center gap-3">
               {cake.candlesLit ? (
                 <>
                   {blowMode === 'idle' && (
-                    <button
-                      type="button"
-                      data-testid="cake-blow-btn"
-                      onClick={handleStartBlowOut}
-                      className="btn-rose-berry inline-flex min-h-[46px] shrink-0 cursor-pointer items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
-                    >
-                      <CandleFlameButtonSvg className="h-4 w-4 text-[#FFF4DC]" />
-                      <span>Blow Out Candles</span>
-                    </button>
+                    <div className="flex w-full flex-col items-center justify-center gap-2.5">
+                      {micSupported ? (
+                        <>
+                          <button
+                            type="button"
+                            data-testid="cake-blow-btn"
+                            onClick={handleStartBlowOut}
+                            className="btn-rose-berry inline-flex min-h-[var(--btn-min-h)] shrink-0 cursor-pointer items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] sm:text-base"
+                          >
+                            <CandleFlameButtonSvg className="h-4 w-4 text-[#FFF4DC]" />
+                            <span>Blow Out Candles</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            data-testid="cake-idle-hold-btn"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              handleHoldStart();
+                            }}
+                            onPointerUp={handleHoldEnd}
+                            onPointerCancel={handleHoldEnd}
+                            onPointerLeave={handleHoldEnd}
+                            onKeyDown={handleHoldKeyDown}
+                            onKeyUp={handleHoldKeyUp}
+                            onContextMenu={(e) => e.preventDefault()}
+                            style={{ touchAction: 'none' }}
+                            className="inline-flex min-h-[44px] cursor-pointer select-none items-center justify-center gap-1.5 rounded-full border border-[#EBC6D8] bg-[#FFF6FA] px-5 py-2 text-xs font-semibold whitespace-nowrap text-[#7A355B] transition-all hover:border-[#D94B7D]/45 hover:bg-[#FFEBF3] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] sm:text-sm"
+                          >
+                            <span>Hold to Blow Candles 🕯️</span>
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          data-testid="cake-idle-hold-btn"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            handleHoldStart();
+                          }}
+                          onPointerUp={handleHoldEnd}
+                          onPointerCancel={handleHoldEnd}
+                          onPointerLeave={handleHoldEnd}
+                          onKeyDown={handleHoldKeyDown}
+                          onKeyUp={handleHoldKeyUp}
+                          onContextMenu={(e) => e.preventDefault()}
+                          style={{ touchAction: 'none' }}
+                          className="btn-rose-berry inline-flex min-h-[var(--btn-min-h)] shrink-0 cursor-pointer select-none items-center justify-center gap-2 rounded-full px-7 py-3 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] sm:text-base"
+                        >
+                          <CandleFlameButtonSvg className="h-4 w-4 text-[#FFF4DC]" />
+                          <span>Hold to Blow Candles 🕯️</span>
+                        </button>
+                      )}
+                    </div>
                   )}
 
                   {blowMode === 'mic_requesting' && (
@@ -1258,7 +1299,7 @@ export function MakeAWishCake({ onBlowOutConfetti }: MakeAWishCakeProps) {
                           <span>
                             {isHoldingBlow
                               ? 'Keep holding to blow...'
-                              : 'Hold 3 Seconds to Blow Out Candles'}
+                              : 'Hold to Blow Candles 🕯️'}
                           </span>
                         </button>
                       )}

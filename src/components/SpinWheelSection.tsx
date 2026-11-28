@@ -392,10 +392,10 @@ export function SpinWheelSection() {
             style={{ animationDelay: '0.8s' }}
           />
 
-          {/* Responsive Wheel Assembly (max-width: 330px, zero overflow) */}
+          {/* Responsive Wheel Assembly (fluid clamp up to 420px, zero overflow) */}
           <div
             data-testid="birthday-spin-wheel"
-            className="relative mx-auto w-full max-w-[330px] pt-3 select-none"
+            className="relative mx-auto w-[min(100%,clamp(260px,48vw,420px))] pt-3 select-none"
           >
             {/* Subtle launch speed aura behind the wheel */}
             <div
@@ -409,7 +409,7 @@ export function SpinWheelSection() {
               ref={flapperRef}
               data-testid="wheel-flapper"
               aria-hidden="true"
-              className="pointer-events-none absolute top-0 left-1/2 z-30 h-14 w-11 -translate-x-1/2 origin-[50%_12px]"
+              className="pointer-events-none absolute top-0 left-1/2 z-30 h-[clamp(52px,7vw,66px)] w-[clamp(42px,5.6vw,52px)] -translate-x-1/2 origin-[50%_12px]"
             >
               <svg
                 viewBox="0 0 44 56"
@@ -611,7 +611,7 @@ export function SpinWheelSection() {
                 disabled={isSpinning}
                 aria-label="Spin the birthday gift wheel"
                 data-testid="wheel-hub-spin-btn"
-                className={`absolute top-1/2 left-1/2 z-20 flex h-[74px] w-[74px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[4px] border-[#F6BFD5] bg-gradient-to-b from-[#FFFDF8] via-[#FFE4F0] to-[#F4B4D1] text-sm font-extrabold tracking-wider text-[#3B1535] shadow-[0_8px_18px_-4px_rgba(59,21,53,0.42),inset_0_3px_5px_rgba(255,255,255,0.9),inset_0_-3px_6px_rgba(194,55,126,0.28)] transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#C2377E] ${
+                className={`absolute top-1/2 left-1/2 z-20 flex h-[clamp(72px,10vw,92px)] w-[clamp(72px,10vw,92px)] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[4px] border-[#F6BFD5] bg-gradient-to-b from-[#FFFDF8] via-[#FFE4F0] to-[#F4B4D1] text-[clamp(13px,1.8vw,16px)] font-extrabold tracking-wider text-[#3B1535] shadow-[0_8px_18px_-4px_rgba(59,21,53,0.42),inset_0_3px_5px_rgba(255,255,255,0.9),inset_0_-3px_6px_rgba(194,55,126,0.28)] transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#C2377E] ${
                   isSpinning
                     ? 'cursor-not-allowed opacity-90'
                     : 'cursor-pointer hover:brightness-105 active:scale-[0.92]'
@@ -631,7 +631,7 @@ export function SpinWheelSection() {
               onClick={startSpin}
               disabled={isSpinning}
               data-testid="wheel-cta-spin-btn"
-              className={`inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full border-2 border-[#FFE898] bg-[#3B1535] px-8 py-3 text-sm font-semibold text-[#FFFDF8] shadow-[0_14px_28px_-10px_rgba(59,21,53,0.48)] transition-all duration-200 whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#C2377E] sm:text-base ${
+              className={`inline-flex min-h-[var(--btn-min-h)] items-center justify-center gap-2 rounded-full border-2 border-[#FFE898] bg-[#3B1535] px-8 py-3 text-sm font-semibold text-[#FFFDF8] shadow-[0_14px_28px_-10px_rgba(59,21,53,0.48)] transition-all duration-200 whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#C2377E] sm:text-base ${
                 isSpinning
                   ? 'cursor-not-allowed opacity-75'
                   : 'cursor-pointer hover:-translate-y-0.5 hover:bg-[#57214F] active:scale-95'
@@ -648,7 +648,7 @@ export function SpinWheelSection() {
               data-testid="wheel-result-card"
               role="status"
               aria-live="polite"
-              className="animate-result-shake relative mx-auto mt-6 max-w-md rounded-3xl border-2 border-[#F1B7D8] bg-[#FFFDF8] p-5 text-center shadow-[0_18px_40px_-20px_rgba(194,55,126,0.38)] sm:p-6"
+              className="animate-result-shake relative mx-auto mt-6 max-w-lg rounded-3xl border-2 border-[#F1B7D8] bg-[#FFFDF8] p-5 text-center shadow-[0_18px_40px_-20px_rgba(194,55,126,0.38)] sm:p-7"
             >
               {/* Floating outcome emoji burst particles */}
               <div

@@ -123,6 +123,10 @@ export function trackEvent(
   }
 }
 
+export function getActiveAnalyticsSessionId(): string {
+  return clientModule?.getCurrentAnalyticsSessionId() ?? 'direct_session';
+}
+
 export function stopAnalyticsHeartbeatForTesting(): void {
   clientModule?.stopAnalyticsClientHeartbeatForTesting();
 }

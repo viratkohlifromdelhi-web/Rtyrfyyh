@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   HAPTIC_PATTERNS,
+  TAPLI_DEBOUNCE_MS,
   WHEEL_TICK_THROTTLE_MS,
   createHapticsEngine,
   getScannerHapticStep,
@@ -20,6 +21,15 @@ test('haptics engine safely no-ops when navigator or navigator.vibrate is unavai
   assert.equal(safariEngine.wheelPegTick(), false);
   assert.equal(safariEngine.scannerVerdict(), false);
 
+  const blockedEngine = createHapticsEngine({
+    getNav: () => ({
+      vibrate: () => false,
+    }),
+  });
+  assert.equal(blockedEngine.isSupported(), true);
+  assert.equal(blockedEngine.tap(), false);
+  assert.equal(blockedEngine.trigger('celebrate'), false);
+
   const throwingEngine = createHapticsEngine({
     getNav: () => ({
       vibrate: () => {
@@ -34,16 +44,16 @@ test('haptics engine safely no-ops when navigator or navigator.vibrate is unavai
   });
 });
 
-test('getScannerHapticStep matches the exact 3 escalating Bauni-Meter progress tiers', () => {
-  assert.deepEqual(getScannerHapticStep(0), { durationMs: 12, intervalMs: 240 });
-  assert.deepEqual(getScannerHapticStep(34.9), { durationMs: 12, intervalMs: 240 });
-  assert.deepEqual(getScannerHapticStep(35), { durationMs: 18, intervalMs: 140 });
-  assert.deepEqual(getScannerHapticStep(69.9), { durationMs: 18, intervalMs: 140 });
-  assert.deepEqual(getScannerHapticStep(70), { durationMs: 24, intervalMs: 80 });
-  assert.deepEqual(getScannerHapticStep(99), { durationMs: 24, intervalMs: 80 });
+test('getScannerHapticStep matches the 3 Android-noticeable escalating Bauni-Meter progress tiers', () => {
+  assert.deepEqual(getScannerHapticStep(0), { durationMs: 20, intervalMs: 240 });
+  assert.deepEqual(getScannerHapticStep(34.9), { durationMs: 20, intervalMs: 240 });
+  assert.deepEqual(getScannerHapticStep(35), { durationMs: 28, intervalMs: 140 });
+  assert.deepEqual(getScannerHapticStep(69.9), { durationMs: 28, intervalMs: 140 });
+  assert.deepEqual(getScannerHapticStep(70), { durationMs: 36, intervalMs: 80 });
+  assert.deepEqual(getScannerHapticStep(99), { durationMs: 36, intervalMs: 80 });
 });
 
-test('wheel peg tick enforces 35ms throttle cleanly and never gets stuck on clock resets', () => {
+test('wheel peg tick and tapliHit enforce 35ms debounce cleanly and never wedge on clock resets', () => {
   let clock = 1000;
   const calls: Array<number | number[]> = [];
   const engine = createHapticsEngine({
@@ -57,22 +67,31 @@ test('wheel peg tick enforces 35ms throttle cleanly and never gets stuck on cloc
   });
 
   assert.equal(WHEEL_TICK_THROTTLE_MS, 35);
+  assert.equal(TAPLI_DEBOUNCE_MS, 35);
   assert.equal(engine.wheelPegTick(), true);
-  clock += 20; // within 35ms window -> throttled
+  clock += 20;
   assert.equal(engine.wheelPegTick(), false);
-  clock += 14; // 34ms elapsed -> still throttled
+  clock += 14;
   assert.equal(engine.tick(), false);
-  clock += 1; // 35ms elapsed -> fires cleanly
+  clock += 1;
   assert.equal(engine.wheelPegTick(), true);
+
+  // Rapid Tapli hits: blocked only within 35ms, allowed at >= 35ms
+  assert.equal(engine.tapliHit(1), true);
+  clock += 20;
+  assert.equal(engine.tapliHit(1), false);
+  clock += 15;
+  assert.equal(engine.tapliHit(3), true);
 
   // Clock jump backwards must never permanently wedge future ticks
   clock = 50;
   assert.equal(engine.tick(), true);
+  assert.equal(engine.tapliHit(2), true);
 
-  assert.deepEqual(calls, [8, 8, 8]);
+  assert.deepEqual(calls, [16, 16, 28, [24, 30, 32], 16, 28]);
 });
 
-test('standardized base patterns and all interactive methods emit exact expected vibration patterns', () => {
+test('upgraded Android haptic presets and interactive methods emit exact noticeable vibration patterns', () => {
   let clock = 100;
   const calls: Array<number | number[]> = [];
   const engine = createHapticsEngine({
@@ -92,10 +111,14 @@ test('standardized base patterns and all interactive methods emit exact expected
   engine.tap();
   engine.light();
   engine.medium();
+  engine.pop();
+  engine.bonk();
   engine.success();
+  engine.unlock();
   clock += 60;
   engine.celebrate();
   engine.error();
+  engine.shake();
   engine.bump();
 
   // Feature-specific methods
@@ -138,43 +161,47 @@ test('standardized base patterns and all interactive methods emit exact expected
   engine.stopHaptics();
 
   assert.deepEqual(calls, [
-    12,
-    12,
-    18,
-    [18, 45, 28],
-    [18, 45, 28],
-    [25, 35, 25],
-    [25, 35, 25],
-    12,
-    18,
-    24,
+    20,
+    20,
+    32,
+    32,
+    28,
+    [25, 45, 40],
+    [25, 45, 40],
+    [30, 45, 35, 45, 55],
+    [45, 35, 45],
+    [45, 35, 45],
+    [45, 35, 45],
+    20,
+    28,
+    36,
     [...HAPTIC_PATTERNS.scannerVerdict],
-    18,
+    32,
     [...HAPTIC_PATTERNS.wheelLand],
-    12,
-    [25, 35, 25],
-    [18, 45, 28],
-    18,
-    [35, 25, 20, 22, 12],
-    [18, 45, 28],
-    18,
-    18,
-    18,
-    [18, 45, 28],
-    12,
-    18,
-    [18, 45, 28],
-    [18, 45, 28],
-    [18, 45, 28],
-    12,
-    12,
-    12,
-    12,
-    12,
-    12,
-    18,
-    12,
-    12,
+    20,
+    [45, 35, 45],
+    [25, 45, 40],
+    32,
+    [38, 28, 26, 28, 20],
+    [30, 45, 35, 45, 55],
+    32,
+    32,
+    32,
+    [30, 45, 35, 45, 55],
+    20,
+    32,
+    [25, 45, 40],
+    [30, 45, 35, 45, 55],
+    [30, 45, 35, 45, 55],
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    32,
+    20,
+    24,
     0,
   ]);
 });

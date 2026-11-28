@@ -257,13 +257,14 @@ export function InfinityVaultSection({
     }
   }, []);
 
-  // Measure responsive orbital radius: min(34vw, 128px), clamped to stay comfortably inside vault stage
+  // Measure responsive orbital radius scaling generously on tablets/desktop while staying safely inside vault stage
   const updateOrbitRadius = useCallback(() => {
     const stageEl = stageRef.current;
     const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
     const stageWidth = stageEl ? stageEl.clientWidth : vw - 48;
-    const desired = Math.min(vw * 0.34, 128);
-    const maxSafe = Math.max(88, stageWidth / 2 - 42);
+    const maxDesired = stageWidth >= 500 ? 164 : stageWidth >= 400 ? 146 : 128;
+    const desired = Math.min(vw * 0.34, maxDesired);
+    const maxSafe = Math.max(88, stageWidth / 2 - 48);
     orbitRadiusRef.current = Math.min(desired, maxSafe);
   }, []);
 
@@ -454,8 +455,14 @@ export function InfinityVaultSection({
     };
 
     window.addEventListener('resize', handleResize, { passive: true });
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && stageRef.current) {
+      ro = new ResizeObserver(handleResize);
+      ro.observe(stageRef.current);
+    }
     return () => {
       window.removeEventListener('resize', handleResize);
+      ro?.disconnect();
     };
   }, [applyStoneTransforms, updateOrbitRadius]);
 
@@ -1183,7 +1190,7 @@ export function InfinityVaultSection({
           {/* Interactive Vault Stage (Luxury Lock Dial OR Celestial Astrolabe OR Physical Foil Voucher) */}
           <div
             ref={stageRef}
-            className="relative z-10 mx-auto flex min-h-[430px] w-full max-w-[480px] flex-col items-center justify-center sm:min-h-[452px]"
+            className="relative z-10 mx-auto flex min-h-[clamp(430px,54vw,510px)] w-full max-w-[min(100%,600px)] flex-col items-center justify-center"
           >
             {/* Transparent 2D Canvas layered strictly over the vault stage for Thanos-snap dust */}
             <canvas
@@ -1199,7 +1206,7 @@ export function InfinityVaultSection({
             {ownerEditorOpen && (
               <div
                 data-testid="vault-owner-editor"
-                className="relative z-30 w-full max-w-[404px] rounded-[22px] border border-[#EED0DF] bg-[#FFFDF8] p-5 text-left text-[#3A1233] shadow-[0_24px_54px_-22px_rgba(22,16,23,0.55)] sm:p-7"
+                className="relative z-30 w-full max-w-[min(100%,480px)] rounded-[22px] border border-[#EED0DF] bg-[#FFFDF8] p-5 text-left text-[#3A1233] shadow-[0_24px_54px_-22px_rgba(22,16,23,0.55)] sm:p-7"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -1510,8 +1517,8 @@ export function InfinityVaultSection({
                   )}
                 </div>
 
-                {/* Sleek Circular Tactile Keypad (iPhone / Luxury Safe Style — 58px × 58px) */}
-                <div className="relative z-10 grid grid-cols-3 place-items-center gap-x-5 gap-y-3.5">
+                {/* Sleek Circular Tactile Keypad (iPhone / Luxury Safe Style — fluid 56px to 68px) */}
+                <div className="relative z-10 grid grid-cols-3 place-items-center gap-x-5 gap-y-3.5 sm:gap-x-7 sm:gap-y-4">
                   {KEYPAD_KEYS.map((key) => {
                     const isUtility = key === 'CLEAR' || key === 'BACK';
                     return (
@@ -1522,8 +1529,8 @@ export function InfinityVaultSection({
                         onClick={() => handleMainKeyTap(key)}
                         className={
                           isUtility
-                            ? 'flex h-[58px] w-[58px] items-center justify-center rounded-full text-xs font-medium tracking-[0.08em] text-[#D7B57E]/80 transition-all duration-150 hover:text-[#FAF3EA] active:scale-[0.94] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E6C690]'
-                            : 'flex h-[58px] w-[58px] items-center justify-center rounded-full border border-[rgba(232,200,146,0.18)] bg-[rgba(255,246,238,0.04)] text-[22px] font-light tabular-nums text-[#FAF3EA] transition-all duration-150 hover:border-[rgba(232,200,146,0.36)] hover:bg-[rgba(232,200,146,0.1)] active:scale-[0.94] active:bg-[rgba(232,200,146,0.16)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E6C690]'
+                            ? 'flex h-[clamp(56px,7vw,68px)] w-[clamp(56px,7vw,68px)] items-center justify-center rounded-full text-xs font-medium tracking-[0.08em] text-[#D7B57E]/80 transition-all duration-150 hover:text-[#FAF3EA] active:scale-[0.94] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E6C690]'
+                            : 'flex h-[clamp(56px,7vw,68px)] w-[clamp(56px,7vw,68px)] items-center justify-center rounded-full border border-[rgba(232,200,146,0.18)] bg-[rgba(255,246,238,0.04)] text-[clamp(20px,2.6vw,26px)] font-light tabular-nums text-[#FAF3EA] transition-all duration-150 hover:border-[rgba(232,200,146,0.36)] hover:bg-[rgba(232,200,146,0.1)] active:scale-[0.94] active:bg-[rgba(232,200,146,0.16)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E6C690]'
                         }
                         aria-label={
                           key === 'BACK'
@@ -1551,7 +1558,7 @@ export function InfinityVaultSection({
                 2. ORBITING CELESTIAL ASTROLABE STAGE (Unlocked — Prize Strip Hidden)
                 ========================================================================= */}
             {isOrbitStageMounted && (
-              <div className="relative flex h-[350px] w-full items-center justify-center sm:h-[380px]">
+              <div className="relative flex h-[clamp(350px,46vw,440px)] w-full items-center justify-center">
                 {/* Engraved Antique-Gold Celestial Astrolabe Ring SVG */}
                 <svg
                   aria-hidden="true"
@@ -1561,8 +1568,8 @@ export function InfinityVaultSection({
                     phase === 'revealing' || phase === 'dusting' ? 'opacity-15' : 'opacity-90'
                   }`}
                   style={{
-                    width: 'min(78vw, 310px)',
-                    height: 'min(78vw, 310px)',
+                    width: 'min(80vw, clamp(300px, 44vw, 396px))',
+                    height: 'min(80vw, clamp(300px, 44vw, 396px))',
                   }}
                 >
                   {/* Outer ultra-thin engraved orbital ring (1px) */}
@@ -1760,7 +1767,7 @@ export function InfinityVaultSection({
                 data-testid={
                   phase === 'alreadyClaimed' ? 'vault-already-claimed-view' : 'vault-claimed-view'
                 }
-                className="relative z-20 flex w-full max-w-[400px] flex-col items-center animate-vault-card-reveal"
+                className="relative z-20 flex w-full max-w-[min(100%,480px)] flex-col items-center animate-vault-card-reveal"
               >
                 {phase === 'alreadyClaimed' && (
                   <div className="mb-5 text-center">
@@ -1988,7 +1995,7 @@ export function InfinityVaultSection({
             onClick={() => setResetModalOpen(false)}
           >
             <div
-              className="relative w-full max-w-[312px] rounded-[24px] p-6 text-center text-[#FAF3EA] shadow-2xl animate-pop-in"
+              className="relative max-h-[88dvh] w-[min(92vw,420px)] overflow-y-auto rounded-[24px] p-6 text-center text-[#FAF3EA] shadow-2xl animate-pop-in sm:p-8"
               style={{
                 background: 'linear-gradient(165deg, #18111A 0%, #0E0A10 100%)',
                 border: '1px solid rgba(232, 200, 146, 0.28)',
@@ -2061,7 +2068,7 @@ export function InfinityVaultSection({
                 )}
               </div>
 
-              <div className="grid grid-cols-3 place-items-center gap-x-3 gap-y-3">
+              <div className="grid grid-cols-3 place-items-center gap-x-4 gap-y-3 sm:gap-x-5 sm:gap-y-3.5">
                 {KEYPAD_KEYS.map((key) => {
                   const isUtility = key === 'CLEAR' || key === 'BACK';
                   return (
@@ -2072,8 +2079,8 @@ export function InfinityVaultSection({
                       onClick={() => handleModalKeyTap(key)}
                       className={
                         isUtility
-                          ? 'flex h-[50px] w-[50px] items-center justify-center rounded-full text-[11px] font-medium tracking-[0.06em] text-[#D7B57E]/80 transition-all hover:text-[#FAF3EA] active:scale-[0.94] cursor-pointer'
-                          : 'flex h-[50px] w-[50px] items-center justify-center rounded-full border border-[rgba(232,200,146,0.18)] bg-[rgba(255,246,238,0.04)] text-lg font-light tabular-nums text-[#FAF3EA] transition-all hover:border-[rgba(232,200,146,0.36)] hover:bg-[rgba(232,200,146,0.1)] active:scale-[0.94] active:bg-[rgba(232,200,146,0.16)] cursor-pointer'
+                          ? 'flex h-[clamp(50px,6.4vw,62px)] w-[clamp(50px,6.4vw,62px)] items-center justify-center rounded-full text-[11px] font-medium tracking-[0.06em] text-[#D7B57E]/80 transition-all hover:text-[#FAF3EA] active:scale-[0.94] cursor-pointer'
+                          : 'flex h-[clamp(50px,6.4vw,62px)] w-[clamp(50px,6.4vw,62px)] items-center justify-center rounded-full border border-[rgba(232,200,146,0.18)] bg-[rgba(255,246,238,0.04)] text-[clamp(18px,2.2vw,23px)] font-light tabular-nums text-[#FAF3EA] transition-all hover:border-[rgba(232,200,146,0.36)] hover:bg-[rgba(232,200,146,0.1)] active:scale-[0.94] active:bg-[rgba(232,200,146,0.16)] cursor-pointer'
                       }
                     >
                       {key === 'BACK' ? (

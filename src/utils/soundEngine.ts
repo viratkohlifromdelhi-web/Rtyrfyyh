@@ -1870,6 +1870,266 @@ class SoundEffectsEngine {
       // Ignore Web Audio errors
     }
   }
+
+  /**
+   * Stage-reactive zero-latency Web Audio Tapli SFX:
+   * - Stages 1-3: Crisp comic pat-pop (240Hz -> 95Hz sine drop + 28ms soft filtered noise snap, pitch scales with combo)
+   * - Stages 4-6: Punchier springy cartoon bonk/boing (320Hz -> 82Hz + playful harmonic bounce)
+   * - Stage 7 (Soul Out): Funny hollow cartoon bloop + soft airy shimmer
+   * - Stage 8 (Zen Goddess): Gentle golden temple chime / sparkling bell tone over a light pat
+   * Respects global SFX mute toggle cleanly and never touches background music.
+   */
+  public playTapliBonk(combo = 1, stageId = 1): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const pitchScale = 1 + Math.min(Math.max(0, combo - 1), 24) * 0.015;
+
+      // Stage 8: Gentle golden temple chime / sparkling bell tone over a light pat
+      if (stageId >= 8) {
+        // Light calm pat
+        const patOsc = ctx.createOscillator();
+        const patGain = ctx.createGain();
+        patOsc.type = 'sine';
+        patOsc.frequency.setValueAtTime(220, now);
+        patOsc.frequency.exponentialRampToValueAtTime(110, now + 0.055);
+        patGain.gain.setValueAtTime(0.0001, now);
+        patGain.gain.linearRampToValueAtTime(0.08, now + 0.005);
+        patGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.065);
+        patOsc.connect(patGain);
+        patGain.connect(ctx.destination);
+        patOsc.start(now);
+        patOsc.stop(now + 0.07);
+
+        // Serene golden temple bell overtones
+        const bellFreqs = [783.99, 1174.66, 1567.98];
+        bellFreqs.forEach((freq, idx) => {
+          const bell = ctx.createOscillator();
+          const bGain = ctx.createGain();
+          bell.type = idx === 0 ? 'sine' : 'triangle';
+          bell.frequency.setValueAtTime(freq, now + idx * 0.012);
+          bGain.gain.setValueAtTime(0.0001, now + idx * 0.012);
+          bGain.gain.linearRampToValueAtTime(idx === 0 ? 0.075 : 0.032, now + idx * 0.012 + 0.01);
+          bGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.34 + idx * 0.05);
+          bell.connect(bGain);
+          bGain.connect(ctx.destination);
+          bell.start(now + idx * 0.012);
+          bell.stop(now + 0.42 + idx * 0.05);
+        });
+        return;
+      }
+
+      // Stage 7: Funny hollow cartoon bloop + soft airy shimmer
+      if (stageId === 7) {
+        const bloop = ctx.createOscillator();
+        const bGain = ctx.createGain();
+        bloop.type = 'sine';
+        bloop.frequency.setValueAtTime(210 * pitchScale, now);
+        bloop.frequency.exponentialRampToValueAtTime(490 * pitchScale, now + 0.07);
+        bloop.frequency.exponentialRampToValueAtTime(260 * pitchScale, now + 0.14);
+
+        bGain.gain.setValueAtTime(0.0001, now);
+        bGain.gain.linearRampToValueAtTime(0.14, now + 0.008);
+        bGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.155);
+
+        bloop.connect(bGain);
+        bGain.connect(ctx.destination);
+        bloop.start(now);
+        bloop.stop(now + 0.165);
+
+        // Soft ghostly airy shimmer
+        const shimmer = ctx.createOscillator();
+        const sGain = ctx.createGain();
+        shimmer.type = 'triangle';
+        shimmer.frequency.setValueAtTime(1046.5, now + 0.02);
+        shimmer.frequency.exponentialRampToValueAtTime(1318.5, now + 0.18);
+        sGain.gain.setValueAtTime(0.0001, now + 0.02);
+        sGain.gain.linearRampToValueAtTime(0.035, now + 0.04);
+        sGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.21);
+        shimmer.connect(sGain);
+        sGain.connect(ctx.destination);
+        shimmer.start(now + 0.02);
+        shimmer.stop(now + 0.22);
+        return;
+      }
+
+      // Stages 4-6: Punchier springy cartoon bonk/boing (320Hz -> 82Hz + playful harmonic bounce)
+      if (stageId >= 4) {
+        if (this.noiseBuffer) {
+          const snap = ctx.createBufferSource();
+          snap.buffer = this.noiseBuffer;
+          const bp = ctx.createBiquadFilter();
+          bp.type = 'bandpass';
+          bp.frequency.setValueAtTime(1650 * pitchScale, now);
+          bp.Q.setValueAtTime(1.15, now);
+          const nGain = ctx.createGain();
+          nGain.gain.setValueAtTime(0.0001, now);
+          nGain.gain.linearRampToValueAtTime(0.16, now + 0.004);
+          nGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.032);
+          snap.connect(bp);
+          bp.connect(nGain);
+          nGain.connect(ctx.destination);
+          snap.start(now);
+          snap.stop(now + 0.036);
+        }
+
+        const bonk = ctx.createOscillator();
+        const bonkGain = ctx.createGain();
+        bonk.type = 'sine';
+        bonk.frequency.setValueAtTime(320 * pitchScale, now);
+        bonk.frequency.exponentialRampToValueAtTime(82 * pitchScale, now + 0.085);
+        bonkGain.gain.setValueAtTime(0.0001, now);
+        bonkGain.gain.linearRampToValueAtTime(0.21, now + 0.005);
+        bonkGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.095);
+        bonk.connect(bonkGain);
+        bonkGain.connect(ctx.destination);
+        bonk.start(now);
+        bonk.stop(now + 0.105);
+
+        // Playful springy harmonic bounce
+        const boing = ctx.createOscillator();
+        const boingGain = ctx.createGain();
+        boing.type = 'triangle';
+        boing.frequency.setValueAtTime(240 * pitchScale, now + 0.03);
+        boing.frequency.exponentialRampToValueAtTime(430 * pitchScale, now + 0.085);
+        boing.frequency.exponentialRampToValueAtTime(295 * pitchScale, now + 0.135);
+        boingGain.gain.setValueAtTime(0.0001, now + 0.03);
+        boingGain.gain.linearRampToValueAtTime(0.075, now + 0.042);
+        boingGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.145);
+        boing.connect(boingGain);
+        boingGain.connect(ctx.destination);
+        boing.start(now + 0.03);
+        boing.stop(now + 0.155);
+        return;
+      }
+
+      // Stages 1-3: Crisp comic pat-pop (240Hz -> 95Hz sine drop + 28ms soft filtered noise snap)
+      if (this.noiseBuffer) {
+        const pat = ctx.createBufferSource();
+        pat.buffer = this.noiseBuffer;
+
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.setValueAtTime(1400 * pitchScale, now);
+        bp.Q.setValueAtTime(1.35, now);
+
+        const nGain = ctx.createGain();
+        nGain.gain.setValueAtTime(0.0001, now);
+        nGain.gain.linearRampToValueAtTime(0.145, now + 0.003);
+        nGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.028);
+
+        pat.connect(bp);
+        bp.connect(nGain);
+        nGain.connect(ctx.destination);
+        pat.start(now);
+        pat.stop(now + 0.032);
+      }
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(240 * pitchScale, now);
+      osc.frequency.exponentialRampToValueAtTime(95 * pitchScale, now + 0.072);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.175, now + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.088);
+    } catch {
+      // Ignore Web Audio errors on suspended contexts
+    }
+  }
+
+  /**
+   * Quick cheerful 2-note ascending sparkle chime when unlocking a new Tapli stage.
+   */
+  public playTapliStageUnlock(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const notes = [659.25, 987.77]; // E5 -> B5 bright sparkle interval
+
+      notes.forEach((freq, idx) => {
+        const start = now + idx * 0.075;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, start);
+
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.linearRampToValueAtTime(0.09, start + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.24);
+      });
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
+
+  /**
+   * Soft cooling ice-pack sigh + icy sparkle shimmer when pressing Cool Her Down.
+   */
+  public playTapliCooldownSigh(): void {
+    try {
+      const ctx = this.ensureContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+
+      // Soft airy sigh noise sweep
+      if (this.noiseBuffer) {
+        const sigh = ctx.createBufferSource();
+        sigh.buffer = this.noiseBuffer;
+
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'bandpass';
+        lp.frequency.setValueAtTime(1600, now);
+        lp.frequency.exponentialRampToValueAtTime(520, now + 0.36);
+        lp.Q.setValueAtTime(1.8, now);
+
+        const nGain = ctx.createGain();
+        nGain.gain.setValueAtTime(0.0001, now);
+        nGain.gain.linearRampToValueAtTime(0.065, now + 0.05);
+        nGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.38);
+
+        sigh.connect(lp);
+        lp.connect(nGain);
+        nGain.connect(ctx.destination);
+        sigh.start(now);
+        sigh.stop(now + 0.42);
+      }
+
+      // Chilled descending crystalline chime
+      const chillNotes = [1046.5, 880, 659.25];
+      chillNotes.forEach((freq, idx) => {
+        const start = now + idx * 0.065;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.linearRampToValueAtTime(0.06, start + 0.014);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.26);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.28);
+      });
+    } catch {
+      // Ignore Web Audio errors
+    }
+  }
 }
 
 export const soundEngine = new SoundEffectsEngine();

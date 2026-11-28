@@ -89,7 +89,7 @@ export function BirthdaySummaryCard({ data, onOpenKeepsakeModal }: BirthdaySumma
       className="mx-auto flex w-full justify-center px-4 pt-6 pb-10 sm:pt-8 sm:pb-12 scroll-mt-20"
     >
       <div
-        className="animate-summary-card-enter relative w-[min(92vw,390px)] overflow-hidden rounded-[22px] text-center text-[#FAF3EA]"
+        className="animate-summary-card-enter relative w-[min(92vw,500px)] overflow-hidden rounded-[var(--card-radius)] text-center text-[#FAF3EA]"
         style={{
           background: 'linear-gradient(155deg, #24101B 0%, #140910 58%, #1C0C16 100%)',
           border: '1px solid rgba(232, 200, 146, 0.34)',

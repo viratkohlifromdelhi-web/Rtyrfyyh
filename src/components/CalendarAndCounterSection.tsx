@@ -161,7 +161,7 @@ export function CalendarAndCounterSection({
               {/* Clean Editorial Weekday Headers (No Loud Pink Boxes) */}
               <div
                 aria-hidden="true"
-                className="grid grid-cols-7 gap-[6px] text-center text-[11px] font-semibold tracking-[0.06em] uppercase sm:gap-2"
+                className="grid grid-cols-7 gap-[6px] text-center text-[clamp(11px,1.4vw,13px)] font-semibold tracking-[0.06em] uppercase sm:gap-2.5"
               >
                 {WEEKDAYS.map((wd, idx) => {
                   const isWeekend = idx === 0 || idx === 6;
@@ -179,7 +179,7 @@ export function CalendarAndCounterSection({
               {/* 5-Row Structured Calendar Grid (Nov 29-30, Dec 1-31, Jan 1-2) */}
               <div
                 data-testid="dec-2026-calendar"
-                className="mt-2.5 grid grid-cols-7 gap-[6px] sm:gap-2"
+                className="mt-2.5 grid grid-cols-7 gap-[6px] sm:gap-2.5"
               >
                 {DEC_2026_CELLS.map((cell) => {
                   if (!cell.isCurrentMonth) {
@@ -187,7 +187,7 @@ export function CalendarAndCounterSection({
                       <div
                         key={cell.key}
                         aria-hidden="true"
-                        className="flex h-11 items-center justify-center rounded-xl border border-[#3A1233]/[0.05] bg-[#FAF4F7]/65 text-xs font-medium text-[#C5A9BC] tabular-nums select-none sm:h-[50px] sm:text-sm"
+                        className="flex min-h-[clamp(44px,5.6vw,58px)] items-center justify-center rounded-xl border border-[#3A1233]/[0.05] bg-[#FAF4F7]/65 text-[clamp(12px,1.6vw,15px)] font-medium text-[#C5A9BC] tabular-nums select-none"
                       >
                         {cell.day}
                       </div>
@@ -203,9 +203,9 @@ export function CalendarAndCounterSection({
                         onClick={handleTapDec3}
                         aria-expanded={showBirthdayPopup}
                         aria-label="December 3, 2026, Anamika's 17th Birthday, tap for surprise note"
-                        className="animate-calendar-glow relative flex h-11 flex-col items-center justify-center rounded-[14px] bg-[#D94B7D] font-bold text-[#FFFFFF] shadow-[0_8px_18px_-6px_rgba(217,75,125,0.52)] ring-[3px] ring-[#D94B7D]/20 transition-transform duration-200 hover:scale-[1.04] hover:bg-[#C83E6F] active:scale-95 sm:h-[50px] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3A1233]"
+                        className="animate-calendar-glow relative flex min-h-[clamp(44px,5.6vw,58px)] flex-col items-center justify-center rounded-[14px] bg-[#D94B7D] font-bold text-[#FFFFFF] shadow-[0_8px_18px_-6px_rgba(217,75,125,0.52)] ring-[3px] ring-[#D94B7D]/20 transition-transform duration-200 hover:scale-[1.04] hover:bg-[#C83E6F] active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3A1233]"
                       >
-                        <span className="text-[15px] leading-none font-bold tabular-nums sm:text-base">
+                        <span className="text-[clamp(15px,2vw,19px)] leading-none font-bold tabular-nums">
                           3
                         </span>
                         <span
@@ -224,7 +224,7 @@ export function CalendarAndCounterSection({
                       type="button"
                       onClick={() => handleTapOtherDate(cell.day)}
                       aria-label={`December ${cell.day}, 2026`}
-                      className={`flex h-11 items-center justify-center rounded-xl border text-sm font-semibold tabular-nums transition-all duration-150 active:scale-95 sm:h-[50px] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] ${
+                      className={`flex min-h-[clamp(44px,5.6vw,58px)] items-center justify-center rounded-xl border text-[clamp(13.5px,1.8vw,17px)] font-semibold tabular-nums transition-all duration-150 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] ${
                         isSelectedOther
                           ? 'border-[#D94B7D]/45 bg-[#FFEBF3] text-[#3A1233] shadow-2xs'
                           : cell.isWeekend

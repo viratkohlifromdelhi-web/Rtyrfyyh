@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { trackEvent } from '../utils/analytics';
 import {
   CHIBI_TIMING,
@@ -13,7 +13,7 @@ import {
 } from '../utils/footerChibiChoreography';
 import { haptics } from '../utils/haptics';
 import { emitModinoEvent } from '../utils/modinoBus';
-import { soundEngine } from '../utils/soundEngine';
+import { playUiSfx } from '../utils/uiSoundEngine';
 import { useInViewAnimation } from '../utils/useInViewAnimation';
 
 function prefersReducedMotionNow(): boolean {
@@ -23,11 +23,20 @@ function prefersReducedMotionNow(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+const REPLAY_SPARKLE_BURST = [
+  { id: 'sp1', left: '19%', top: '18%', dx: '-14px', dy: '-26px', delay: '40ms', color: '#EBB95E', size: 11, shape: 'star' as const },
+  { id: 'sp2', left: '36%', top: '8%', dx: '-6px', dy: '-30px', delay: '110ms', color: '#F182AC', size: 10, shape: 'star' as const },
+  { id: 'sp3', left: '52%', top: '5%', dx: '3px', dy: '-28px', delay: '70ms', color: '#BEA8F0', size: 12, shape: 'star' as const },
+  { id: 'sp4', left: '68%', top: '10%', dx: '9px', dy: '-29px', delay: '150ms', color: '#E6B85C', size: 10, shape: 'star' as const },
+  { id: 'sp5', left: '82%', top: '21%', dx: '15px', dy: '-24px', delay: '95ms', color: '#F48FB4', size: 9, shape: 'dot' as const },
+  { id: 'sp6', left: '28%', top: '26%', dx: '-11px', dy: '-20px', delay: '185ms', color: '#CBB8F4', size: 7, shape: 'dot' as const },
+] as const;
+
 /**
- * Handcrafted Closing Sign-Off Footer featuring two outline-free soft-pastel
- * storybook chibi best friends (Boy `adinomide` + Girl `Anamika / Morgan`)
- * performing a smooth 60fps handshake followed by a warm platonic hug,
- * finished cleanly with "Created by adinomide".
+ * Handcrafted Closing Sign-Off Footer featuring slender, refined pastel
+ * storybook best friends (tall lean Boy `adinomide` + petite 5'2" Girl
+ * `Anamika`) sharing a lively 60fps GPU-composited friendly wave, warm
+ * chuckle-nod, happy eye-blink, and sparkle celebration.
  */
 interface ClosingSignOffFooterProps {
   isSiteRevealed?: boolean;
@@ -35,11 +44,15 @@ interface ClosingSignOffFooterProps {
 
 export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFooterProps = {}) {
   const uid = useId().replace(/:/g, '');
+  const boyPrefix = `footerBoy_${uid}`;
+  const girlPrefix = `footerGirl_${uid}`;
+
   const footerRef = useRef<HTMLElement | null>(null);
   const animationsActive = useInViewAnimation(footerRef, { enabled: isSiteRevealed });
   const stageRef = useRef<HTMLButtonElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const animStartRef = useRef<number | null>(null);
+  const timersRef = useRef<number[]>([]);
   const hasAutoPlayedRef = useRef(false);
   const reducedMotionRef = useRef(false);
 
@@ -50,138 +63,96 @@ export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFo
   const scrollRafRef = useRef<number | null>(null);
 
   // Direct-DOM SVG rig refs (60fps GPU-composited transforms & opacity, zero per-frame React renders)
-  const boyShadowRef = useRef<SVGEllipseElement | null>(null);
-  const girlShadowRef = useRef<SVGEllipseElement | null>(null);
-  const mergedShadowRef = useRef<SVGEllipseElement | null>(null);
+  const sharedShadowRef = useRef<SVGGElement | null>(null);
 
-  const boyBackLayerRef = useRef<SVGGElement | null>(null);
-  const boyFarArmRef = useRef<SVGGElement | null>(null);
-  const girlBackLayerRef = useRef<SVGGElement | null>(null);
-  const girlBackHairRef = useRef<SVGGElement | null>(null);
-  const girlFarArmRef = useRef<SVGGElement | null>(null);
-
-  const boyBodyLayerRef = useRef<SVGGElement | null>(null);
-  const girlBodyLayerRef = useRef<SVGGElement | null>(null);
-
-  const boyHeadLayerRef = useRef<SVGGElement | null>(null);
+  const boyRootRef = useRef<SVGGElement | null>(null);
   const boyHeadPivotRef = useRef<SVGGElement | null>(null);
   const boyOpenEyesRef = useRef<SVGGElement | null>(null);
-  const boyHugEyesRef = useRef<SVGGElement | null>(null);
+  const boyHappyEyesRef = useRef<SVGGElement | null>(null);
+  const boyWaveArmRef = useRef<SVGGElement | null>(null);
 
-  const girlHeadLayerRef = useRef<SVGGElement | null>(null);
+  const girlRootRef = useRef<SVGGElement | null>(null);
+  const girlBackHairRef = useRef<SVGGElement | null>(null);
   const girlHeadPivotRef = useRef<SVGGElement | null>(null);
   const girlOpenEyesRef = useRef<SVGGElement | null>(null);
-  const girlHugEyesRef = useRef<SVGGElement | null>(null);
+  const girlHappyEyesRef = useRef<SVGGElement | null>(null);
+  const girlWaveArmRef = useRef<SVGGElement | null>(null);
+  const girlInnerArmRef = useRef<SVGGElement | null>(null);
 
-  const girlFrontLayerRef = useRef<SVGGElement | null>(null);
-  const girlFrontArmRef = useRef<SVGGElement | null>(null);
-  const claspOverlapRef = useRef<SVGGElement | null>(null);
-  const boyFrontLayerRef = useRef<SVGGElement | null>(null);
-  const boyFrontArmRef = useRef<SVGGElement | null>(null);
+  const girlHandSparkleRef = useRef<SVGGElement | null>(null);
+  const ambientSparkle1Ref = useRef<SVGGElement | null>(null);
+  const ambientSparkle2Ref = useRef<SVGGElement | null>(null);
+  const ambientSparkle3Ref = useRef<SVGGElement | null>(null);
 
-  const handshakeTicksRef = useRef<SVGGElement | null>(null);
-  const hugParticle1Ref = useRef<SVGGElement | null>(null);
-  const hugParticle2Ref = useRef<SVGGElement | null>(null);
-  const hugParticle3Ref = useRef<SVGGElement | null>(null);
-  const hugParticle4Ref = useRef<SVGGElement | null>(null);
-
+  const [replayCount, setReplayCount] = useState(0);
+  const [isReplaying, setIsReplaying] = useState(false);
+  const [hasEntered, setHasEntered] = useState(false);
   const [isIdleBreathing, setIsIdleBreathing] = useState(false);
   const [activeStage, setActiveStage] = useState<ChibiStage>('ready');
   const lastStageRef = useRef<ChibiStage>('ready');
 
   const applyPoseToDom = useCallback((pose: ChibiPose) => {
-    const boyPos = `translate3d(${pose.boyShiftX.toFixed(2)}px, ${pose.boyBounceY.toFixed(2)}px, 0)`;
-    const girlPos = `translate3d(${pose.girlShiftX.toFixed(2)}px, ${pose.girlBounceY.toFixed(2)}px, 0)`;
-
-    // Layer 1: Ground shadows smoothly glide inward and merge into one wider oval during the hug
-    const splitShadowOpacity = Math.max(0, 1 - pose.shadowMerge01 * 1.15);
-    if (boyShadowRef.current) {
-      boyShadowRef.current.style.transform = `translate3d(${pose.boyShiftX.toFixed(2)}px, 0, 0)`;
-      boyShadowRef.current.style.opacity = splitShadowOpacity.toFixed(3);
-    }
-    if (girlShadowRef.current) {
-      girlShadowRef.current.style.transform = `translate3d(${pose.girlShiftX.toFixed(2)}px, 0, 0)`;
-      girlShadowRef.current.style.opacity = splitShadowOpacity.toFixed(3);
-    }
-    if (mergedShadowRef.current) {
-      mergedShadowRef.current.style.opacity = pose.shadowMerge01.toFixed(3);
-      const mergeScaleX = 0.86 + 0.14 * pose.shadowMerge01;
-      mergedShadowRef.current.style.transform = `scaleX(${mergeScaleX.toFixed(3)})`;
+    if (sharedShadowRef.current) {
+      sharedShadowRef.current.style.transform = `scaleX(${pose.shadowScaleX.toFixed(3)})`;
+      sharedShadowRef.current.style.opacity = pose.shadowOpacity.toFixed(3);
     }
 
-    // Layer 2: Back hair & far arms
-    if (boyBackLayerRef.current) boyBackLayerRef.current.style.transform = boyPos;
-    if (boyFarArmRef.current) {
-      boyFarArmRef.current.style.transform = `rotate(${pose.boyFarArmDeg.toFixed(2)}deg)`;
+    if (boyRootRef.current) {
+      boyRootRef.current.style.transform = `translate3d(${pose.boyShiftX.toFixed(2)}px, ${pose.boyBounceY.toFixed(2)}px, 0)`;
     }
-    if (girlBackLayerRef.current) girlBackLayerRef.current.style.transform = girlPos;
-    if (girlBackHairRef.current) {
-      girlBackHairRef.current.style.transform = `rotate(${pose.girlBackHairDeg.toFixed(2)}deg)`;
-    }
-    if (girlFarArmRef.current) {
-      girlFarArmRef.current.style.transform = `rotate(${pose.girlFarArmDeg.toFixed(2)}deg)`;
-    }
-
-    // Layer 3: Legs & torsos
-    if (boyBodyLayerRef.current) boyBodyLayerRef.current.style.transform = boyPos;
-    if (girlBodyLayerRef.current) girlBodyLayerRef.current.style.transform = girlPos;
-
-    // Layer 4: Heads & crossfading facial expressions
-    if (boyHeadLayerRef.current) boyHeadLayerRef.current.style.transform = boyPos;
     if (boyHeadPivotRef.current) {
       boyHeadPivotRef.current.style.transform = `rotate(${pose.boyHeadDeg.toFixed(2)}deg)`;
     }
-    if (boyOpenEyesRef.current) boyOpenEyesRef.current.style.opacity = pose.openEyesOpacity.toFixed(3);
-    if (boyHugEyesRef.current) boyHugEyesRef.current.style.opacity = pose.hugEyesOpacity.toFixed(3);
+    if (boyOpenEyesRef.current) {
+      boyOpenEyesRef.current.style.opacity = pose.boyOpenEyesOpacity.toFixed(3);
+    }
+    if (boyHappyEyesRef.current) {
+      boyHappyEyesRef.current.style.opacity = pose.boyHappyEyesOpacity.toFixed(3);
+    }
+    if (boyWaveArmRef.current) {
+      boyWaveArmRef.current.style.transform = `rotate(${pose.boyWaveArmDeg.toFixed(2)}deg)`;
+    }
 
-    if (girlHeadLayerRef.current) girlHeadLayerRef.current.style.transform = girlPos;
+    if (girlRootRef.current) {
+      girlRootRef.current.style.transform = `translate3d(${pose.girlShiftX.toFixed(2)}px, ${pose.girlBounceY.toFixed(2)}px, 0)`;
+    }
+    if (girlBackHairRef.current) {
+      girlBackHairRef.current.style.transform = `rotate(${pose.girlBackHairDeg.toFixed(2)}deg)`;
+    }
     if (girlHeadPivotRef.current) {
       girlHeadPivotRef.current.style.transform = `rotate(${pose.girlHeadDeg.toFixed(2)}deg)`;
     }
     if (girlOpenEyesRef.current) {
-      girlOpenEyesRef.current.style.opacity = pose.openEyesOpacity.toFixed(3);
+      girlOpenEyesRef.current.style.opacity = pose.girlOpenEyesOpacity.toFixed(3);
     }
-    if (girlHugEyesRef.current) {
-      girlHugEyesRef.current.style.opacity = pose.hugEyesOpacity.toFixed(3);
+    if (girlHappyEyesRef.current) {
+      girlHappyEyesRef.current.style.opacity = pose.girlHappyEyesOpacity.toFixed(3);
     }
-
-    // Layer 5: Front arms & handshake clasp overlap
-    if (girlFrontLayerRef.current) girlFrontLayerRef.current.style.transform = girlPos;
-    if (girlFrontArmRef.current) {
-      girlFrontArmRef.current.style.transform = `rotate(${pose.girlFrontArmDeg.toFixed(2)}deg)`;
+    if (girlWaveArmRef.current) {
+      girlWaveArmRef.current.style.transform = `rotate(${pose.girlWaveArmDeg.toFixed(2)}deg)`;
     }
-    if (claspOverlapRef.current) {
-      claspOverlapRef.current.style.opacity = pose.claspOverlapOpacity.toFixed(3);
-      claspOverlapRef.current.style.transform = `translate3d(0, ${pose.claspOverlapOffsetY.toFixed(2)}px, 0)`;
-    }
-    if (boyFrontLayerRef.current) boyFrontLayerRef.current.style.transform = boyPos;
-    if (boyFrontArmRef.current) {
-      boyFrontArmRef.current.style.transform = `rotate(${pose.boyFrontArmDeg.toFixed(2)}deg)`;
+    if (girlInnerArmRef.current) {
+      girlInnerArmRef.current.style.transform = `rotate(${pose.girlInnerArmDeg.toFixed(2)}deg)`;
     }
 
-    // Layer 6: Micro-particles (handshake ticks + rising pastel hug stars & dots)
-    if (handshakeTicksRef.current) {
-      handshakeTicksRef.current.style.opacity = pose.handshakeTicksOpacity.toFixed(3);
-      handshakeTicksRef.current.style.transform = `scale(${pose.handshakeTicksScale.toFixed(3)})`;
+    if (girlHandSparkleRef.current) {
+      girlHandSparkleRef.current.style.opacity = pose.girlHandSparkleOpacity.toFixed(3);
+      girlHandSparkleRef.current.style.transform = `scale(${pose.girlHandSparkleScale.toFixed(3)})`;
     }
 
-    const hp = pose.hugParticlesProgress01;
-    const ho = pose.hugParticlesOpacity;
-    if (hugParticle1Ref.current) {
-      hugParticle1Ref.current.style.opacity = ho.toFixed(3);
-      hugParticle1Ref.current.style.transform = `translate3d(${(-9 * hp).toFixed(2)}px, ${(-22 * hp).toFixed(2)}px, 0) scale(${(0.7 + 0.35 * Math.sin(hp * Math.PI)).toFixed(3)})`;
+    const ap = pose.ambientSparklesProgress01;
+    const ao = pose.ambientSparklesOpacity;
+    if (ambientSparkle1Ref.current) {
+      ambientSparkle1Ref.current.style.opacity = ao.toFixed(3);
+      ambientSparkle1Ref.current.style.transform = `translate3d(${(-4 * ap).toFixed(2)}px, ${(-14 * ap).toFixed(2)}px, 0) scale(${(0.72 + 0.34 * Math.sin(ap * Math.PI)).toFixed(3)})`;
     }
-    if (hugParticle2Ref.current) {
-      hugParticle2Ref.current.style.opacity = (ho * 0.92).toFixed(3);
-      hugParticle2Ref.current.style.transform = `translate3d(${(2 * hp).toFixed(2)}px, ${(-18 * hp).toFixed(2)}px, 0) scale(${(0.75 + 0.3 * hp).toFixed(3)})`;
+    if (ambientSparkle2Ref.current) {
+      ambientSparkle2Ref.current.style.opacity = (ao * 0.92).toFixed(3);
+      ambientSparkle2Ref.current.style.transform = `translate3d(${(2 * ap).toFixed(2)}px, ${(-16 * ap).toFixed(2)}px, 0) scale(${(0.75 + 0.28 * ap).toFixed(3)})`;
     }
-    if (hugParticle3Ref.current) {
-      hugParticle3Ref.current.style.opacity = ho.toFixed(3);
-      hugParticle3Ref.current.style.transform = `translate3d(${(9 * hp).toFixed(2)}px, ${(-22 * hp).toFixed(2)}px, 0) scale(${(0.68 + 0.38 * Math.sin(hp * Math.PI)).toFixed(3)})`;
-    }
-    if (hugParticle4Ref.current) {
-      hugParticle4Ref.current.style.opacity = (ho * 0.88).toFixed(3);
-      hugParticle4Ref.current.style.transform = `translate3d(${(7 * hp).toFixed(2)}px, ${(-18 * hp).toFixed(2)}px, 0) scale(${(0.7 + 0.28 * hp).toFixed(3)})`;
+    if (ambientSparkle3Ref.current) {
+      ambientSparkle3Ref.current.style.opacity = (ao * 0.96).toFixed(3);
+      ambientSparkle3Ref.current.style.transform = `translate3d(${(5 * ap).toFixed(2)}px, ${(-13 * ap).toFixed(2)}px, 0) scale(${(0.7 + 0.35 * Math.sin(ap * Math.PI)).toFixed(3)})`;
     }
 
     if (pose.stage !== lastStageRef.current) {
@@ -190,45 +161,86 @@ export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFo
     }
   }, []);
 
+  const clearAllTimers = useCallback(() => {
+    for (const id of timersRef.current) {
+      window.clearTimeout(id);
+    }
+    timersRef.current = [];
+  }, []);
+
+  const scheduleTimer = useCallback((fn: () => void, delayMs: number) => {
+    const id = window.setTimeout(() => {
+      timersRef.current = timersRef.current.filter((item) => item !== id);
+      fn();
+    }, delayMs);
+    timersRef.current.push(id);
+    return id;
+  }, []);
+
   const stopAnimationLoop = useCallback(() => {
     if (rafRef.current !== null) {
       window.cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
     animStartRef.current = null;
-  }, []);
+    clearAllTimers();
+  }, [clearAllTimers]);
 
-  const playChoreography = useCallback(() => {
-    stopAnimationLoop();
+  const playChoreography = useCallback(
+    (isManualReplay = false) => {
+      stopAnimationLoop();
+      const reduced = prefersReducedMotionNow();
+      reducedMotionRef.current = reduced;
 
-    if (reducedMotionRef.current) {
-      setIsIdleBreathing(false);
-      applyPoseToDom(computeFooterChibiPose(CHIBI_TIMING.totalDurationMs, true));
-      return;
-    }
-
-    setIsIdleBreathing(false);
-    applyPoseToDom(computeFooterChibiPose(0, false));
-
-    const step = (now: number) => {
-      if (animStartRef.current === null) {
-        animStartRef.current = now;
-      }
-      const elapsed = now - animStartRef.current;
-      const pose = computeFooterChibiPose(elapsed, false);
-      applyPoseToDom(pose);
-
-      if (elapsed >= CHIBI_TIMING.totalDurationMs) {
-        rafRef.current = null;
-        setIsIdleBreathing(true);
+      if (reduced) {
+        setIsIdleBreathing(false);
+        applyPoseToDom(computeFooterChibiPose(CHIBI_TIMING.totalDurationMs, true));
+        if (isManualReplay) {
+          setIsReplaying(true);
+          scheduleTimer(() => {
+            setIsReplaying(false);
+          }, 680);
+        } else {
+          setIsReplaying(false);
+        }
         return;
       }
 
-      rafRef.current = window.requestAnimationFrame(step);
-    };
+      setIsIdleBreathing(false);
+      setIsReplaying(true);
+      lastStageRef.current = 'ready';
+      setActiveStage('ready');
+      applyPoseToDom(computeFooterChibiPose(0, false));
 
-    rafRef.current = window.requestAnimationFrame(step);
-  }, [applyPoseToDom, stopAnimationLoop]);
+      const finishRun = () => {
+        stopAnimationLoop();
+        applyPoseToDom(computeFooterChibiPose(CHIBI_TIMING.totalDurationMs, false));
+        setIsIdleBreathing(true);
+        setIsReplaying(false);
+      };
+
+      const step = (now: number) => {
+        if (animStartRef.current === null) {
+          animStartRef.current = now;
+        }
+        const elapsed = now - animStartRef.current;
+        const pose = computeFooterChibiPose(elapsed, false);
+        applyPoseToDom(pose);
+
+        if (elapsed >= CHIBI_TIMING.totalDurationMs) {
+          finishRun();
+          return;
+        }
+
+        rafRef.current = window.requestAnimationFrame(step);
+      };
+
+      rafRef.current = window.requestAnimationFrame(step);
+      // Backup completion guard in case RAF is throttled
+      scheduleTimer(finishRun, CHIBI_TIMING.totalDurationMs + 140);
+    },
+    [applyPoseToDom, scheduleTimer, stopAnimationLoop],
+  );
 
   // Initial pose setup + strict scroll-direction & viewport-threshold gate so Chicken Farm never fires the footer early
   useEffect(() => {
@@ -242,13 +254,14 @@ export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFo
       };
     }
 
-    // Set initial ready pose (24px apart) before scrolling into view
+    // Set initial ready pose before scrolling into view
     applyPoseToDom(computeFooterChibiPose(0, false));
 
     const footerEl = footerRef.current;
     if (!footerEl || typeof IntersectionObserver === 'undefined') {
       hasAutoPlayedRef.current = true;
-      playChoreography();
+      setHasEntered(true);
+      playChoreography(false);
       return () => {
         stopAnimationLoop();
       };
@@ -300,8 +313,13 @@ export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFo
       ) {
         hasAutoPlayedRef.current = true;
         detachAutoPlayWatchers();
-        playChoreography();
-        emitModinoEvent('ending', { force: true, source: 'footer-auto-enter' });
+        setHasEntered(true);
+        playChoreography(false);
+        try {
+          emitModinoEvent('ending', { force: true, source: 'footer-auto-enter' });
+        } catch {
+          // silent fallback
+        }
       }
     };
 
@@ -351,890 +369,1143 @@ export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFo
     };
   }, [applyPoseToDom, isSiteRevealed, playChoreography, stopAnimationLoop]);
 
-  const handleReplayTap = useCallback(() => {
-    hasAutoPlayedRef.current = true;
+  // Every user tap increments `replayCount`, remounting the `key={replayCount}` stage wrapper
+  // with fresh SVG refs & reset CSS keyframes, then cleanly launches Frame 0 choreography.
+  useEffect(() => {
+    if (replayCount === 0) return;
+    playChoreography(true);
+    return () => {
+      stopAnimationLoop();
+    };
+  }, [playChoreography, replayCount, stopAnimationLoop]);
+
+  const handleReplay = useCallback(() => {
     try {
       haptics.footerChibiReplay();
     } catch {
       // silent fallback
     }
+    hasAutoPlayedRef.current = true;
+    stopAnimationLoop();
+    setHasEntered(true);
+    setIsIdleBreathing(false);
+    setIsReplaying(true);
+    setReplayCount((prev) => prev + 1);
     try {
-      soundEngine.playPastelMarimbaChime();
+      playUiSfx('awww_chime');
     } catch {
       // silent fallback
     }
-    trackEvent('footer_finale_replayed', 'Footer Characters');
-    emitModinoEvent('ending', { force: true });
-    playChoreography();
-  }, [playChoreography]);
+    try {
+      trackEvent('footer_finale_replayed', 'Footer Characters');
+    } catch {
+      // silent fallback
+    }
+    try {
+      emitModinoEvent('ending', { force: true });
+    } catch {
+      // silent fallback
+    }
+  }, [stopAnimationLoop]);
+
+  const showReplayStageMotion = hasEntered || replayCount > 0;
 
   return (
     <footer
       ref={footerRef}
       id="closing-signoff"
       data-testid="closing-signoff-footer"
-      data-animations-active={String(animationsActive)}
-      className={`cv-auto-section relative z-[2] bg-transparent ${
-        animationsActive ? '' : 'anim-paused'
+      data-animations-active={String(animationsActive || isReplaying)}
+      className={`relative z-[5] bg-transparent px-5 pt-8 pb-40 sm:pb-24 ${
+        animationsActive || isReplaying ? '' : 'anim-paused'
       }`}
-      style={{
-        padding: '36px 20px 56px 20px',
-      }}
     >
       <div
         className="mx-auto text-center"
         style={{
-          maxWidth: '380px',
+          maxWidth: 'min(92vw, 540px)',
         }}
       >
-        {/* Interactive Airy Character Stage (no heavy card box, anchored straight on warm #FFF8FB canvas) */}
+        {/* Single High-Priority Interactive Hit Target wrapping BOTH Boy & Girl Stage AND "Tap to replay" */}
         <button
           ref={stageRef}
           type="button"
           data-testid="footer-chibi-stage"
           data-stage={activeStage}
+          data-replay-count={replayCount}
+          data-replaying={String(isReplaying)}
           data-idle-breathing={String(isIdleBreathing)}
-          onClick={handleReplayTap}
-          aria-label="Replay best friend handshake and hug animation"
-          className="group mx-auto inline-flex cursor-pointer flex-col items-center rounded-3xl bg-transparent p-1 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C93B6B]"
+          onClick={handleReplay}
+          aria-label="Tap to replay best friend wave animation"
+          style={{
+            position: 'relative',
+            zIndex: 5,
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
+            userSelect: 'none',
+          }}
+          className="group relative z-[5] mx-auto inline-flex cursor-pointer flex-col items-center rounded-3xl bg-transparent px-3 py-1.5 select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C93B6B]"
         >
-          <svg
-            viewBox="0 0 260 150"
-            role="img"
-            aria-label="Two cute soft pastel chibi best friends sharing a handshake and warm friendly hug"
-            style={{
-              width: 'min(86vw, 300px)',
-              height: 'auto',
-              overflow: 'visible',
-            }}
-            className="block select-none"
+          {/* Remounted Animated Boy & Girl Stage Wrapper (key={replayCount} guarantees Frame 0 reset on every tap) */}
+          <span
+            key={replayCount}
+            data-testid="footer-chibi-animated-stage"
+            data-replay-instance={replayCount}
+            className={`relative block overflow-visible ${
+              showReplayStageMotion ? 'footer-stage-replay-hop' : ''
+            }`}
           >
-            <defs>
-              {/* Soft elliptical ground stage shadow blur */}
-              <filter
-                id={`chibi-shadow-${uid}`}
-                x="-30%"
-                y="-50%"
-                width="160%"
-                height="200%"
+            {/* 6 Soft Pastel Floating Sparkles / Stars Burst Above Best Friends */}
+            {showReplayStageMotion && (
+              <span
+                aria-hidden="true"
+                data-testid="footer-replay-sparkles"
+                className="pointer-events-none absolute inset-0 z-[2] overflow-visible"
               >
-                <feGaussianBlur stdDeviation="2.6" />
+                {REPLAY_SPARKLE_BURST.map((sp) => (
+                  <span
+                    key={sp.id}
+                    className="footer-replay-sparkle absolute inline-flex items-center justify-center"
+                    style={
+                      {
+                        left: sp.left,
+                        top: sp.top,
+                        '--fsp-dx': sp.dx,
+                        '--fsp-dy': sp.dy,
+                        '--fsp-delay': sp.delay,
+                      } as CSSProperties
+                    }
+                  >
+                    {sp.shape === 'star' ? (
+                      <svg
+                        width={sp.size}
+                        height={sp.size}
+                        viewBox="0 0 14 14"
+                        fill="none"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M7 0.6 L8.4 5.2 L13.4 7 L8.4 8.8 L7 13.4 L5.6 8.8 L0.6 7 L5.6 5.2 Z"
+                          fill={sp.color}
+                        />
+                      </svg>
+                    ) : (
+                      <span
+                        className="block rounded-full"
+                        style={{
+                          width: `${sp.size}px`,
+                          height: `${sp.size}px`,
+                          backgroundColor: sp.color,
+                        }}
+                      />
+                    )}
+                  </span>
+                ))}
+              </span>
+            )}
+
+            <svg
+              viewBox="0 0 260 198"
+              role="img"
+              aria-label="Two pastel storybook best friends smiling and waving together"
+              style={{
+                width: 'clamp(224px, 38vw, 340px)',
+                height: 'auto',
+                overflow: 'visible',
+              }}
+              className="relative z-[1] block select-none"
+            >
+            <defs>
+              {/* Shared soft pastel ground shadow filter */}
+              <filter
+                id={`${girlPrefix}_shadowBlur`}
+                x="-30%"
+                y="-60%"
+                width="160%"
+                height="220%"
+              >
+                <feGaussianBlur stdDeviation="2.4" />
               </filter>
 
-              {/* Shared Warm Soft Peach Skin Gradients */}
-              <linearGradient id={`skin-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#F7D3BE" />
-                <stop offset="100%" stopColor="#ECC0A8" />
+              {/* Boy Gradients (uniquely prefixed footerBoy_...) */}
+              <linearGradient id={`${boyPrefix}_skin`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#FFE6D6" />
+                <stop offset="68%" stopColor="#F6CFB6" />
+                <stop offset="100%" stopColor="#E9B89B" />
               </linearGradient>
-              <linearGradient id={`skin-shade-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#E9BA9F" />
-                <stop offset="100%" stopColor="#DFAD93" />
+              <linearGradient id={`${boyPrefix}_hair`} x1="15%" y1="0%" x2="85%" y2="100%">
+                <stop offset="0%" stopColor="#3B2637" />
+                <stop offset="50%" stopColor="#2C1D2A" />
+                <stop offset="100%" stopColor="#1B101A" />
+              </linearGradient>
+              <linearGradient id={`${boyPrefix}_hoodie`} x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#E0D8FA" />
+                <stop offset="48%" stopColor="#D6CCF7" />
+                <stop offset="100%" stopColor="#B8A9EC" />
+              </linearGradient>
+              <linearGradient id={`${boyPrefix}_hoodieShade`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#CABEF2" />
+                <stop offset="100%" stopColor="#AE9DE5" />
+              </linearGradient>
+              <linearGradient id={`${boyPrefix}_jeans`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#4F405C" />
+                <stop offset="55%" stopColor="#443650" />
+                <stop offset="100%" stopColor="#372B42" />
+              </linearGradient>
+              <linearGradient id={`${boyPrefix}_sneaker`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#FFFDF9" />
+                <stop offset="100%" stopColor="#EFE8F7" />
+              </linearGradient>
+              <radialGradient id={`${boyPrefix}_blush`} cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#FF94AE" stopOpacity="0.58" />
+                <stop offset="58%" stopColor="#FF94AE" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="#FF94AE" stopOpacity="0" />
+              </radialGradient>
+              <linearGradient id={`${boyPrefix}_iris`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#250D20" />
+                <stop offset="60%" stopColor="#3E1836" />
+                <stop offset="100%" stopColor="#5F2B54" />
               </linearGradient>
 
-              {/* Deep Espresso Plum Hair Gradient */}
-              <linearGradient id={`hair-${uid}`} x1="15%" y1="0%" x2="85%" y2="100%">
-                <stop offset="0%" stopColor="#462B3D" />
-                <stop offset="55%" stopColor="#382131" />
-                <stop offset="100%" stopColor="#2F1B29" />
+              {/* Girl Gradients (uniquely prefixed footerGirl_...) */}
+              <linearGradient id={`${girlPrefix}_skin`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#FFE8DA" />
+                <stop offset="68%" stopColor="#F8D2BA" />
+                <stop offset="100%" stopColor="#ECBA9E" />
               </linearGradient>
-
-              {/* Boy — Muted Pastel Lilac Hoodie & Soft Dusty Plum Trousers */}
-              <linearGradient id={`hoodie-${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#E3D7F7" />
-                <stop offset="100%" stopColor="#CBBCEB" />
+              <linearGradient id={`${girlPrefix}_armSkin`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#FDE1CE" />
+                <stop offset="58%" stopColor="#F4CBB2" />
+                <stop offset="100%" stopColor="#EEBDA1" />
               </linearGradient>
-              <linearGradient id={`hoodie-shade-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#D7C8F1" />
-                <stop offset="100%" stopColor="#BFAEE4" />
+              <linearGradient id={`${girlPrefix}_hair`} x1="15%" y1="0%" x2="85%" y2="100%">
+                <stop offset="0%" stopColor="#3E2538" />
+                <stop offset="48%" stopColor="#2A1926" />
+                <stop offset="100%" stopColor="#1B0F19" />
               </linearGradient>
-              <linearGradient id={`trousers-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#6F5775" />
-                <stop offset="100%" stopColor="#5A4460" />
+              <linearGradient id={`${girlPrefix}_hairDeep`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#2E1B2A" />
+                <stop offset="100%" stopColor="#1B0F19" />
               </linearGradient>
-              <linearGradient id={`sneaker-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#FFFDF8" />
-                <stop offset="100%" stopColor="#F2E9DE" />
+              <linearGradient id={`${girlPrefix}_kurti`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#FFFDF9" />
+                <stop offset="46%" stopColor="#FDE8F1" />
+                <stop offset="100%" stopColor="#F5C0D7" />
               </linearGradient>
-
-              {/* Girl — Ivory-to-Petal-Blush Festive Kurti, Rose Plum Leggings & Buttercream Flats */}
-              <linearGradient id={`kurti-${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#FFF8FA" />
-                <stop offset="55%" stopColor="#FDEAF2" />
-                <stop offset="100%" stopColor="#FADCE9" />
+              <linearGradient id={`${girlPrefix}_dupatta`} x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#FAD2E4" />
+                <stop offset="55%" stopColor="#F1ACC9" />
+                <stop offset="100%" stopColor="#E68EB4" />
               </linearGradient>
-              <linearGradient id={`kurti-shade-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#FBE6F0" />
-                <stop offset="100%" stopColor="#F3C9DC" />
-              </linearGradient>
-              <linearGradient id={`leggings-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#94607B" />
+              <linearGradient id={`${girlPrefix}_churidar`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#B8829D" />
+                <stop offset="58%" stopColor="#A26C87" />
                 <stop offset="100%" stopColor="#8C5873" />
               </linearGradient>
-              <linearGradient id={`flats-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#F8E2AE" />
-                <stop offset="100%" stopColor="#F5DA9D" />
+              <linearGradient id={`${girlPrefix}_jooti`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#EA6A9A" />
+                <stop offset="60%" stopColor="#CF3F74" />
+                <stop offset="100%" stopColor="#A52957" />
+              </linearGradient>
+              <radialGradient id={`${girlPrefix}_blush`} cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#FF8CAE" stopOpacity="0.72" />
+                <stop offset="55%" stopColor="#FF8CAE" stopOpacity="0.28" />
+                <stop offset="100%" stopColor="#FF8CAE" stopOpacity="0" />
+              </radialGradient>
+              <linearGradient id={`${girlPrefix}_iris`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#260C20" />
+                <stop offset="58%" stopColor="#43183A" />
+                <stop offset="100%" stopColor="#6D2E5E" />
               </linearGradient>
             </defs>
 
             {/* ============================================================
-                LAYER 1: groundShadow (Two soft rose shadows merging on hug)
+                LAYER 1: Unified Soft Pastel Floor Shadow (grounded at y = 186)
                 ============================================================ */}
-            <g data-layer="groundShadow" filter={`url(#chibi-shadow-${uid})`}>
+            <g
+              ref={sharedShadowRef}
+              data-layer="groundShadow"
+              style={{ transformOrigin: '129px 186.8px' }}
+            >
               <ellipse
-                ref={boyShadowRef}
-                cx="94"
-                cy="141"
-                rx="23"
-                ry="5"
-                fill="rgba(166, 58, 98, 0.11)"
-               
-              />
-              <ellipse
-                ref={girlShadowRef}
-                cx="164"
-                cy="141"
-                rx="21"
-                ry="4.6"
-                fill="rgba(166, 58, 98, 0.11)"
-               
-              />
-              <ellipse
-                ref={mergedShadowRef}
                 cx="129"
-                cy="141"
-                rx="46"
-                ry="6"
-                fill="rgba(166, 58, 98, 0.12)"
-                style={{ opacity: 0, transformOrigin: '129px 141px' }}
-               
+                cy="186.8"
+                rx="68"
+                ry="5.8"
+                fill="rgba(176, 62, 108, 0.13)"
+                filter={`url(#${girlPrefix}_shadowBlur)`}
               />
+              <ellipse cx="92" cy="186.5" rx="22" ry="3.2" fill="rgba(128, 56, 94, 0.14)" />
+              <ellipse cx="166" cy="186.5" rx="19" ry="3.0" fill="rgba(166, 58, 98, 0.15)" />
             </g>
 
-            {/* Shared Idle Breathing Wrapper Anchored Strictly at Feet (y = 140) */}
+            {/* Shared Calm Idle Breathing Wrapper Anchored Strictly at Feet (y = 186) */}
             <g className={isIdleBreathing ? 'animate-chibi-breathe' : undefined}>
               {/* ============================================================
-                  LAYER 2: backHair & farArms (Girl backHair + both far arms)
+                  CHARACTER 1 (LEFT): TALL, SLENDER BEST-FRIEND BOY (y = 20..186)
                   ============================================================ */}
-              <g data-layer="backHairAndFarArms">
-                {/* Boy far-side arm (left side of torso, softly tucked behind hoodie) */}
-                <g ref={boyBackLayerRef}>
-                  <g
-                    ref={boyFarArmRef}
-                    style={{ transformOrigin: '80px 85px' }}
-                   
-                  >
-                    <path
-                      d="M80 79 C73 82, 70 95, 72 106 C72.8 110, 79.5 110, 81 105 C82.5 96, 84 86, 84 81 Z"
-                      fill={`url(#hoodie-shade-${uid})`}
-                    />
-                    {/* Soft ribbed wrist cuff */}
-                    <rect
-                      x="71.6"
-                      y="102.5"
-                      width="9.4"
-                      height="3.4"
-                      rx="1.7"
-                      fill="#EDE4FA"
-                    />
-                    {/* Rounded warm-peach mitten hand */}
-                    <ellipse cx="76.4" cy="108.5" rx="4.5" ry="4.2" fill={`url(#skin-${uid})`} />
-                  </g>
-                </g>
-
-                {/* Girl flowing backHair sheet + far-side arm */}
-                <g ref={girlBackLayerRef}>
-                  <g
-                    ref={girlBackHairRef}
-                    style={{ transformOrigin: '164px 52px' }}
-                   
-                  >
-                    {/* Flowing smooth Deep Espresso Plum backHair behind shoulders */}
-                    <path
-                      d="M144 54 C140 70, 139 92, 143 106 C150 110, 178 110, 185 106 C189 92, 188 70, 184 54 C180 42, 148 42, 144 54 Z"
-                      fill={`url(#hair-${uid})`}
-                    />
-                    {/* Subtle soft luster curve on lower back hair */}
-                    <path
-                      d="M148 96 Q164 102 180 96"
-                      fill="none"
-                      stroke="rgba(255, 238, 246, 0.12)"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                    />
-                  </g>
-
-                  {/* Girl far-side arm (right side of kurti, tucked neatly behind torso) */}
-                  <g
-                    ref={girlFarArmRef}
-                    style={{ transformOrigin: '176px 90px' }}
-                   
-                  >
-                    <path
-                      d="M174 84 C180 87, 183 98, 181 108 C180 111.5, 174 111.5, 172.8 107 C171.6 99, 171 91, 171 86 Z"
-                      fill={`url(#kurti-shade-${uid})`}
-                    />
-                    {/* Minimal champagne-gold cuff glint */}
-                    <rect
-                      x="172.6"
-                      y="105"
-                      width="8.4"
-                      height="2.2"
-                      rx="1.1"
-                      fill="#E8C892"
-                    />
-                    {/* Rounded warm-peach mitten hand */}
-                    <ellipse cx="176.8" cy="110.2" rx="4.0" ry="3.8" fill={`url(#skin-${uid})`} />
-                  </g>
-                </g>
-              </g>
-
-              {/* ============================================================
-                  LAYER 3: legsAndTorsos (Legs, shoes, softly shaded torsos)
-                  ============================================================ */}
-              <g data-layer="legsAndTorsos">
-                {/* BOY BODY (`adinomide`, 116px total height: y = 24..140) */}
-                <g ref={boyBodyLayerRef}>
-                  {/* Soft Dusty Plum Trousers */}
-                  <rect
-                    x="81"
-                    y="108"
-                    width="11.2"
-                    height="25"
-                    rx="5.4"
-                    fill={`url(#trousers-${uid})`}
-                  />
-                  <rect
-                    x="95.8"
-                    y="108"
-                    width="11.2"
-                    height="25"
-                    rx="5.4"
-                    fill={`url(#trousers-${uid})`}
-                  />
-                  {/* Subtle inner-leg depth shadow */}
-                  <rect
-                    x="89.4"
-                    y="112"
-                    width="2.6"
-                    height="19"
-                    rx="1.3"
-                    fill="rgba(47, 27, 41, 0.14)"
-                  />
-
-                  {/* Warm Cream Ivory Sneakers with thin Champagne Gold sole trim (#E6C690) */}
-                  <g>
-                    {/* Left sneaker */}
-                    <path
-                      d="M79.5 135.5 C79.5 131.5, 84 130.5, 89.5 130.5 C93.5 130.5, 96.2 132.8, 96.2 136.2 C96.2 138.3, 94.5 139.6, 92 139.6 L82.2 139.6 C80.4 139.6, 79.5 138, 79.5 135.5 Z"
-                      fill={`url(#sneaker-${uid})`}
-                    />
-                    <rect x="79.8" y="137.8" width="16.2" height="2.2" rx="1.1" fill="#E6C690" />
-
-                    {/* Right sneaker (facing slightly right) */}
-                    <path
-                      d="M94.8 135.5 C94.8 131.5, 99.3 130.5, 105.2 130.5 C109.5 130.5, 112.4 132.8, 112.4 136.2 C112.4 138.3, 110.6 139.6, 108 139.6 L97.6 139.6 C95.8 139.6, 94.8 138, 94.8 135.5 Z"
-                      fill={`url(#sneaker-${uid})`}
-                    />
-                    <rect x="95.1" y="137.8" width="17.1" height="2.2" rx="1.1" fill="#E6C690" />
-                  </g>
-
-                  {/* Cozy Slightly Oversized Muted Pastel Lilac Hoodie Torso */}
+              <g ref={boyRootRef} data-character="footerBoy">
+                {/* Outer Left Arm — Cool Casual Friendly Wave (pivots smoothly at sloped shoulder (79, 75)) */}
+                <g
+                  ref={boyWaveArmRef}
+                  style={{ transformOrigin: '79px 75px' }}
+                >
+                  {/* Smoothly joined tapered pastel lavender hoodie sleeve curving into a relaxed wave */}
                   <path
-                    d="M79 77 C83 72, 105 72, 109 77 C114 82, 116 97, 114.5 109 C114 112.5, 110.5 114.5, 106 114.5 L82 114.5 C77.5 114.5, 74 112.5, 73.5 109 C72 97, 74 82, 79 77 Z"
-                    fill={`url(#hoodie-${uid})`}
-                  />
-                  {/* Soft hoodie ribbed hem band */}
-                  <rect
-                    x="74.5"
-                    y="109.5"
-                    width="39"
-                    height="5"
-                    rx="2.5"
-                    fill={`url(#hoodie-shade-${uid})`}
-                  />
-                  {/* Softly shaded hoodie hood collar fold */}
-                  <path
-                    d="M82 75.5 C86 81, 102 81, 106 75.5 C103 72.5, 85 72.5, 82 75.5 Z"
-                    fill="#D4C5EF"
-                  />
-                  {/* Subtle kangaroo pocket seam */}
-                  <path
-                    d="M83.5 98.5 Q95 96.5 106.5 98.5 L108.2 108.2 Q95 110.2 81.8 108.2 Z"
-                    fill="rgba(163, 141, 206, 0.16)"
-                    stroke="rgba(116, 92, 152, 0.22)"
-                    strokeWidth="1"
+                    d="M 80.2 76.6
+                       C 73.2 78.2 66.2 78.6 62.2 75.2
+                       C 58.8 72.3 57.2 67.6 56.8 63.0
+                       L 62.0 62.4
+                       C 62.6 66.0 63.9 69.2 66.0 70.6
+                       C 69.2 72.6 74.0 71.8 79.4 70.8 Z"
+                    fill={`url(#${boyPrefix}_hoodie)`}
+                    stroke="#A695DF"
+                    strokeWidth="0.7"
                     strokeLinejoin="round"
                   />
-                  {/* Tiny Warm Cream Ivory Hoodie Drawstrings (#FFFDF8) */}
+                  {/* Soft underside sleeve shade */}
                   <path
-                    d="M91.8 78.6 C91.2 83.2, 91.6 87.2, 92.2 90.6"
+                    d="M 79.2 76.2 C 72.6 77.8 66.0 78.0 62.4 74.8"
                     fill="none"
-                    stroke="#FFFDF8"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M98.8 78.6 C99.5 83.2, 99.1 87.2, 98.5 90.6"
-                    fill="none"
-                    stroke="#FFFDF8"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="92.2" cy="91.1" r="1.15" fill="#FFFDF8" />
-                  <circle cx="98.5" cy="91.1" r="1.15" fill="#FFFDF8" />
-                </g>
-
-                {/* GIRL BODY (`Anamika / Morgan`, 102px total height: y = 38..140) */}
-                <g ref={girlBodyLayerRef}>
-                  {/* Muted Rose Plum Leggings (#8C5873) */}
-                  <rect
-                    x="153.5"
-                    y="114"
-                    width="9.2"
-                    height="21.5"
-                    rx="4.6"
-                    fill={`url(#leggings-${uid})`}
-                  />
-                  <rect
-                    x="165.3"
-                    y="114"
-                    width="9.2"
-                    height="21.5"
-                    rx="4.6"
-                    fill={`url(#leggings-${uid})`}
-                  />
-
-                  {/* Soft Buttercream Gold Flats (#F5DA9D) */}
-                  <g>
-                    {/* Left flat (facing slightly left) */}
-                    <path
-                      d="M148.5 136.4 C148.5 133.5, 152.2 132.8, 157.5 132.8 C161.2 132.8, 163.2 134.5, 163.2 136.8 C163.2 138.9, 161.2 140, 158.6 140 L151.6 140 C149.6 140, 148.5 138.6, 148.5 136.4 Z"
-                      fill={`url(#flats-${uid})`}
-                    />
-                    <ellipse
-                      cx="153.2"
-                      cy="135.2"
-                      rx="2.6"
-                      ry="1.1"
-                      fill="rgba(255, 253, 245, 0.55)"
-                    />
-                    {/* Right flat */}
-                    <path
-                      d="M161.4 136.4 C161.4 133.5, 165.1 132.8, 170.2 132.8 C173.8 132.8, 175.8 134.5, 175.8 136.8 C175.8 138.9, 173.8 140, 171.2 140 L164.4 140 C162.4 140, 161.4 138.6, 161.4 136.4 Z"
-                      fill={`url(#flats-${uid})`}
-                    />
-                    <ellipse
-                      cx="166.0"
-                      cy="135.2"
-                      rx="2.6"
-                      ry="1.1"
-                      fill="rgba(255, 253, 245, 0.55)"
-                    />
-                  </g>
-
-                  {/* Soft Ivory-to-Petal-Blush Festive Kurti (#FFF8FA -> #FADCE9) */}
-                  <path
-                    d="M151.5 82.5 C155 79, 173 79, 176.5 82.5 C180.5 87, 184 103, 185.5 115.5 C185.8 118, 183.5 119.5, 180.2 119.5 L147.8 119.5 C144.5 119.5, 142.2 118, 142.5 115.5 C144 103, 147.5 87, 151.5 82.5 Z"
-                    fill={`url(#kurti-${uid})`}
-                  />
-                  {/* Soft vertical pastel kurti drape shadow */}
-                  <path
-                    d="M153 96 C152 104, 151.5 111, 151.2 118"
-                    fill="none"
-                    stroke="rgba(217, 75, 125, 0.08)"
-                    strokeWidth="2.4"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M174 96 C175 104, 175.5 111, 175.8 118"
-                    fill="none"
-                    stroke="rgba(217, 75, 125, 0.08)"
-                    strokeWidth="2.4"
-                    strokeLinecap="round"
-                  />
-
-                  {/* Minimal Warm Rose Berry (#D94B7D) & Champagne Gold (#E8C892) Neckline Trim */}
-                  <path
-                    d="M156.2 81.2 Q163 89.2 169.8 81.2"
-                    fill="none"
-                    stroke="#D94B7D"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M157.8 83.4 Q163 90.4 168.2 83.4"
-                    fill="none"
-                    stroke="#E8C892"
-                    strokeWidth="1.25"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="163" cy="89.4" r="1.15" fill="#E8C892" />
-
-                  {/* Minimal Warm Rose Berry & Champagne Gold Kurti Hem Trim */}
-                  <path
-                    d="M143.4 114.8 Q164 116.8 184.6 114.8"
-                    fill="none"
-                    stroke="#E8C892"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M143.2 117.4 Q164 119.3 184.8 117.4"
-                    fill="none"
-                    stroke="#D94B7D"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    opacity="0.88"
-                  />
-                </g>
-              </g>
-
-              {/* ============================================================
-                  LAYER 4: headsAndFaces (Neck-anchored heads + crossfading eyes)
-                  ============================================================ */}
-              <g data-layer="headsAndFaces">
-                {/* BOY HEAD (`transform-origin` locked strictly at neck base 94px 73px) */}
-                <g ref={boyHeadLayerRef}>
-                  <g
-                    ref={boyHeadPivotRef}
-                    style={{ transformOrigin: '94px 73px' }}
-                   
-                  >
-                    {/* Soft neck & chin shade */}
-                    <rect
-                      x="89.6"
-                      y="68.5"
-                      width="8.8"
-                      height="7.5"
-                      rx="4.2"
-                      fill={`url(#skin-shade-${uid})`}
-                    />
-
-                    {/* Soft cute ears */}
-                    <ellipse cx="72" cy="55.5" rx="4.2" ry="5.0" fill={`url(#skin-${uid})`} />
-                    <ellipse cx="116" cy="55.5" rx="4.2" ry="5.0" fill={`url(#skin-${uid})`} />
-                    <ellipse
-                      cx="72.4"
-                      cy="55.8"
-                      rx="1.9"
-                      ry="2.6"
-                      fill="rgba(220, 148, 134, 0.25)"
-                    />
-
-                    {/* Compact Rounded Chibi Head (~40% of 116px height) */}
-                    <ellipse cx="94" cy="52" rx="22.6" ry="21.4" fill={`url(#skin-${uid})`} />
-
-                    {/* Softly Tousled Deep Espresso Plum Hair (#2F1B29 -> #462B3D) */}
-                    <path
-                      d="M71.5 52 C70 36, 78 24.5, 94.5 24 C109.5 23.6, 118.5 34.5, 117 49.5 C115.6 44.5, 111.5 41.2, 106.5 40.2 C102.5 43.8, 95.8 45.6, 88.8 44.5 C92.8 41.8, 95.8 39.2, 97.5 36.8 C91.2 40.4, 83.2 43.2, 76.2 44.8 C74.4 47.2, 73 49.8, 71.5 52 Z"
-                      fill={`url(#hair-${uid})`}
-                    />
-                    {/* Swept front fringe tuft */}
-                    <path
-                      d="M84 31.5 C94 31, 104 34, 112.5 41.5 C104.5 41, 96.5 41.5, 89 44.2 C86.5 39.8, 84.5 35.5, 84 31.5 Z"
-                      fill={`url(#hair-${uid})`}
-                    />
-                    {/* Single subtle curved highlight sheen along the crown */}
-                    <path
-                      d="M84.5 30.2 Q95.5 26.2 106.2 31.4"
-                      fill="none"
-                      stroke="rgba(255, 240, 248, 0.24)"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                    />
-
-                    {/* Soft Translucent Petal-Rose Cheek Blush */}
-                    <ellipse
-                      cx="84.5"
-                      cy="60.4"
-                      rx="4.4"
-                      ry="2.5"
-                      fill="rgba(240, 142, 174, 0.42)"
-                    />
-                    <ellipse
-                      cx="109.8"
-                      cy="60.4"
-                      rx="4.4"
-                      ry="2.5"
-                      fill="rgba(240, 142, 174, 0.42)"
-                    />
-
-                    {/* State A: Open Warm Deep Plum Oval Eyes + 1.2px White Specular Catchlights */}
-                    <g ref={boyOpenEyesRef} style={{ opacity: 1 }}>
-                      <ellipse cx="90.6" cy="54.2" rx="2.5" ry="3.1" fill="#3A1233" />
-                      <circle cx="89.7" cy="53.1" r="1.15" fill="#FFFFFF" />
-
-                      <ellipse cx="104.2" cy="54.2" rx="2.5" ry="3.1" fill="#3A1233" />
-                      <circle cx="103.3" cy="53.1" r="1.15" fill="#FFFFFF" />
-                    </g>
-
-                    {/* State B: Happy Curved ^ ^ Closed-Smile Eyes During Hug */}
-                    <g ref={boyHugEyesRef} style={{ opacity: 0 }}>
-                      <path
-                        d="M87.4 55.2 Q90.6 51.2 93.8 55.2"
-                        fill="none"
-                        stroke="#3A1233"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      />
-                      <path
-                        d="M101.0 55.2 Q104.2 51.2 107.4 55.2"
-                        fill="none"
-                        stroke="#3A1233"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      />
-                    </g>
-
-                    {/* Relaxed Small Curved Best-Friend Smile */}
-                    <path
-                      d="M94.2 61.8 Q97.6 64.9 101.0 61.7"
-                      fill="none"
-                      stroke="#5C2847"
-                      strokeWidth="1.65"
-                      strokeLinecap="round"
-                    />
-                  </g>
-                </g>
-
-                {/* GIRL HEAD (`transform-origin` locked strictly at neck base 164px 80px) */}
-                <g ref={girlHeadLayerRef}>
-                  <g
-                    ref={girlHeadPivotRef}
-                    style={{ transformOrigin: '164px 80px' }}
-                   
-                  >
-                    {/* Soft neck & chin shade */}
-                    <rect
-                      x="160.2"
-                      y="76"
-                      width="7.6"
-                      height="6.5"
-                      rx="3.6"
-                      fill={`url(#skin-shade-${uid})`}
-                    />
-
-                    {/* Soft ears with faint Champagne Gold ear stud glints (#E8C892) */}
-                    <ellipse cx="143.6" cy="63.4" rx="3.8" ry="4.5" fill={`url(#skin-${uid})`} />
-                    <ellipse cx="184.4" cy="63.4" rx="3.8" ry="4.5" fill={`url(#skin-${uid})`} />
-                    <circle cx="143.4" cy="66.2" r="1.65" fill="#E8C892" />
-                    <circle cx="142.9" cy="65.7" r="0.55" fill="#FFFDF8" />
-                    <circle cx="184.6" cy="66.2" r="1.65" fill="#E8C892" />
-                    <circle cx="184.1" cy="65.7" r="0.55" fill="#FFFDF8" />
-
-                    {/* Compact Rounded Chibi Head (~40% of 102px height) */}
-                    <ellipse cx="164" cy="60.5" rx="20.6" ry="19.5" fill={`url(#skin-${uid})`} />
-
-                    {/* Smooth Center-Parted Deep Espresso Plum Crown & Two Face-Framing Strands */}
-                    {/* Left crown & face-framing strand */}
-                    <path
-                      d="M163.5 38.2 C151 38.5, 142.2 46.8, 142.4 61.5 C142.5 68.5, 144.2 74.5, 146.8 78.6 C147.8 74, 147.5 66.5, 148.8 58.2 C150.2 51.5, 155.5 47.2, 163.5 45.2 Z"
-                      fill={`url(#hair-${uid})`}
-                    />
-                    {/* Right crown & face-framing strand */}
-                    <path
-                      d="M163.5 38.2 C176.2 38.5, 185.6 46.8, 185.6 61.5 C185.5 68.5, 183.8 74.5, 181.2 78.6 C180.2 74, 180.5 66.5, 179.2 58.2 C177.8 51.5, 171.8 47.2, 163.5 45.2 Z"
-                      fill={`url(#hair-${uid})`}
-                    />
-                    {/* Soft subtle crown highlight sheen */}
-                    <path
-                      d="M153.2 43.2 Q163.5 39.8 174.2 43.4"
-                      fill="none"
-                      stroke="rgba(255, 240, 248, 0.22)"
-                      strokeWidth="2.0"
-                      strokeLinecap="round"
-                    />
-
-                    {/* Signature Delicate Warm Rose Berry Bindi (1.6px dot, #D94B7D) */}
-                    <circle cx="161.2" cy="54.6" r="1.6" fill="#D94B7D" />
-
-                    {/* Soft Translucent Petal-Rose Cheek Blush */}
-                    <ellipse
-                      cx="149.4"
-                      cy="67.8"
-                      rx="4.1"
-                      ry="2.3"
-                      fill="rgba(240, 142, 174, 0.42)"
-                    />
-                    <ellipse
-                      cx="173.0"
-                      cy="67.8"
-                      rx="4.1"
-                      ry="2.3"
-                      fill="rgba(240, 142, 174, 0.42)"
-                    />
-
-                    {/* State A: Open Warm Deep Plum Oval Eyes + 1.2px White Specular Catchlights */}
-                    <g ref={girlOpenEyesRef} style={{ opacity: 1 }}>
-                      <ellipse cx="154.6" cy="62.2" rx="2.4" ry="2.95" fill="#3A1233" />
-                      <circle cx="153.8" cy="61.2" r="1.15" fill="#FFFFFF" />
-
-                      <ellipse cx="167.8" cy="62.2" rx="2.4" ry="2.95" fill="#3A1233" />
-                      <circle cx="167.0" cy="61.2" r="1.15" fill="#FFFFFF" />
-                    </g>
-
-                    {/* State B: Happy Curved ^ ^ Closed-Smile Eyes During Hug */}
-                    <g ref={girlHugEyesRef} style={{ opacity: 0 }}>
-                      <path
-                        d="M151.7 63.1 Q154.6 59.4 157.5 63.1"
-                        fill="none"
-                        stroke="#3A1233"
-                        strokeWidth="1.95"
-                        strokeLinecap="round"
-                      />
-                      <path
-                        d="M164.9 63.1 Q167.8 59.4 170.7 63.1"
-                        fill="none"
-                        stroke="#3A1233"
-                        strokeWidth="1.95"
-                        strokeLinecap="round"
-                      />
-                    </g>
-
-                    {/* Relaxed Small Curved Smile */}
-                    <path
-                      d="M158.0 69.2 Q161.2 72.1 164.4 69.1"
-                      fill="none"
-                      stroke="#5C2847"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                    />
-                  </g>
-                </g>
-              </g>
-
-              {/* ============================================================
-                  LAYER 5: frontArmsAndClasp (Shoulder-pinned arms + (130, 92) clasp)
-                  ============================================================ */}
-              <g data-layer="frontArmsAndClasp">
-                {/* Girl Front Blush Arm (shoulder locked strictly at 154px 90px) */}
-                <g ref={girlFrontLayerRef}>
-                  <g transform="translate(154, 90)">
-                    <g
-                      ref={girlFrontArmRef}
-                      style={{ transformOrigin: '0px 0px' }}
-                     
-                    >
-                      {/* Seamless rounded shoulder cap blending into kurti */}
-                      <circle cx="0" cy="0" r="6.3" fill={`url(#kurti-${uid})`} />
-                      {/* Gently tapered Ivory-to-Petal-Blush kurti sleeve along -X */}
-                      <path
-                        d="M1 -6.2 L-17.5 -4.6 C-19 -4.4, -19 4.4, -17.5 4.6 L1 6.2 Z"
-                        fill={`url(#kurti-${uid})`}
-                      />
-                      {/* Delicate Champagne Gold & Rose Berry cuff trim */}
-                      <rect
-                        x="-17.8"
-                        y="-4.5"
-                        width="2.3"
-                        height="9.0"
-                        rx="1.1"
-                        fill="#E8C892"
-                      />
-                      <rect
-                        x="-15.4"
-                        y="-4.6"
-                        width="1.3"
-                        height="9.2"
-                        rx="0.65"
-                        fill="#D94B7D"
-                        opacity="0.72"
-                      />
-                      {/* Cute rounded Warm Soft Peach mitten hand reaching (-24, 0) */}
-                      <ellipse cx="-22.4" cy="0" rx="4.7" ry="4.0" fill={`url(#skin-${uid})`} />
-                      <ellipse
-                        cx="-21.4"
-                        cy="-3.1"
-                        rx="2.1"
-                        ry="1.5"
-                        fill={`url(#skin-${uid})`}
-                      />
-                    </g>
-                  </g>
-                </g>
-
-                {/* Soft Handshake Clasp Overlap Accent right at (130, 92) */}
-                <g
-                  ref={claspOverlapRef}
-                  style={{ opacity: 0 }}
-                 
-                >
-                  <ellipse
-                    cx="130"
-                    cy="92"
-                    rx="5.6"
-                    ry="4.5"
-                    fill={`url(#skin-${uid})`}
-                  />
-                  <path
-                    d="M126.8 92.6 Q130 94.8 133.2 92.2"
-                    fill="none"
-                    stroke="rgba(182, 114, 96, 0.34)"
+                    stroke="rgba(126, 106, 186, 0.24)"
                     strokeWidth="1.2"
                     strokeLinecap="round"
                   />
+                  {/* Neat ribbed pastel ivory-lilac wrist cuff */}
+                  <path
+                    d="M 56.5 63.8 L 62.4 63.0 L 62.1 60.6 L 56.2 61.4 Z"
+                    fill="#F2ECFD"
+                    stroke="#BEB0EA"
+                    strokeWidth="0.6"
+                  />
+                  {/* Slender warm-peach friendly waving hand */}
+                  <path
+                    d="M 56.4 61.4
+                       C 54.6 59.2 54.2 55.8 55.8 54.7
+                       C 57.0 53.8 58.4 54.7 59.1 56.3
+                       C 59.7 54.9 61.0 54.8 61.7 56.0
+                       C 62.5 57.4 62.1 59.9 60.9 61.3 Z"
+                    fill={`url(#${boyPrefix}_skin)`}
+                    stroke="#D69A7D"
+                    strokeWidth="0.75"
+                    strokeLinejoin="round"
+                  />
                 </g>
 
-                {/* Boy Front Lilac Arm (shoulder locked strictly at 104px 85px) */}
-                <g ref={boyFrontLayerRef}>
-                  <g transform="translate(104, 85)">
+                {/* Slim Tapered Charcoal-Plum Jeans / Joggers & Pastel Ivory-and-Lilac Sneakers */}
+                <g>
+                  {/* Left tapered jogger leg */}
+                  <path
+                    d="M 80.6 121.0
+                       L 90.2 121.0
+                       C 90.0 139.0 89.4 157.5 88.6 174.5
+                       Q 85.8 176.2 82.8 174.5
+                       C 81.8 157.5 81.0 139.0 80.6 121.0 Z"
+                    fill={`url(#${boyPrefix}_jeans)`}
+                    stroke="#2E2238"
+                    strokeWidth="0.55"
+                  />
+                  {/* Right tapered jogger leg */}
+                  <path
+                    d="M 93.8 121.0
+                       L 103.4 121.0
+                       C 103.0 139.0 102.2 157.5 101.2 174.5
+                       Q 98.2 176.2 95.4 174.5
+                       C 94.6 157.5 94.0 139.0 93.8 121.0 Z"
+                    fill={`url(#${boyPrefix}_jeans)`}
+                    stroke="#2E2238"
+                    strokeWidth="0.55"
+                  />
+                  {/* Subtle inner-leg depth & neat jogger ankle cuffs */}
+                  <path
+                    d="M 88.8 125 C 88.6 142 88.1 158 87.5 173"
+                    fill="none"
+                    stroke="rgba(255, 240, 255, 0.10)"
+                    strokeWidth="1.0"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M 95.2 125 C 95.4 142 95.9 158 96.5 173"
+                    fill="none"
+                    stroke="rgba(255, 240, 255, 0.10)"
+                    strokeWidth="1.0"
+                    strokeLinecap="round"
+                  />
+                  <rect x="82.4" y="172.8" width="6.5" height="3.2" rx="1.5" fill="#32263D" />
+                  <rect x="95.1" y="172.8" width="6.5" height="3.2" rx="1.5" fill="#32263D" />
+                  {/* Tiny peek of warm-ivory ankle sock */}
+                  <rect x="83.4" y="175.6" width="4.6" height="2.8" rx="1.1" fill="#F8F3FC" />
+                  <rect x="96.0" y="175.6" width="4.6" height="2.8" rx="1.1" fill="#F8F3FC" />
+
+                  {/* Crisp Petite Left Pastel Ivory-and-Lilac Sneaker (grounded at y = 186.0) */}
+                  <path
+                    d="M 77.6 182.2
+                       C 77.6 179.0 80.8 177.5 85.2 177.5
+                       C 88.4 177.5 90.4 179.2 90.4 182.4
+                       C 90.4 184.8 88.6 186.0 86.2 186.0
+                       L 80.2 186.0
+                       C 78.4 186.0 77.6 184.6 77.6 182.2 Z"
+                    fill={`url(#${boyPrefix}_sneaker)`}
+                    stroke="#C5B8E6"
+                    strokeWidth="0.65"
+                  />
+                  <path
+                    d="M 85.4 178.4 C 87.6 178.6 89.4 180.0 89.6 182.6 L 85.6 182.6 Z"
+                    fill="#C6B8F0"
+                    opacity="0.85"
+                  />
+                  <path d="M 80.6 180.6 L 83.4 180.6" stroke="#B6A5E8" strokeWidth="1.05" strokeLinecap="round" />
+                  <rect x="77.8" y="184.0" width="12.4" height="2.0" rx="1.0" fill="#E3D7F7" />
+
+                  {/* Crisp Petite Right Pastel Ivory-and-Lilac Sneaker (grounded at y = 186.0) */}
+                  <path
+                    d="M 93.6 182.4
+                       C 93.6 179.2 95.6 177.5 98.8 177.5
+                       C 103.2 177.5 106.4 179.0 106.4 182.2
+                       C 106.4 184.6 105.6 186.0 103.8 186.0
+                       L 97.8 186.0
+                       C 95.4 186.0 93.6 184.8 93.6 182.4 Z"
+                    fill={`url(#${boyPrefix}_sneaker)`}
+                    stroke="#C5B8E6"
+                    strokeWidth="0.65"
+                  />
+                  <path
+                    d="M 98.6 178.4 C 96.4 178.6 94.6 180.0 94.4 182.6 L 98.4 182.6 Z"
+                    fill="#C6B8F0"
+                    opacity="0.85"
+                  />
+                  <path d="M 100.6 180.6 L 103.4 180.6" stroke="#B6A5E8" strokeWidth="1.05" strokeLinecap="round" />
+                  <rect x="93.8" y="184.0" width="12.4" height="2.0" rx="1.0" fill="#E3D7F7" />
+                </g>
+
+                {/* Tailored Slender Pastel Lavender-Periwinkle Hoodie (Zero Boxy Rectangle!) */}
+                <g>
+                  {/* Slim fitted hoodie torso with naturally sloped rounded shoulders */}
+                  <path
+                    d="M 84.8 68.8
+                       C 80.6 69.3 77.8 71.2 77.0 74.6
+                       C 76.0 81.4 76.2 98.0 78.4 118.4
+                       C 78.8 121.2 80.6 122.4 83.2 122.4
+                       L 100.8 122.4
+                       C 103.4 122.4 105.2 121.2 105.6 118.4
+                       C 107.8 98.0 108.0 81.4 107.0 74.6
+                       C 106.2 71.2 103.4 69.3 99.2 68.8 Z"
+                    fill={`url(#${boyPrefix}_hoodie)`}
+                    stroke="#AC9CE3"
+                    strokeWidth="0.7"
+                  />
+                  {/* Soft vertical side drape shading for lean tailored silhouette */}
+                  <path
+                    d="M 82.0 78 C 81.4 92 81.6 105 82.4 117"
+                    fill="none"
+                    stroke="rgba(130, 110, 190, 0.16)"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M 102.0 78 C 102.6 92 102.4 105 101.6 117"
+                    fill="none"
+                    stroke="rgba(130, 110, 190, 0.16)"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                  />
+                  {/* Snug waist ribbing */}
+                  <path
+                    d="M 78.8 118.0 Q 92 119.4 105.2 118.0 L 104.8 121.8 Q 92 123.2 79.2 121.8 Z"
+                    fill={`url(#${boyPrefix}_hoodieShade)`}
+                  />
+                  {/* Neat draped hoodie collar fold */}
+                  <path
+                    d="M 82.2 70.0 C 85.4 76.0 98.6 76.0 101.8 70.0 C 98.6 67.6 85.4 67.6 82.2 70.0 Z"
+                    fill="#C4B6F0"
+                    stroke="#AC9CE3"
+                    strokeWidth="0.6"
+                  />
+                  {/* Subtle tailored kangaroo pocket seam */}
+                  <path
+                    d="M 83.8 104.6 Q 92 103.4 100.2 104.6 L 101.8 115.6 Q 92 117.0 82.2 115.6 Z"
+                    fill="rgba(148, 128, 206, 0.15)"
+                    stroke="rgba(122, 102, 178, 0.30)"
+                    strokeWidth="0.85"
+                    strokeLinejoin="round"
+                  />
+                  {/* Slender tapered warm-ivory hoodie drawstrings */}
+                  <path
+                    d="M 89.2 73.2 C 88.6 79.0 89.0 84.4 89.5 89.2"
+                    fill="none"
+                    stroke="#FFFDF8"
+                    strokeWidth="1.35"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M 94.8 73.2 C 95.4 79.0 95.0 84.4 94.5 89.2"
+                    fill="none"
+                    stroke="#FFFDF8"
+                    strokeWidth="1.35"
+                    strokeLinecap="round"
+                  />
+                  <rect x="88.8" y="88.6" width="1.4" height="2.4" rx="0.6" fill="#E6C690" />
+                  <rect x="93.8" y="88.6" width="1.4" height="2.4" rx="0.6" fill="#E6C690" />
+
+                  {/* Inner Right Arm — Casually Bent & Tucked Into Hoodie Pocket (smooth shoulder join) */}
+                  <path
+                    d="M 105.6 73.2
+                       C 110.2 80.8 112.0 90.6 110.4 99.6
+                       C 109.4 105.2 106.0 109.4 101.4 111.6
+                       L 99.8 106.8
+                       C 103.0 105.0 104.8 101.8 105.4 97.8
+                       C 106.2 91.8 105.0 83.4 102.6 76.8 Z"
+                    fill={`url(#${boyPrefix}_hoodie)`}
+                    stroke="#A695DF"
+                    strokeWidth="0.7"
+                    strokeLinejoin="round"
+                  />
+                  {/* Soft inner sleeve cuff resting casually at pocket entry */}
+                  <path
+                    d="M 100.8 106.2 L 102.4 111.4 L 100.2 112.0 L 98.8 106.8 Z"
+                    fill="#F2ECFD"
+                    stroke="#BEB0EA"
+                    strokeWidth="0.55"
+                  />
+                </g>
+
+                {/* Boy Slender Neck & Soft-Jawed Expressive Head (pivot anchored at neck base 92, 69) */}
+                <g
+                  ref={boyHeadPivotRef}
+                  style={{ transformOrigin: '92px 69px' }}
+                >
+                  {/* Clean slender neck with soft chin shadow */}
+                  <path
+                    d="M 88.4 59.5 L 95.6 59.5 L 96.0 70.4 Q 92 72.4 88.0 70.4 Z"
+                    fill={`url(#${boyPrefix}_skin)`}
+                  />
+                  <path
+                    d="M 88.4 61.6 Q 92 65.2 95.6 61.6 L 95.6 59.5 L 88.4 59.5 Z"
+                    fill="rgba(190, 120, 105, 0.28)"
+                  />
+
+                  {/* Delicate ears */}
+                  <ellipse cx="76.4" cy="44.8" rx="2.5" ry="3.6" fill={`url(#${boyPrefix}_skin)`} stroke="#E0AA8F" strokeWidth="0.55" />
+                  <ellipse cx="107.6" cy="44.8" rx="2.5" ry="3.6" fill={`url(#${boyPrefix}_skin)`} stroke="#E0AA8F" strokeWidth="0.55" />
+
+                  {/* Slim soft-jawed oval face */}
+                  <path
+                    d="M 76.6 41.2
+                       C 76.6 28.0 82.8 22.4 92.0 22.4
+                       C 101.2 22.4 107.4 28.0 107.4 41.2
+                       C 107.4 52.6 101.8 61.0 92.0 62.2
+                       C 82.2 61.0 76.6 52.6 76.6 41.2 Z"
+                    fill={`url(#${boyPrefix}_skin)`}
+                  />
+
+                  {/* Softly Textured Slightly Tousled Espresso-Plum Hair (y top = 20.0) */}
+                  <path
+                    d="M 75.4 43.2
+                       C 73.6 31.0 79.8 20.2 92.2 20.0
+                       C 104.2 19.8 110.4 29.8 108.6 42.8
+                       C 107.4 37.8 105.0 34.4 101.6 32.8
+                       C 98.4 36.2 92.6 38.0 86.0 37.4
+                       C 89.2 34.6 91.6 32.2 93.2 29.8
+                       C 88.0 33.4 82.4 36.0 77.6 37.6
+                       C 76.6 39.6 76.0 41.4 75.4 43.2 Z"
+                    fill={`url(#${boyPrefix}_hair)`}
+                  />
+                  {/* Light side-swept tousled bangs + tapered sideburns */}
+                  <path
+                    d="M 85.2 26.8 C 93.0 26.0 101.0 29.2 106.2 35.4 C 100.6 34.8 94.8 35.4 88.6 38.2 C 86.8 34.6 85.6 30.6 85.2 26.8 Z"
+                    fill={`url(#${boyPrefix}_hair)`}
+                  />
+                  <path
+                    d="M 76.0 37.8 C 75.6 41.2 76.2 44.6 77.6 46.8 C 77.6 43.6 77.8 40.4 78.4 37.4 Z"
+                    fill={`url(#${boyPrefix}_hair)`}
+                  />
+                  <path
+                    d="M 108.0 37.8 C 108.4 41.2 107.8 44.6 106.4 46.8 C 106.4 43.6 106.2 40.4 105.6 37.4 Z"
+                    fill={`url(#${boyPrefix}_hair)`}
+                  />
+                  {/* Subtle translucent hair-shine highlight arc (opacity 0.16) */}
+                  <path
+                    d="M 83.2 26.8 Q 92.0 23.0 100.8 27.0"
+                    fill="none"
+                    stroke="#FFFFFF"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                    opacity="0.16"
+                  />
+
+                  {/* Cute light relaxed eyebrows */}
+                  <g fill="none" stroke="#3A1D30" strokeWidth="1.2" strokeLinecap="round">
+                    <path d="M 81.8 38.8 Q 85.2 37.2 88.4 38.6" />
+                    <path d="M 95.6 38.6 Q 98.8 37.2 102.2 38.8" />
+                  </g>
+
+                  {/* State A: Bright Glossy Friendly Eyes (with gentle idle blink) */}
+                  <g ref={boyOpenEyesRef} style={{ opacity: 1 }}>
                     <g
-                      ref={boyFrontArmRef}
-                      style={{ transformOrigin: '0px 0px' }}
-                     
+                      className={isIdleBreathing ? 'animate-footer-eye-blink' : undefined}
+                      style={{
+                        transformOrigin: '92px 44.2px',
+                        ['--footer-blink-dur' as string]: '4.6s',
+                        ['--footer-blink-delay' as string]: '1.2s',
+                      }}
                     >
-                      {/* Seamless rounded shoulder cap blending into hoodie */}
-                      <circle cx="0" cy="0" r="7.2" fill={`url(#hoodie-${uid})`} />
-                      {/* Gently tapered Muted Pastel Lilac sleeve along +X */}
-                      <path
-                        d="M-1 -7.0 L18.5 -5.1 C20.2 -4.9, 20.2 4.9, 18.5 5.1 L-1 7.0 Z"
-                        fill={`url(#hoodie-${uid})`}
-                      />
-                      {/* Soft underside sleeve shading for clean depth during hug */}
-                      <path
-                        d="M0 4.6 L18.2 3.6 C19.2 4.3, 19.0 5.0, 18.0 5.2 L0 6.8 Z"
-                        fill="rgba(146, 120, 184, 0.20)"
-                      />
-                      {/* Softly shaded ribbed wrist cuff */}
-                      <rect
-                        x="16.8"
-                        y="-5.0"
-                        width="3.4"
-                        height="10.0"
-                        rx="1.6"
-                        fill="#EFE7FB"
-                      />
-                      {/* Cute rounded Warm Soft Peach mitten hand reaching (+26, 0) */}
-                      <ellipse cx="24.2" cy="0" rx="5.1" ry="4.3" fill={`url(#skin-${uid})`} />
-                      <ellipse
-                        cx="23.0"
-                        cy="-3.4"
-                        rx="2.3"
-                        ry="1.6"
-                        fill={`url(#skin-${uid})`}
-                      />
+                      {[85.2, 98.8].map((cx) => (
+                        <g key={cx}>
+                          <ellipse cx={cx} cy="44.2" rx="2.95" ry="3.45" fill="#FFF9F7" />
+                          <ellipse cx={cx} cy="44.2" rx="2.7" ry="3.25" fill={`url(#${boyPrefix}_iris)`} />
+                          <path
+                            d={`M ${cx - 3.0} 42.6 Q ${cx} 40.1 ${cx + 3.0} 42.6`}
+                            fill="none"
+                            stroke="#260D20"
+                            strokeWidth="1.35"
+                            strokeLinecap="round"
+                          />
+                          <circle cx={cx - 0.9} cy="42.9" r="1.15" fill="#FFFFFF" />
+                          <circle cx={cx + 0.95} cy="45.6" r="0.52" fill="#FFFFFF" opacity="0.88" />
+                        </g>
+                      ))}
                     </g>
+                  </g>
+
+                  {/* State B: Warm Chuckle-Nod Happy Eyes */}
+                  <g ref={boyHappyEyesRef} style={{ opacity: 0 }}>
+                    <path
+                      d="M 82.0 44.8 Q 85.2 40.6 88.4 44.8"
+                      fill="none"
+                      stroke="#3A1233"
+                      strokeWidth="1.85"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M 95.6 44.8 Q 98.8 40.6 102.0 44.8"
+                      fill="none"
+                      stroke="#3A1233"
+                      strokeWidth="1.85"
+                      strokeLinecap="round"
+                    />
+                  </g>
+
+                  {/* Subtle tiny nose shadow */}
+                  <ellipse cx="92" cy="48.2" rx="0.9" ry="0.52" fill="rgba(182, 114, 96, 0.30)" />
+
+                  {/* Subtle feathered warm cheek blush */}
+                  <ellipse cx="81.6" cy="49.8" rx="4.4" ry="2.5" fill={`url(#${boyPrefix}_blush)`} opacity="0.72" />
+                  <ellipse cx="102.4" cy="49.8" rx="4.4" ry="2.5" fill={`url(#${boyPrefix}_blush)`} opacity="0.72" />
+
+                  {/* Warm cheerful best-friend grin */}
+                  <path
+                    d="M 87.6 53.0 Q 92.2 57.2 96.8 52.8"
+                    fill="none"
+                    stroke="#6B2F4D"
+                    strokeWidth="1.55"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M 96.4 52.5 Q 97.4 52.0 97.6 51.4"
+                    fill="none"
+                    stroke="#6B2F4D"
+                    strokeWidth="1.05"
+                    strokeLinecap="round"
+                    opacity="0.7"
+                  />
+                </g>
+              </g>
+
+              {/* ============================================================
+                  CHARACTER 2 (RIGHT): PETITE 5'2" ANAMIKA (y = 46..186)
+                  Matching AnamikaTeen's slender, ultra-cute pastel storybook art
+                  ============================================================ */}
+              <g ref={girlRootRef} data-character="footerGirl">
+                {/* Slender Flowing Layered Espresso-Plum Back Hair (slim waist stays clearly visible!) */}
+                <g
+                  ref={girlBackHairRef}
+                  style={{ transformOrigin: '166px 65px' }}
+                >
+                  {/* Soft inner depth layer tucked cleanly behind upper back */}
+                  <path
+                    d="M 153.2 66 C 151.4 85 152.2 103 154.2 119 Q 166 123 177.8 119 C 179.8 103 180.6 85 178.8 66 Z"
+                    fill={`url(#${girlPrefix}_hairDeep)`}
+                  />
+                  {/* Left layered tapered back lock curving lightly outward only near tips */}
+                  <path
+                    d="M 152.0 64.5
+                       C 149.2 82.5 150.8 103 152.0 119
+                       C 152.6 126.5 150.2 133 147.6 137.4
+                       C 151.8 135.8 155.4 131.6 156.8 124.8
+                       C 158.0 117 157.8 100 157.6 86 Z"
+                    fill={`url(#${girlPrefix}_hair)`}
+                  />
+                  {/* Right layered tapered back lock curving lightly outward only near tips */}
+                  <path
+                    d="M 180.0 64.5
+                       C 182.8 82.5 181.2 103 180.0 119
+                       C 179.4 126.5 181.8 133 184.4 137.4
+                       C 180.2 135.8 176.6 131.6 175.2 124.8
+                       C 174.0 117 174.2 100 174.4 86 Z"
+                    fill={`url(#${girlPrefix}_hair)`}
+                  />
+                  {/* Secondary wispy lower hair tips + soft silk highlight */}
+                  <path
+                    d="M 153.8 120 C 154.4 127.5 153.0 134 150.8 139.2 C 154.2 137 157.2 132 158.4 125.5 Z"
+                    fill={`url(#${girlPrefix}_hair)`}
+                    opacity="0.92"
+                  />
+                  <path
+                    d="M 178.2 120 C 177.6 127.5 179.0 134 181.2 139.2 C 177.8 137 174.8 132 173.6 125.5 Z"
+                    fill={`url(#${girlPrefix}_hair)`}
+                    opacity="0.92"
+                  />
+                </g>
+
+                {/* Slender Tapered Pastel Rose-Plum Churidar & Petite Almond Rose-Berry Jootis */}
+                <g>
+                  {/* Left tapered pastel rose-plum churidar leg */}
+                  <path
+                    d="M 157.2 147.2
+                       L 164.0 147.2
+                       C 163.8 158.0 163.4 168.4 162.8 177.0
+                       Q 161.0 178.2 159.0 177.0
+                       C 158.4 168.4 157.6 158.0 157.2 147.2 Z"
+                    fill={`url(#${girlPrefix}_churidar)`}
+                    stroke="#7D4C66"
+                    strokeWidth="0.55"
+                  />
+                  {/* Right tapered pastel rose-plum churidar leg */}
+                  <path
+                    d="M 168.0 147.2
+                       L 174.8 147.2
+                       C 174.4 158.0 173.6 168.4 173.0 177.0
+                       Q 171.0 178.2 169.2 177.0
+                       C 168.6 168.4 168.2 158.0 168.0 147.2 Z"
+                    fill={`url(#${girlPrefix}_churidar)`}
+                    stroke="#7D4C66"
+                    strokeWidth="0.55"
+                  />
+                  {/* Subtle pastel highlight + churidar ankle gathers */}
+                  <path d="M 159.2 174.4 Q 160.9 175.4 162.7 174.4" fill="none" stroke="#C999B2" strokeWidth="0.75" strokeLinecap="round" opacity="0.65" />
+                  <path d="M 169.3 174.4 Q 171.1 175.4 172.8 174.4" fill="none" stroke="#C999B2" strokeWidth="0.75" strokeLinecap="round" opacity="0.65" />
+
+                  {/* Delicate warm peach ankles peeking into petite almond jootis */}
+                  <path d="M 159.4 176.8 L 162.6 176.8 L 162.4 180.8 L 159.6 180.8 Z" fill={`url(#${girlPrefix}_armSkin)`} />
+                  <path d="M 169.4 176.8 L 172.6 176.8 L 172.4 180.8 L 169.6 180.8 Z" fill={`url(#${girlPrefix}_armSkin)`} />
+
+                  {/* Petite almond-shaped left rose-berry jooti (grounded strictly at y = 186.0) */}
+                  <path
+                    d="M 154.0 183.4
+                       C 154.0 180.8 156.6 179.4 159.6 179.6
+                       C 162.2 179.8 164.0 181.2 164.0 183.4
+                       C 164.0 185.3 162.0 186.0 158.8 186.0
+                       C 155.6 186.0 154.0 185.0 154.0 183.4 Z"
+                    fill={`url(#${girlPrefix}_jooti)`}
+                    stroke="#96234E"
+                    strokeWidth="0.6"
+                  />
+                  {/* Petite almond-shaped right rose-berry jooti (grounded strictly at y = 186.0) */}
+                  <path
+                    d="M 168.0 183.4
+                       C 168.0 181.2 169.8 179.8 172.4 179.6
+                       C 175.4 179.4 178.0 180.8 178.0 183.4
+                       C 178.0 185.0 176.4 186.0 173.2 186.0
+                       C 170.0 186.0 168.0 185.3 168.0 183.4 Z"
+                    fill={`url(#${girlPrefix}_jooti)`}
+                    stroke="#96234E"
+                    strokeWidth="0.6"
+                  />
+                  {/* Satin highlight + tiny champagne-gold jooti motif */}
+                  <path d="M 155.8 182.4 Q 158.6 180.8 161.6 181.8" fill="none" stroke="#FFD9E9" strokeWidth="0.9" strokeLinecap="round" opacity="0.75" />
+                  <path d="M 170.4 181.8 Q 173.4 180.8 176.2 182.4" fill="none" stroke="#FFD9E9" strokeWidth="0.9" strokeLinecap="round" opacity="0.75" />
+                  <path d="M 158.0 182.9 L 159.1 182.1 L 160.2 182.9 L 159.1 183.7 Z" fill="#F7D994" />
+                  <path d="M 171.8 182.9 L 172.9 182.1 L 174.0 182.9 L 172.9 183.7 Z" fill="#F7D994" />
+                </g>
+
+                {/* Inner Left Arm — Graceful Relaxed Pose by Side/Waist */}
+                <g
+                  ref={girlInnerArmRef}
+                  style={{ transformOrigin: '156px 93px' }}
+                >
+                  <path
+                    d="M 156.2 92.4
+                       C 152.0 98.8 150.2 108.4 150.8 119.6
+                       L 153.6 119.4
+                       C 153.2 109.4 154.6 101.0 157.8 95.4 Z"
+                    fill={`url(#${girlPrefix}_armSkin)`}
+                    stroke="#D69A7D"
+                    strokeWidth="0.72"
+                    strokeLinejoin="round"
+                  />
+                  {/* Delicate gold wrist bangle */}
+                  <path d="M 150.8 117.2 L 153.6 117.0" stroke="#E6B85C" strokeWidth="1.1" strokeLinecap="round" />
+                  {/* Cute dainty relaxed hand */}
+                  <path
+                    d="M 150.8 119.5 C 150.2 121.4 150.7 123.5 152.0 123.7 C 153.4 123.8 154.2 122.4 153.8 119.6 Z"
+                    fill={`url(#${girlPrefix}_armSkin)`}
+                    stroke="#D69A7D"
+                    strokeWidth="0.7"
+                  />
+                </g>
+
+                {/* Outer Right Arm — Joyful Petite Friendly Wave (pivots smoothly at shoulder (176, 94)) */}
+                <g
+                  ref={girlWaveArmRef}
+                  style={{ transformOrigin: '176px 94px' }}
+                >
+                  <path
+                    d="M 175.6 93.4
+                       C 181.2 96.4 185.6 94.6 188.2 88.2
+                       C 189.4 85.2 190.4 82.0 191.0 79.4
+                       L 188.0 78.8
+                       C 187.2 81.2 186.4 83.8 185.4 86.2
+                       C 183.6 90.2 180.6 91.2 175.0 89.6 Z"
+                    fill={`url(#${girlPrefix}_armSkin)`}
+                    stroke="#D69A7D"
+                    strokeWidth="0.75"
+                    strokeLinejoin="round"
+                  />
+                  {/* Delicate fitted right pastel flutter sleeve following her waving arm */}
+                  <path
+                    d="M 175.6 90.0 C 179.8 91.0 182.6 92.2 183.2 94.8 L 177.6 96.0 L 174.8 93.0 Z"
+                    fill="#FFF7FA"
+                    stroke="#E9AAC6"
+                    strokeWidth="0.72"
+                  />
+                  {/* Delicate gold wrist bangle */}
+                  <path d="M 187.6 81.4 L 190.8 82.0" stroke="#E6B85C" strokeWidth="1.15" strokeLinecap="round" />
+                  {/* Cute dainty open waving hand (palm + delicate thumb) */}
+                  <path
+                    d="M 187.6 79.2
+                       C 187.0 77.2 187.4 74.6 188.6 74.2
+                       C 189.6 73.9 190.4 74.8 190.8 76.0
+                       C 191.4 74.8 192.4 74.6 193.0 75.6
+                       C 193.5 76.8 192.8 78.8 191.4 79.8
+                       C 190.2 80.4 188.4 80.2 187.6 79.2 Z"
+                    fill={`url(#${girlPrefix}_armSkin)`}
+                    stroke="#D69A7D"
+                    strokeWidth="0.72"
+                    strokeLinejoin="round"
+                  />
+                </g>
+
+                {/* Tailored Slender-Waisted Pastel Rose-Ivory Anarkali Kurti + Sheer Dupatta */}
+                <g>
+                  {/* Fitted delicate left kurti sleeve */}
+                  <path
+                    d="M 156.4 90.4 C 152.8 92.6 150.8 97.2 151.4 102.2 L 156.0 101.0 C 156.4 97.0 157.0 93.8 157.6 91.2 Z"
+                    fill="#FFF7FA"
+                    stroke="#E9AAC6"
+                    strokeWidth="0.7"
+                  />
+
+                  {/* Slim-waisted Anarkali kurti (narrow shoulders -> inward waist taper -> soft pleated A-line skirt) */}
+                  <path
+                    d="M 155.8 90.8
+                       Q 166 89.0 176.2 90.8
+                       C 175.6 98.8 174.2 106.8 173.4 113.4
+                       C 176.4 126.4 179.8 139.2 182.2 151.2
+                       Q 166 155.4 149.8 151.2
+                       C 152.2 139.2 155.6 126.4 158.6 113.4
+                       C 157.8 106.8 156.4 98.8 155.8 90.8 Z"
+                    fill={`url(#${girlPrefix}_kurti)`}
+                    stroke="#E8ABC6"
+                    strokeWidth="0.7"
+                  />
+
+                  {/* Subtle vertical soft-pleat shading folds on A-line skirt */}
+                  <path d="M 162.2 115.4 C 161.2 127.8 159.6 139.6 157.8 151.0" fill="none" stroke="rgba(220, 138, 174, 0.24)" strokeWidth="1.1" strokeLinecap="round" />
+                  <path d="M 166.0 115.8 L 166.0 152.2" fill="none" stroke="rgba(220, 138, 174, 0.20)" strokeWidth="1.0" strokeLinecap="round" />
+                  <path d="M 169.8 115.4 C 170.8 127.8 172.4 139.6 174.2 151.0" fill="none" stroke="rgba(220, 138, 174, 0.24)" strokeWidth="1.1" strokeLinecap="round" />
+
+                  {/* Delicate scalloped neckline & champagne-gold embroidery trim */}
+                  <path d="M 160.8 90.8 Q 163.4 95.4 166 96.8 Q 168.6 95.4 171.2 90.8" fill="none" stroke="#E6B85C" strokeWidth="1.45" strokeLinecap="round" />
+                  <circle cx="166" cy="97.1" r="1.15" fill="#D94B7D" />
+                  <circle cx="163.2" cy="94.8" r="0.75" fill="#F3C969" />
+                  <circle cx="168.8" cy="94.8" r="0.75" fill="#F3C969" />
+
+                  {/* Subtle gold waist piping */}
+                  <path d="M 158.7 113.4 Q 166 115.6 173.3 113.4" fill="none" stroke="#E8BD68" strokeWidth="1.05" strokeLinecap="round" opacity="0.82" />
+
+                  {/* Champagne-gold gota hem trim */}
+                  <path d="M 150.8 148.8 Q 166 153.0 181.2 148.8" fill="none" stroke="#E6B85C" strokeWidth="1.6" strokeLinecap="round" />
+                  <path d="M 151.8 146.4 Q 166 150.2 180.2 146.4" fill="none" stroke="#F6D893" strokeWidth="0.8" strokeLinecap="round" strokeDasharray="1.8 2.6" opacity="0.9" />
+
+                  {/* Light semi-sheer blush-rose chiffon dupatta (opacity 0.78) neatly pleated over left shoulder */}
+                  <g opacity="0.78">
+                    <path
+                      d="M 155.6 90.8
+                         L 160.2 90.8
+                         C 159.2 104.2 157.4 118.8 154.6 133.8
+                         C 153.4 139.4 151.6 144.2 149.6 147.6
+                         L 146.0 145.4
+                         C 148.6 138.8 150.8 128.4 152.8 116.6
+                         C 154.2 107.4 155.2 98.4 155.6 90.8 Z"
+                      fill={`url(#${girlPrefix}_dupatta)`}
+                    />
+                    {/* Slim diagonal drape hugging bodice */}
+                    <path
+                      d="M 159.6 92.0 C 161.6 100.4 165.4 108.0 172.4 112.6 L 171.2 114.2 C 164.0 109.6 159.8 102.4 157.8 93.4 Z"
+                      fill={`url(#${girlPrefix}_dupatta)`}
+                      opacity="0.65"
+                    />
+                    <path d="M 155.6 91.6 C 154.2 109.8 151.2 128.8 146.5 145.4" fill="none" stroke="#F7D994" strokeWidth="0.95" strokeLinecap="round" />
+                  </g>
+                </g>
+
+                {/* Girl Dainty Neck & Expressive Face matching AnamikaTeen (pivot anchored at neck base 166, 90) */}
+                <g
+                  ref={girlHeadPivotRef}
+                  style={{ transformOrigin: '166px 90px' }}
+                >
+                  {/* Dainty slender neck + soft chin shadow */}
+                  <path
+                    d="M 163.2 82.0 L 168.8 82.0 L 169.2 91.4 Q 166 93.2 162.8 91.4 Z"
+                    fill={`url(#${girlPrefix}_skin)`}
+                  />
+                  <path
+                    d="M 163.1 84.0 Q 166 87.2 168.9 84.0 L 168.9 82.0 L 163.1 82.0 Z"
+                    fill="rgba(190, 120, 105, 0.28)"
+                  />
+
+                  {/* Delicate ears */}
+                  <ellipse cx="151.4" cy="68.8" rx="2.0" ry="3.0" fill={`url(#${girlPrefix}_skin)`} stroke="#E0AA8F" strokeWidth="0.52" />
+                  <ellipse cx="180.6" cy="68.8" rx="2.0" ry="3.0" fill={`url(#${girlPrefix}_skin)`} stroke="#E0AA8F" strokeWidth="0.52" />
+
+                  {/* Slim soft heart/oval face with gentle tapered chin */}
+                  <path
+                    d="M 151.6 64.0
+                       C 151.6 52.0 157.2 47.6 166.0 47.6
+                       C 174.8 47.6 180.4 52.0 180.4 64.0
+                       C 180.4 74.2 175.4 82.6 166.0 83.8
+                       C 156.6 82.6 151.6 74.2 151.6 64.0 Z"
+                    fill={`url(#${girlPrefix}_skin)`}
+                  />
+
+                  {/* Soft parted espresso-silk crown hair & curtain bangs (top at y = 46.0) */}
+                  <path
+                    d="M 149.2 66.8
+                       C 148.6 51.6 155.0 46.0 166.0 46.0
+                       C 177.0 46.0 183.4 51.6 182.8 66.8
+                       C 180.6 58.6 175.4 54.4 166.4 53.4
+                       Q 166.0 55.0 165.6 53.4
+                       C 156.6 54.4 151.4 58.6 149.2 66.8 Z"
+                    fill={`url(#${girlPrefix}_hair)`}
+                  />
+                  {/* Wispy cheek-slimming face-framing side strands */}
+                  <path
+                    d="M 150.8 62.4 C 149.4 73.2 150.6 83.8 153.2 90.2 C 153.0 82.6 152.2 74.2 153.4 64.4 Z"
+                    fill={`url(#${girlPrefix}_hair)`}
+                  />
+                  <path
+                    d="M 181.2 62.4 C 182.6 73.2 181.4 83.8 178.8 90.2 C 179.0 82.6 179.8 74.2 178.6 64.4 Z"
+                    fill={`url(#${girlPrefix}_hair)`}
+                  />
+                  {/* Sweeping wispy curtain bangs */}
+                  <path d="M 158.8 54.4 Q 154.2 58.0 152.4 63.6 Q 155.4 59.8 160.2 55.4 Z" fill={`url(#${girlPrefix}_hair)`} />
+                  <path d="M 173.2 54.4 Q 177.8 58.0 179.6 63.6 Q 176.6 59.8 171.8 55.4 Z" fill={`url(#${girlPrefix}_hair)`} />
+
+                  {/* Tiny golden jhumka / pearl-drop earrings peeking beneath her side strands */}
+                  <g>
+                    <circle cx="151.2" cy="72.4" r="0.9" fill="#F3C969" />
+                    <path d="M 149.7 75.2 Q 151.2 72.9 152.7 75.2 Z" fill="#F6CF72" stroke="#C88B2E" strokeWidth="0.42" />
+                    <circle cx="151.2" cy="76.4" r="1.05" fill="#FFFDF9" stroke="#E6B85C" strokeWidth="0.42" />
+
+                    <circle cx="180.8" cy="72.4" r="0.9" fill="#F3C969" />
+                    <path d="M 179.3 75.2 Q 180.8 72.9 182.3 75.2 Z" fill="#F6CF72" stroke="#C88B2E" strokeWidth="0.42" />
+                    <circle cx="180.8" cy="76.4" r="1.05" fill="#FFFDF9" stroke="#E6B85C" strokeWidth="0.42" />
+                  </g>
+
+                  {/* Delicate translucent curved silk crown shine arcs (opacity 0.19) */}
+                  <path d="M 155.2 53.4 Q 159.8 50.2 164.0 52.4" fill="none" stroke="#FFFFFF" strokeWidth="1.45" strokeLinecap="round" opacity="0.20" />
+                  <path d="M 168.0 52.4 Q 172.2 50.2 176.8 53.4" fill="none" stroke="#FFFFFF" strokeWidth="1.45" strokeLinecap="round" opacity="0.20" />
+
+                  {/* Petite sparkling rose-maroon bindi */}
+                  <circle cx="166" cy="59.4" r="1.75" fill="#C9376B" />
+                  <circle cx="165.5" cy="58.9" r="0.52" fill="#FFF7FB" opacity="0.92" />
+
+                  {/* Dainty thin curved eyebrows */}
+                  <g fill="none" stroke="#3A1A2F" strokeWidth="1.05" strokeLinecap="round">
+                    <path d="M 156.2 62.2 Q 159.3 60.4 162.4 62.0" />
+                    <path d="M 169.6 62.0 Q 172.7 60.4 175.8 62.2" />
+                  </g>
+
+                  {/* State A: Sparkling Glossy Eyes (deep plum iris + starlight catchlights + dainty lash flicks + idle blink) */}
+                  <g ref={girlOpenEyesRef} style={{ opacity: 1 }}>
+                    <g
+                      className={isIdleBreathing ? 'animate-footer-eye-blink' : undefined}
+                      style={{
+                        transformOrigin: '166px 67.6px',
+                        ['--footer-blink-dur' as string]: '4.1s',
+                        ['--footer-blink-delay' as string]: '0.3s',
+                      }}
+                    >
+                      {[159.4, 172.6].map((cx, idx) => (
+                        <g key={cx}>
+                          <ellipse cx={cx} cy="67.6" rx="2.9" ry="3.4" fill="#FFF9F7" />
+                          <ellipse cx={cx} cy="67.6" rx="2.65" ry="3.2" fill={`url(#${girlPrefix}_iris)`} />
+                          <path
+                            d={`M ${cx - 1.65} 69.2 Q ${cx} 70.3 ${cx + 1.65} 69.2`}
+                            fill="none"
+                            stroke="#C46AA0"
+                            strokeWidth="1.0"
+                            strokeLinecap="round"
+                            opacity="0.58"
+                          />
+                          <path
+                            d={`M ${cx - 2.9} 66.1 Q ${cx} 63.6 ${cx + 2.9} 66.1`}
+                            fill="none"
+                            stroke="#2B0E24"
+                            strokeWidth="1.3"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d={
+                              idx === 0
+                                ? `M ${cx - 2.8} 65.9 L ${cx - 4.0} 64.7`
+                                : `M ${cx + 2.8} 65.9 L ${cx + 4.0} 64.7`
+                            }
+                            fill="none"
+                            stroke="#2B0E24"
+                            strokeWidth="1.0"
+                            strokeLinecap="round"
+                          />
+                          <circle cx={cx - 0.85} cy="66.3" r="1.15" fill="#FFFFFF" />
+                          <circle cx={cx + 0.95} cy="68.9" r="0.5" fill="#FFFFFF" opacity="0.9" />
+                        </g>
+                      ))}
+                    </g>
+                  </g>
+
+                  {/* State B: Joyful Happy Eye-Blink Crescent Smile Eyes */}
+                  <g ref={girlHappyEyesRef} style={{ opacity: 0 }}>
+                    <path d="M 156.2 68.4 Q 159.4 64.2 162.6 68.4" fill="none" stroke="#3A1233" strokeWidth="1.7" strokeLinecap="round" />
+                    <path d="M 169.4 68.4 Q 172.6 64.2 175.8 68.4" fill="none" stroke="#3A1233" strokeWidth="1.7" strokeLinecap="round" />
+                    <path d="M 156.3 68.0 L 154.9 66.8" fill="none" stroke="#3A1233" strokeWidth="1.0" strokeLinecap="round" />
+                    <path d="M 175.7 68.0 L 177.1 66.8" fill="none" stroke="#3A1233" strokeWidth="1.0" strokeLinecap="round" />
+                  </g>
+
+                  {/* Tiny subtle nose dot */}
+                  <ellipse cx="166" cy="71.2" rx="0.8" ry="0.48" fill="rgba(182, 114, 96, 0.34)" />
+
+                  {/* Soft feathered radial rose blush (#FF8CAE -> transparent) */}
+                  <ellipse cx="155.4" cy="72.4" rx="4.2" ry="2.5" fill={`url(#${girlPrefix}_blush)`} opacity="0.78" />
+                  <ellipse cx="176.6" cy="72.4" rx="4.2" ry="2.5" fill={`url(#${girlPrefix}_blush)`} opacity="0.78" />
+
+                  {/* Sweet warm beaming smile */}
+                  <g>
+                    <path
+                      d="M 161.8 75.4 Q 166.0 80.6 170.2 75.4 Q 166.0 76.4 161.8 75.4 Z"
+                      fill="#A93C66"
+                    />
+                    <ellipse cx="166" cy="77.9" rx="2.0" ry="1.05" fill="#F79BBF" />
+                    <path
+                      d="M 161.6 75.3 Q 166.0 76.5 170.4 75.3"
+                      fill="none"
+                      stroke="#8D2C52"
+                      strokeWidth="0.95"
+                      strokeLinecap="round"
+                    />
                   </g>
                 </g>
               </g>
             </g>
 
             {/* ============================================================
-                LAYER 6: microParticles (Handshake gold ticks + hug pastel glints)
-                STRICTLY PLATONIC — ZERO RED HEARTS
+                LAYER 3: Platonic Pastel Sparkle Accents (Zero Red Hearts!)
                 ============================================================ */}
             <g data-layer="microParticles" className="pointer-events-none">
-              {/* 3 Tiny Champagne-Gold (#E6B85C) Radial Motion Ticks above (130, 92) */}
+              {/* Tiny champagne-gold & rose sparkle popping near Girl's waving hand */}
               <g
-                ref={handshakeTicksRef}
-                data-testid="chibi-handshake-ticks"
-                style={{
-                  opacity: 0,
-                  transformOrigin: '130px 82px',
-                }}
-               
+                ref={girlHandSparkleRef}
+                data-testid="footer-girl-wave-sparkle"
+                style={{ opacity: 0, transformOrigin: '198px 72px' }}
               >
-                <line
-                  x1="130"
-                  y1="77"
-                  x2="130"
-                  y2="71.5"
-                  stroke="#E6B85C"
-                  strokeWidth="2"
-                  strokeLinecap="round"
+                <path
+                  d="M 198 66.2 L 199.1 70.1 L 203.0 71.2 L 199.1 72.3 L 198 76.2 L 196.9 72.3 L 193.0 71.2 L 196.9 70.1 Z"
+                  fill="#F3C46B"
                 />
-                <line
-                  x1="124.2"
-                  y1="79.2"
-                  x2="120.4"
-                  y2="75.2"
-                  stroke="#E6B85C"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="135.8"
-                  y1="79.2"
-                  x2="139.6"
-                  y2="75.2"
-                  stroke="#E6B85C"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                />
+                <circle cx="194.2" cy="66.2" r="1.3" fill="#E86A98" />
+                <circle cx="202.2" cy="76.4" r="1.0" fill="#C9B5EE" />
               </g>
 
-              {/* 4 Tiny Rising Pastel 4-Point Star Glints & Soft Confetti Dots Framing Their Shoulders & Crowns */}
+              {/* 3 Subtle Floating Platonic Pastel Stars & Sparkle Flecks Above Them */}
               <g
-                ref={hugParticle1Ref}
-                data-testid="chibi-hug-particle-1"
-                style={{ opacity: 0, transformOrigin: '78px 60px' }}
-               
+                ref={ambientSparkle1Ref}
+                data-testid="footer-ambient-sparkle-1"
+                style={{ opacity: 0, transformOrigin: '126px 26px' }}
               >
-                {/* Warm Gold 4-point star glint */}
                 <path
-                  d="M78 54.5 Q78.5 59.5 83.5 60 Q78.5 60.5 78 65.5 Q77.5 60.5 72.5 60 Q77.5 59.5 78 54.5 Z"
+                  d="M 126 21.0 L 126.9 24.4 L 130.3 25.3 L 126.9 26.2 L 126 29.6 L 125.1 26.2 L 121.7 25.3 L 125.1 24.4 Z"
                   fill="#E6B85C"
                 />
               </g>
 
               <g
-                ref={hugParticle2Ref}
-                data-testid="chibi-hug-particle-2"
-                style={{ opacity: 0, transformOrigin: '126px 24px' }}
-               
+                ref={ambientSparkle2Ref}
+                data-testid="footer-ambient-sparkle-2"
+                style={{ opacity: 0, transformOrigin: '139px 38px' }}
               >
-                {/* Soft Blush confetti dot */}
-                <circle cx="126" cy="24" r="3.0" fill="#F2A7C6" />
-              </g>
-
-              <g
-                ref={hugParticle3Ref}
-                data-testid="chibi-hug-particle-3"
-                style={{ opacity: 0, transformOrigin: '180px 64px' }}
-               
-              >
-                {/* Pastel Lilac 4-point star glint */}
                 <path
-                  d="M180 59 Q180.5 63.5 185 64 Q180.5 64.5 180 69 Q179.5 64.5 175 64 Q179.5 63.5 180 59 Z"
-                  fill="#C9B5EE"
+                  d="M 139 34.2 L 139.7 36.8 L 142.3 37.5 L 139.7 38.2 L 139 40.8 L 138.3 38.2 L 135.7 37.5 L 138.3 36.8 Z"
+                  fill="#C4B4EE"
                 />
               </g>
 
               <g
-                ref={hugParticle4Ref}
-                data-testid="chibi-hug-particle-4"
-                style={{ opacity: 0, transformOrigin: '164px 32px' }}
-               
+                ref={ambientSparkle3Ref}
+                data-testid="footer-ambient-sparkle-3"
+                style={{ opacity: 0, transformOrigin: '52px 48px' }}
               >
-                {/* Warm Gold soft confetti dot */}
-                <circle cx="164" cy="32" r="2.4" fill="#E6B85C" />
+                <circle cx="52" cy="48" r="2.0" fill="#F2A7C6" />
+                <circle cx="47.5" cy="52.5" r="1.2" fill="#E6B85C" />
               </g>
             </g>
-          </svg>
-        </button>
+            </svg>
+          </span>
 
-        {/* Quiet Micro-Hint */}
-        <p
-          data-testid="footer-replay-hint"
-          className="select-none"
-          style={{
-            fontSize: '11px',
-            color: '#9A6B82',
-            opacity: 0.72,
-            marginTop: '6px',
-          }}
-        >
-          Tap to replay
-        </p>
+          {/* Tactile "Tap to replay" Cue Pill (inside the same high-priority semantic button) */}
+          <span
+            data-testid="footer-replay-hint"
+            className="mt-2.5 inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[#EBC5D6]/85 bg-[#FFFDFB]/92 px-4 py-2 text-[clamp(12px,1.6vw,14.5px)] font-medium text-[#8B5973] shadow-[0_3px_10px_-6px_rgba(181,44,92,0.28)] transition-all duration-150 select-none group-hover:border-[#DC8CAE] group-hover:bg-[#FFF5F9] group-hover:text-[#7A3558] group-active:scale-[0.96]"
+          >
+            <span
+              key={replayCount}
+              aria-hidden="true"
+              className={`inline-flex items-center justify-center ${
+                replayCount > 0 ? 'footer-replay-icon-spin' : ''
+              }`}
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M13.2 8.2A5.2 5.2 0 1 1 11.7 4.4"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M11.8 1.9V4.8H8.9"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span>Tap to replay</span>
+          </span>
+        </button>
 
         {/* Centered Slim Rose-Gold Hairline Divider */}
         <div
           aria-hidden="true"
           style={{
-            width: '48px',
+            width: 'clamp(48px, 8vw, 72px)',
             height: '1px',
             background: 'rgba(201, 59, 107, 0.28)',
-            margin: '16px auto 14px',
+            margin: '18px auto 15px',
           }}
         />
 
@@ -1242,7 +1513,7 @@ export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFo
         <p
           data-testid="footer-creator-credit"
           style={{
-            fontSize: '13.5px',
+            fontSize: 'clamp(14.5px, 1.9vw, 19.5px)',
             color: '#7A4A63',
           }}
         >
@@ -1261,10 +1532,10 @@ export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFo
         <p
           data-testid="footer-closing-date"
           style={{
-            fontSize: '11px',
+            fontSize: 'clamp(12px, 1.6vw, 15.5px)',
             color: '#9B7488',
             letterSpacing: '0.06em',
-            marginTop: '4px',
+            marginTop: '5px',
           }}
         >
           Anamika&apos;s 17th &middot; 03 December 2026

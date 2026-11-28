@@ -9,10 +9,14 @@ export const MIDNIGHT_BYPASS_CODE = '9876';
 export const MIDNIGHT_BLUFF_1507_CODE = '1507';
 export const MIDNIGHT_BLUFF_0312_CODE = '0312';
 
-export const MIDNIGHT_CELEBRATION_HOLD_MS = 1200;
+export const MIDNIGHT_POLL_INTERVAL_MS = 250;
+export const MIDNIGHT_CELEBRATION_HOLD_MS = 1500;
 export const MIDNIGHT_FADE_OUT_MS = 450;
 export const BYPASS_TOAST_HOLD_MS = 380;
 export const BYPASS_FADE_OUT_MS = 400;
+
+export const MIDNIGHT_AUTO_BANNER_HEADLINE = "IT'S 03 DEC 2026! HAPPY 17TH BIRTHDAY, ANAMIKA! 🎉";
+export const MIDNIGHT_AUTO_CTA_LABEL = 'Open Your 17th Birthday Surprise ✨';
 
 export type ActiveBluffCode = '1507' | '0312';
 

@@ -597,8 +597,8 @@ export function CaseFileSection({ onLightboxChange }: CaseFileSectionProps = {})
           <div
             className="relative mx-auto overflow-visible"
             style={{
-              width: 'min(90vw, 370px)',
-              height: '364px',
+              width: 'min(90vw, clamp(350px, 50vw, 440px))',
+              height: 'clamp(364px, 46vw, 420px)',
               perspective: '1000px',
             }}
           >
@@ -709,13 +709,13 @@ export function CaseFileSection({ onLightboxChange }: CaseFileSectionProps = {})
                         decoding="async"
                         referrerPolicy="no-referrer"
                         onError={() => setImgFailed(true)}
-                        className="block h-[238px] w-full max-h-[360px] object-cover object-top transition-transform duration-200 group-hover:scale-[1.015]"
+                        className="block h-[clamp(238px,30vw,286px)] w-full max-h-[360px] object-cover object-top transition-transform duration-200 group-hover:scale-[1.015]"
                       />
                     ) : (
                       /* Clean archival fallback */
                       <div
                         data-testid="case-file-fallback"
-                        className="flex h-[238px] w-full flex-col items-center justify-center bg-gradient-to-b from-[#FFF7FA] to-[#FCE9F1] px-5 text-center"
+                        className="flex h-[clamp(238px,30vw,286px)] w-full flex-col items-center justify-center bg-gradient-to-b from-[#FFF7FA] to-[#FCE9F1] px-5 text-center"
                       >
                         <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#F0C6D8] bg-white text-lg shadow-xs">
                           💬
@@ -751,7 +751,7 @@ export function CaseFileSection({ onLightboxChange }: CaseFileSectionProps = {})
               <div
                 ref={flapRef}
                 data-testid="case-file-flap"
-                className={`absolute inset-x-0 bottom-0 h-[256px] ${
+                className={`absolute inset-x-0 bottom-0 h-[70.5%] ${
                   phase === 'open' ? 'pointer-events-none' : ''
                 } ${willChangeClass}`}
                 style={{
@@ -827,14 +827,14 @@ export function CaseFileSection({ onLightboxChange }: CaseFileSectionProps = {})
                 ref={clipRef}
                 data-testid="case-file-paperclip"
                 aria-hidden="true"
-                className={`pointer-events-none absolute top-[88px] right-[26px] ${willChangeClass}`}
+                className={`pointer-events-none absolute top-[24%] right-[7%] ${willChangeClass}`}
                 style={{
                   zIndex: 35,
                   transform: 'translate3d(0, 0, 0) rotate(0deg)',
                   opacity: 1,
                 }}
               >
-                <RoseGoldPaperclipSvg className="h-[54px] w-[26px]" />
+                <RoseGoldPaperclipSvg className="h-[clamp(54px,6.5vw,66px)] w-auto" />
               </div>
             </div>
           </div>
@@ -891,7 +891,7 @@ export function CaseFileSection({ onLightboxChange }: CaseFileSectionProps = {})
                 e.stopPropagation();
                 handleCloseZoom();
               }}
-              className="fixed top-4 right-4 z-[9510] inline-flex min-h-[42px] items-center gap-1.5 rounded-full border border-[#F2C3D8] bg-[#FFF6F9] px-4 py-2 text-xs font-bold text-[#3A1233] shadow-lg transition-transform duration-150 hover:bg-[#FFE6F0] active:scale-95 cursor-pointer sm:top-6 sm:right-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFF6F9]"
+              className="fixed top-4 right-4 z-[9510] inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-[#F2C3D8] bg-[#FFF6F9] px-4 py-2 text-xs font-bold text-[#3A1233] shadow-lg transition-transform duration-150 hover:bg-[#FFE6F0] active:scale-95 cursor-pointer sm:top-6 sm:right-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFF6F9]"
             >
               Close &#x2715;
             </button>
@@ -910,8 +910,8 @@ export function CaseFileSection({ onLightboxChange }: CaseFileSectionProps = {})
                   onError={() => setImgFailed(true)}
                   className="block rounded-[14px] border border-[#FFF6F9]/20 bg-[#1B0918] shadow-2xl"
                   style={{
-                    maxWidth: '94vw',
-                    maxHeight: '82vh',
+                    maxWidth: '90vw',
+                    maxHeight: '84dvh',
                     objectFit: 'contain',
                   }}
                 />

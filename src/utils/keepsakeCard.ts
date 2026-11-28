@@ -908,6 +908,8 @@ export async function generateKeepsakePosterPng(): Promise<RenderedKeepsakePoste
   };
 }
 
+export type KeepsakeSaveOutcome = 'shared' | 'downloaded' | 'inapp_fallback' | 'fallback';
+
 /**
  * Triggers a clean PNG download for the rendered keepsake poster.
  * Returns `'downloaded'` when the anchor download fires cleanly, or `'fallback'`
@@ -952,4 +954,54 @@ export function triggerKeepsakePngDownload(
     }
     return 'fallback';
   }
+}
+
+/**
+ * Mobile & in-app browser safe saver:
+ * 1. Uses native `navigator.share({ files })` when supported on mobile devices.
+ * 2. In embedded in-app browsers (WhatsApp/Instagram/WebView) where direct blob downloads
+ *    are often blocked silently, returns `'inapp_fallback'` without throwing.
+ * 3. Otherwise runs standard `<a download>`.
+ */
+export async function saveOrShareKeepsakePng(
+  rendered: Pick<RenderedKeepsakePoster, 'dataUrl' | 'blob'>,
+  filename = KEEPSAKE_FILENAME,
+  inAppBrowser = false,
+): Promise<KeepsakeSaveOutcome> {
+  if (
+    typeof navigator !== 'undefined' &&
+    typeof File !== 'undefined' &&
+    rendered.blob &&
+    typeof navigator.share === 'function' &&
+    typeof navigator.canShare === 'function'
+  ) {
+    try {
+      const file = new File([rendered.blob], filename, { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "Morgan's 17th Birthday Keepsake",
+          text: '03 December 2026 · Keepsake Poster',
+        });
+        return 'shared';
+      }
+    } catch (error) {
+      // User dismissed share sheet cleanly -> treat gracefully without throwing
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return inAppBrowser ? 'inapp_fallback' : 'fallback';
+      }
+    }
+  }
+
+  if (inAppBrowser) {
+    // Still attempt anchor click inside try/catch, then always show helpful in-app screenshot tip
+    try {
+      triggerKeepsakePngDownload(rendered, filename);
+    } catch {
+      // silent
+    }
+    return 'inapp_fallback';
+  }
+
+  return triggerKeepsakePngDownload(rendered, filename);
 }

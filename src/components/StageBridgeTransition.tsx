@@ -58,7 +58,7 @@ export function StageBridgeTransition({ mode, phase }: StageBridgeTransitionProp
         data-testid="stage-bridge-transition"
         data-bridge-mode={mode}
         data-bridge-phase={phase}
-        className={`stage-bridge-crossfade pointer-events-none fixed inset-0 z-[9600] overflow-hidden ${
+        className={`stage-bridge-crossfade pointer-events-none fixed inset-0 z-[9600] h-[100dvh] w-[100vw] overflow-hidden ${
           phase === 'parting' ? 'stage-bridge-crossfade-out' : 'stage-bridge-crossfade-in'
         }`}
         style={{
@@ -77,7 +77,7 @@ export function StageBridgeTransition({ mode, phase }: StageBridgeTransitionProp
       data-testid="stage-bridge-transition"
       data-bridge-mode="curtain"
       data-bridge-phase={phase}
-      className={`fixed inset-0 z-[9600] overflow-hidden ${
+      className={`fixed inset-0 z-[9600] h-[100dvh] w-[100vw] overflow-hidden ${
         isParting ? 'pointer-events-none' : 'pointer-events-auto'
       }`}
     >

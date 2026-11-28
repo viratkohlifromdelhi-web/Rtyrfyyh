@@ -166,17 +166,17 @@ function paintMetallicPinkFoil(
   drawMiniStar(ctx, cssW - 28, cssH - 28, starScale, 'rgba(255, 253, 248, 0.92)');
 
   // Crisp centered foil headline
-  const titleSize = Math.min(20, Math.max(16, Math.round(cssW * 0.062)));
+  const titleSize = Math.min(23, Math.max(16, Math.round(cssW * 0.055)));
   ctx.fillStyle = '#3B1535';
   ctx.font = `800 ${titleSize}px "Plus Jakarta Sans", -apple-system, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('SCRATCH HERE ✨', cssW / 2, cssH / 2 - 10);
+  ctx.fillText('SCRATCH HERE ✨', cssW / 2, cssH / 2 - 11);
 
-  const subSize = Math.min(13, Math.max(11, Math.round(cssW * 0.036)));
+  const subSize = Math.min(14.5, Math.max(11.5, Math.round(cssW * 0.032)));
   ctx.fillStyle = 'rgba(59, 21, 53, 0.78)';
   ctx.font = `600 ${subSize}px "Plus Jakarta Sans", -apple-system, sans-serif`;
-  ctx.fillText('Rub with your finger', cssW / 2, cssH / 2 + 15);
+  ctx.fillText('Rub with your finger', cssW / 2, cssH / 2 + 16);
 
   ctx.restore();
 }
@@ -248,12 +248,12 @@ function ScratchCouponCard({
     const initFoil = (forceRepaint = false) => {
       if (!forceRepaint && hasRevealedRef.current) return;
       const rect = card.getBoundingClientRect();
-      const cssW = Math.max(240, Math.round(rect.width));
-      const cssH = Math.max(216, Math.round(rect.height));
+      const cssW = Math.max(120, Math.round(rect.width));
+      const cssH = Math.max(150, Math.round(rect.height));
       if (
         !forceRepaint &&
-        Math.abs(cssW - lastSizeRef.current.w) <= 4 &&
-        Math.abs(cssH - lastSizeRef.current.h) <= 4
+        Math.abs(cssW - lastSizeRef.current.w) <= 3 &&
+        Math.abs(cssH - lastSizeRef.current.h) <= 3
       ) {
         return;
       }
@@ -320,10 +320,12 @@ function ScratchCouponCard({
       if (rect.width === 0 || rect.height === 0) return;
 
       const dpr = dprRef.current;
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
+      const logicalW = canvas.width / dpr;
+      const logicalH = canvas.height / dpr;
+      const x = ((clientX - rect.left) / rect.width) * logicalW;
+      const y = ((clientY - rect.top) / rect.height) * logicalH;
 
-      const brushRadius = 26;
+      const brushRadius = Math.max(25, Math.round(Math.min(logicalW, logicalH) * 0.12));
       ctx.save();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.globalCompositeOperation = 'destination-out';
@@ -359,6 +361,7 @@ function ScratchCouponCard({
 
   const handlePointerDown = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     if (hasRevealedRef.current) return;
+    haptics.tap();
     e.preventDefault();
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -396,7 +399,7 @@ function ScratchCouponCard({
       ref={cardRef}
       data-testid={`scratch-card-${coupon.id}`}
       data-revealed={String(revealed)}
-      className={`relative flex h-full min-h-[224px] flex-col overflow-hidden rounded-[20px] border-2 border-[#E9B4D4] bg-gradient-to-br ${coupon.cardBgClass} p-3 shadow-[0_14px_34px_-16px_rgba(59,21,53,0.22),0_4px_12px_-4px_rgba(194,55,126,0.12)] ${revealAnimClass}`}
+      className={`relative flex h-full min-h-[clamp(220px,26vw,252px)] flex-col overflow-hidden rounded-[20px] border-2 border-[#E9B4D4] bg-gradient-to-br ${coupon.cardBgClass} p-3 shadow-[0_14px_34px_-16px_rgba(59,21,53,0.22),0_4px_12px_-4px_rgba(194,55,126,0.12)] ${revealAnimClass}`}
     >
       {/* Sparkle burst on auto-reveal */}
       {sparkles.length > 0 && (
@@ -437,7 +440,9 @@ function ScratchCouponCard({
 
       {/* Inner dashed voucher frame with richer soft pastel tint and balanced spacing */}
       <div
-        className={`relative z-10 flex flex-1 flex-col items-center justify-between gap-3.5 rounded-[14px] border border-dashed px-4 py-4 text-center ${coupon.innerBgClass}`}
+        className={`relative z-10 flex flex-1 flex-col items-center rounded-[14px] border border-dashed px-4 py-4 text-center ${
+          coupon.badgeText ? 'justify-between gap-3.5' : 'justify-center gap-2'
+        } ${coupon.innerBgClass}`}
       >
         <div
           className={`flex h-16 w-20 shrink-0 items-center justify-center rounded-2xl border shadow-2xs ${coupon.iconBgClass}`}
@@ -454,30 +459,16 @@ function ScratchCouponCard({
           </p>
         </div>
 
-        {/* Dedicated bottom badge / stamp slot — zero overlap at any width */}
-        <div className="mt-0.5 flex min-h-[34px] items-center justify-center">
-          {coupon.badgeText && (
+        {/* Dedicated bottom badge slot for cards that carry a badge */}
+        {coupon.badgeText && (
+          <div className="mt-0.5 flex min-h-[34px] items-center justify-center">
             <span
               className={`inline-flex items-center justify-center rounded-full border px-3.5 py-1 text-[11px] font-extrabold tracking-wider shadow-2xs ${coupon.badgeClass}`}
             >
               {coupon.badgeText}
             </span>
-          )}
-
-          {coupon.isTroll && (
-            <div
-              aria-label="EXPIRED — 02 Dec 2009"
-              className="inline-flex -rotate-[3deg] items-center gap-2 rounded-lg border-2 border-[#FFE4F0]/85 bg-[#3B1535] px-3 py-1 text-center shadow-[0_6px_14px_-4px_rgba(59,21,53,0.45)]"
-            >
-              <span className="text-[11px] font-black tracking-wider text-[#FFE898]">
-                EXPIRED ❌
-              </span>
-              <span className="border-l border-[#FFE4F0]/35 pl-2 text-[10px] font-semibold text-[#FFE4F0]">
-                02 Dec 2009
-              </span>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Live subtle scratch progress pill while rubbing */}
@@ -599,7 +590,7 @@ export function ScratchCouponsSection({
         {/* 3 Scratch-Off Ticket Cards */}
         <div
           data-testid="scratch-cards-grid"
-          className="mt-9 grid grid-cols-1 gap-6 md:grid-cols-3 md:items-stretch"
+          className="mx-auto mt-9 grid max-w-[var(--card-max)] grid-cols-1 gap-6 lg:max-w-none lg:grid-cols-3 lg:items-stretch"
         >
           {COUPONS.map((coupon) => (
             <ScratchCouponCard

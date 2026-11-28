@@ -278,12 +278,12 @@ export function ChickenFarmSection({ isSiteRevealed = true }: ChickenFarmSection
     >
       <div
         data-testid="chicken-farm-card"
-        className="mx-auto text-center"
+        className="mx-auto w-full text-center"
         style={{
-          maxWidth: '370px',
-          margin: '28px auto 12px',
-          padding: '20px 18px 22px',
-          borderRadius: '24px',
+          maxWidth: 'var(--card-max)',
+          margin: '28px auto 16px',
+          padding: 'var(--card-pad-y) var(--card-pad-x)',
+          borderRadius: 'var(--card-radius)',
           background: 'linear-gradient(180deg, #FFFDF8 0%, #FFF5F8 100%)',
           border: '1px solid rgba(217, 75, 125, 0.18)',
           boxShadow: '0 12px 30px -14px rgba(176, 62, 106, 0.14)',
@@ -293,7 +293,7 @@ export function ChickenFarmSection({ isSiteRevealed = true }: ChickenFarmSection
         <p
           className="font-semibold uppercase"
           style={{
-            fontSize: '10px',
+            fontSize: 'var(--text-eyebrow)',
             letterSpacing: '0.16em',
             color: '#C93B6B',
           }}
@@ -303,7 +303,7 @@ export function ChickenFarmSection({ isSiteRevealed = true }: ChickenFarmSection
 
         <h2
           className="font-display mt-1 font-semibold tracking-tight text-[#3A1233]"
-          style={{ fontSize: '22px', lineHeight: 1.2 }}
+          style={{ fontSize: 'clamp(22px, 3.2vw, 31px)', lineHeight: 1.2 }}
         >
           The Little Coop
         </h2>
@@ -311,15 +311,15 @@ export function ChickenFarmSection({ isSiteRevealed = true }: ChickenFarmSection
         {/* Fixed-Height Single-Line Live Story Caption (Zero Vertical Layout Shift) */}
         <div
           className="mt-1.5 flex items-center justify-center overflow-hidden"
-          style={{ height: '22px' }}
+          style={{ minHeight: 'clamp(24px, 3vw, 30px)' }}
         >
           <p
             key={stage}
             data-testid="coop-live-caption"
             className="truncate transition-opacity duration-200"
             style={{
-              fontSize: '12.5px',
-              lineHeight: '22px',
+              fontSize: 'clamp(12.5px, 1.7vw, 15.5px)',
+              lineHeight: 1.45,
               color: '#7A4A63',
             }}
           >
@@ -333,7 +333,7 @@ export function ChickenFarmSection({ isSiteRevealed = true }: ChickenFarmSection
           data-testid="coop-stage-btn"
           onClick={handleReplay}
           aria-label="Replay The Little Coop mini story animation"
-          className="mt-3 block w-full cursor-pointer rounded-[16px] bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#C93B6B]"
+          className="mt-3.5 block w-full cursor-pointer rounded-[18px] bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#C93B6B]"
         >
           <svg
             viewBox="0 0 320 185"
@@ -342,7 +342,8 @@ export function ChickenFarmSection({ isSiteRevealed = true }: ChickenFarmSection
             style={{
               width: '100%',
               height: 'auto',
-              borderRadius: '16px',
+              maxHeight: '360px',
+              borderRadius: '18px',
               overflow: 'hidden',
             }}
             className="block select-none"
@@ -1034,13 +1035,13 @@ export function ChickenFarmSection({ isSiteRevealed = true }: ChickenFarmSection
             background: 'rgba(255, 240, 246, 0.72)',
             border: '1px solid rgba(217, 75, 125, 0.16)',
             borderRadius: '14px',
-            padding: '11px 14px',
+            padding: '12px 16px',
             marginTop: '14px',
             opacity: isFinale ? 1 : 0,
             transform: isFinale ? 'translate3d(0, 0, 0)' : 'translate3d(0, 6px, 0)',
           }}
         >
-          <p className="text-[12.5px] leading-relaxed text-[#4F2547]">
+          <p className="text-[clamp(13px,1.75vw,16px)] leading-relaxed text-[#4F2547]">
             {CHICKEN_FARM_PUNCHLINE_PARTS.prefix}
             <strong className="font-bold text-[#B52C5C]">
               {CHICKEN_FARM_PUNCHLINE_PARTS.heroName}
@@ -1054,12 +1055,12 @@ export function ChickenFarmSection({ isSiteRevealed = true }: ChickenFarmSection
           type="button"
           data-testid="coop-replay-btn"
           onClick={handleReplay}
-          className="mt-3 inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-full bg-[#FFFDF9] px-4 py-1.5 text-[12px] font-semibold text-[#B52F5E] shadow-[0_6px_14px_-10px_rgba(181,47,94,0.3)] transition-all duration-150 hover:bg-[#FFF6FA] active:translate-y-[1px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C93B6B]"
+          className="mt-3.5 inline-flex min-h-[42px] cursor-pointer items-center gap-1.5 rounded-full bg-[#FFFDF9] px-5 py-2 text-[clamp(12px,1.5vw,14px)] font-semibold text-[#B52F5E] shadow-[0_6px_14px_-10px_rgba(181,47,94,0.3)] transition-all duration-150 hover:bg-[#FFF6FA] active:translate-y-[1px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C93B6B]"
           style={{
             border: '1px solid rgba(201, 59, 107, 0.24)',
           }}
         >
-          <CoopRefreshIconSvg className="h-[13px] w-[13px] shrink-0 text-[#C93B6B]" />
+          <CoopRefreshIconSvg className="h-[14px] w-[14px] shrink-0 text-[#C93B6B]" />
           <span>Replay Coop Story</span>
         </button>
       </div>

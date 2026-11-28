@@ -3,6 +3,8 @@
  * Anamika's 17th birthday site to the Modino companion pet without prop-drilling.
  */
 
+import type { ModinoReaction } from './modinoReactions';
+
 export type ModinoReactionCategory =
   | 'greeting'
   | 'cute'
@@ -12,6 +14,7 @@ export type ModinoReactionCategory =
   | 'spin'
   | 'friends_and_banter'
   | 'last_playback'
+  | 'tapli_milestone'
   | 'ending'
   | 'direct_tap';
 
@@ -19,6 +22,7 @@ export interface ModinoEventDetail {
   category: ModinoReactionCategory;
   force?: boolean;
   source?: string;
+  customReaction?: ModinoReaction;
 }
 
 export const MODINO_EVENT_NAME = 'modino:react';
@@ -39,7 +43,12 @@ export function resetModinoBusCooldown(): void {
  */
 export function emitModinoEvent(
   category: ModinoReactionCategory,
-  options?: { force?: boolean; source?: string; nowMs?: number },
+  options?: {
+    force?: boolean;
+    source?: string;
+    nowMs?: number;
+    customReaction?: ModinoReaction;
+  },
 ): boolean {
   const force = Boolean(options?.force);
   const now =
@@ -68,6 +77,7 @@ export function emitModinoEvent(
       category,
       force,
       source: options?.source,
+      customReaction: options?.customReaction,
     };
     window.dispatchEvent(new CustomEvent<ModinoEventDetail>(MODINO_EVENT_NAME, { detail }));
     return true;
