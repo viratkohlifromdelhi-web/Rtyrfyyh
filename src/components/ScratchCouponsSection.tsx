@@ -399,7 +399,7 @@ function ScratchCouponCard({
       ref={cardRef}
       data-testid={`scratch-card-${coupon.id}`}
       data-revealed={String(revealed)}
-      className={`relative flex h-full min-h-[clamp(220px,26vw,252px)] flex-col overflow-hidden rounded-[20px] border-2 border-[#E9B4D4] bg-gradient-to-br ${coupon.cardBgClass} p-3 shadow-[0_14px_34px_-16px_rgba(59,21,53,0.22),0_4px_12px_-4px_rgba(194,55,126,0.12)] ${revealAnimClass}`}
+      className={`relative flex h-full min-h-[clamp(180px,22vmin,240px)] flex-col overflow-hidden rounded-[20px] border-2 border-[#E9B4D4] bg-gradient-to-br ${coupon.cardBgClass} p-3 shadow-[0_14px_34px_-16px_rgba(59,21,53,0.22),0_4px_12px_-4px_rgba(194,55,126,0.12)] ${revealAnimClass}`}
     >
       {/* Sparkle burst on auto-reveal */}
       {sparkles.length > 0 && (

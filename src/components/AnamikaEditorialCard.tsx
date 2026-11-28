@@ -360,7 +360,7 @@ export function AnamikaEditorialCard({ onLightboxChange }: AnamikaEditorialCardP
   return (
     <div
       data-testid="single-photo-slot"
-      className="relative z-10 mx-auto flex flex-col items-center py-3 sm:py-4"
+      className="relative z-10 mx-auto flex w-full max-w-full flex-col items-center py-3 sm:py-4"
     >
       {/* Warm Ambient Blush-Gold Halo Directly Behind the Scrapbook Stack */}
       <div
@@ -395,7 +395,7 @@ export function AnamikaEditorialCard({ onLightboxChange }: AnamikaEditorialCardP
         onPointerCancel={resetTiltToRest}
         className="group relative cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D94B7D]"
         style={{
-          width: 'min(86vw, clamp(340px, 48vw, 430px))',
+          width: 'min(100%, 86vw, clamp(340px, 48vw, 430px))',
           maxWidth: '100%',
           touchAction: 'pan-y',
         }}

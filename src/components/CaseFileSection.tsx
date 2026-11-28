@@ -891,7 +891,11 @@ export function CaseFileSection({ onLightboxChange }: CaseFileSectionProps = {})
                 e.stopPropagation();
                 handleCloseZoom();
               }}
-              className="fixed top-4 right-4 z-[9510] inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-[#F2C3D8] bg-[#FFF6F9] px-4 py-2 text-xs font-bold text-[#3A1233] shadow-lg transition-transform duration-150 hover:bg-[#FFE6F0] active:scale-95 cursor-pointer sm:top-6 sm:right-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFF6F9]"
+              className="fixed z-[9510] inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-[#F2C3D8] bg-[#FFF6F9] px-4 py-2 text-xs font-bold text-[#3A1233] shadow-lg transition-transform duration-150 hover:bg-[#FFE6F0] active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFF6F9]"
+              style={{
+                top: 'calc(16px + var(--safe-top))',
+                right: 'calc(16px + var(--safe-right))',
+              }}
             >
               Close &#x2715;
             </button>
@@ -911,7 +915,7 @@ export function CaseFileSection({ onLightboxChange }: CaseFileSectionProps = {})
                   className="block rounded-[14px] border border-[#FFF6F9]/20 bg-[#1B0918] shadow-2xl"
                   style={{
                     maxWidth: '90vw',
-                    maxHeight: '84dvh',
+                    maxHeight: 'calc(82dvh - var(--safe-top) - var(--safe-bottom))',
                     objectFit: 'contain',
                   }}
                 />

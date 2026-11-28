@@ -1907,7 +1907,7 @@ export function InfinityVaultSection({
                 {/* Clean Editorial Activation Note (Outside Voucher — No Clunky Highlight Box) */}
                 <p
                   data-testid="vault-activation-note"
-                  className="mt-5 max-w-[340px] text-center text-xs leading-relaxed text-[#FAF3EA]/78 sm:text-[13px]"
+                  className="mt-5 max-w-[340px] sm:max-w-[440px] text-center text-xs leading-relaxed text-[#FAF3EA]/78 sm:text-[13px]"
                 >
                   Send this code to{' '}
                   <span className="font-semibold tracking-[0.02em] text-[#E6C690]">adinomide</span>{' '}
@@ -1995,8 +1995,9 @@ export function InfinityVaultSection({
             onClick={() => setResetModalOpen(false)}
           >
             <div
-              className="relative max-h-[88dvh] w-[min(92vw,420px)] overflow-y-auto rounded-[24px] p-6 text-center text-[#FAF3EA] shadow-2xl animate-pop-in sm:p-8"
+              className="relative w-[min(92vw,420px)] overflow-y-auto overscroll-contain rounded-[24px] p-6 text-center text-[#FAF3EA] shadow-2xl animate-pop-in sm:p-8"
               style={{
+                maxHeight: 'calc(88dvh - var(--safe-top) - var(--safe-bottom))',
                 background: 'linear-gradient(165deg, #18111A 0%, #0E0A10 100%)',
                 border: '1px solid rgba(232, 200, 146, 0.28)',
                 boxShadow: 'inset 0 1px 0 rgba(255, 240, 212, 0.14), 0 28px 60px rgba(0, 0, 0, 0.72)',

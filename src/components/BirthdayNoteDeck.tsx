@@ -300,7 +300,7 @@ export function BirthdayNoteDeck({
           role="region"
           aria-label="Birthday note card deck, swipe or press arrow keys for next note"
           onKeyDown={handleStageKeyDown}
-          className="relative my-auto mt-5 mb-[28px] h-[295px] rounded-[22px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D94B7D] sm:h-[304px]"
+          className="relative my-auto mt-5 mb-[28px] h-[295px] rounded-[22px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D94B7D] sm:h-[332px] lg:h-[348px]"
         >
           {/* Render back-to-front so top card (depth 0) sits cleanly on top */}
           {[...visibleIndices].reverse().map((noteIdx, reversePos) => {
@@ -344,7 +344,7 @@ export function BirthdayNoteDeck({
                   transition:
                     'transform 340ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease, border-color 300ms ease, background-color 300ms ease',
                 }}
-                className={`absolute inset-0 box-border flex h-full flex-col justify-between overflow-hidden rounded-[22px] border px-[20px] pt-[20px] pb-[16px] select-none will-change-[transform,opacity] ${stackZ} ${
+                className={`absolute inset-0 box-border flex h-full flex-col justify-between overflow-hidden rounded-[22px] border px-[20px] pt-[20px] pb-[16px] sm:px-[26px] sm:pt-[24px] sm:pb-[20px] select-none will-change-[transform,opacity] ${stackZ} ${
                   isTop ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'
                 } ${
                   isBirthdayTruce
@@ -359,23 +359,23 @@ export function BirthdayNoteDeck({
                 >
                   <span
                     data-testid={isTop ? 'note-deck-counter' : undefined}
-                    className={`shrink-0 whitespace-nowrap font-mono text-[10.5px] font-semibold tracking-[0.08em] uppercase tabular-nums ${
+                    className={`shrink-0 whitespace-nowrap font-mono text-[10.5px] sm:text-[12px] font-semibold tracking-[0.08em] uppercase tabular-nums ${
                       isBirthdayTruce ? 'text-[#9A633C]' : 'text-[#C44274]'
                     }`}
                   >
                     {formatCardCounter(mode, noteIdx, notes.length)}
                   </span>
 
-                  <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[10.5px] font-semibold tracking-[0.04em] text-[#8A617F]">
+                  <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[10.5px] sm:text-[12px] font-semibold tracking-[0.04em] text-[#8A617F]">
                     <span>Swipe</span>
                     <RightArrowSvg size={13} />
                   </span>
                 </div>
 
-                {/* Centered Serif Note Body (17.5px / 1.52 line-height — Zero Overflow) */}
+                {/* Centered Serif Note Body (Responsive Clamp — Zero Overflow) */}
                 <p
                   data-testid={isTop ? 'note-deck-active-text' : undefined}
-                  className="font-display my-auto py-2 text-[17.5px] leading-[1.52] font-medium text-[#3A1233]"
+                  className="font-display my-auto py-2 text-[clamp(17.5px,2.1vw,21px)] leading-[1.52] font-medium text-[#3A1233]"
                 >
                   {item.text}
                 </p>
@@ -383,12 +383,12 @@ export function BirthdayNoteDeck({
                 {/* Quiet Stationery Footer Strictly Inside Card Border */}
                 <div
                   data-testid={isTop ? 'note-deck-card-footer' : undefined}
-                  className="flex flex-nowrap items-center justify-between gap-2 border-t border-[#3A1233]/8 pt-2.5 text-[11px] font-medium text-[#8B6280]"
+                  className="flex flex-nowrap items-center justify-between gap-2 border-t border-[#3A1233]/8 pt-2.5 text-[11px] sm:text-[12.5px] font-medium text-[#8B6280]"
                 >
                   <span className="truncate">
                     {isBirthdayTruce ? '24 hour birthday truce' : 'Unfiltered best friend notes'}
                   </span>
-                  <span className="shrink-0 whitespace-nowrap font-mono text-[10px] opacity-75">
+                  <span className="shrink-0 whitespace-nowrap font-mono text-[10px] sm:text-[11.5px] opacity-75">
                     03 DEC 2026
                   </span>
                 </div>

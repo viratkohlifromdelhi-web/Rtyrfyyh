@@ -364,7 +364,7 @@ export function BauniMeterSection() {
                 key={abortCount}
                 role="alert"
                 data-testid="bauni-abort-warning"
-                className="animate-pop-in mt-3 inline-flex max-w-xs items-center gap-2 rounded-2xl border border-[#E592B4] bg-[#FFE8F1] px-3.5 py-2 text-center text-xs font-bold leading-snug text-[#8F1F52] shadow-xs"
+                className="animate-pop-in mt-3 inline-flex max-w-xs sm:max-w-md items-center gap-2 rounded-2xl border border-[#E592B4] bg-[#FFE8F1] px-3.5 py-2 text-center text-xs font-bold leading-snug text-[#8F1F52] shadow-xs"
               >
                 <AlertTriangle className="h-4 w-4 shrink-0 text-[#C93B6B]" aria-hidden="true" />
                 <span>Hold your finger till the end, don&rsquo;t cheat 👀</span>

@@ -791,7 +791,7 @@ export default function OriginStoryPlay({
       </div>
 
       {/* Top Chrome: Single-line Sound On/Muted pill, 11-Scene Progress Counter, Single-line Skip Story pill */}
-      <header className="relative z-30 mx-auto flex w-[min(94vw,640px)] shrink-0 items-center justify-between gap-2 px-1 pt-[max(10px,env(safe-area-inset-top))] sm:pt-3.5">
+      <header className="relative z-30 mx-auto flex w-[min(94vw,660px)] shrink-0 items-center justify-between gap-2 px-1 pt-[max(10px,var(--safe-top))] sm:pt-[max(14px,var(--safe-top))]">
         <button
           type="button"
           onClick={handleToggleMute}
@@ -861,7 +861,7 @@ export default function OriginStoryPlay({
       </header>
 
       {/* Main Illustrated Storybook Cinema Stage */}
-      <main className="relative z-10 mx-auto flex min-h-0 w-[min(94vw,640px)] flex-1 items-center justify-center px-1">
+      <main className="relative z-10 mx-auto flex min-h-0 w-[min(94vw,660px)] flex-1 items-center justify-center px-1">
         <div
           className={`relative flex h-full w-full flex-col items-center justify-end overflow-hidden rounded-[var(--card-radius)] border transition-all duration-700 ${
             isRomanticPeak
@@ -874,6 +874,7 @@ export default function OriginStoryPlay({
           }`}
           style={{
             height: 'var(--origin-stage-h)',
+            minHeight: '220px',
             maxHeight: '100%',
           }}
         >
@@ -1631,7 +1632,7 @@ export default function OriginStoryPlay({
       </main>
 
       {/* Bottom Editorial Storybook Subtitle Card + Redesigned Rose-Berry Satin Controls */}
-      <footer className="relative z-30 mx-auto w-[min(94vw,640px)] shrink-0 px-1 pb-[max(12px,env(safe-area-inset-bottom))] sm:pb-4">
+      <footer className="relative z-30 mx-auto w-[min(94vw,660px)] shrink-0 px-1 pb-[max(12px,var(--safe-bottom))] sm:pb-[max(16px,var(--safe-bottom))]">
         <div
           key={`caption_${currentScene.id}_${scene9SecondaryActive ? 's2' : 's1'}`}
           data-testid="origin-caption-box"

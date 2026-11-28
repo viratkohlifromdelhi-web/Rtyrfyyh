@@ -100,6 +100,7 @@ export function DeveloperReviewSection() {
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const starPopTimerRef = useRef<number | null>(null);
+  const focusScrollTimerRef = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -107,7 +108,21 @@ export function DeveloperReviewSection() {
       if (starPopTimerRef.current !== null) {
         window.clearTimeout(starPopTimerRef.current);
       }
+      if (focusScrollTimerRef.current !== null) {
+        window.clearTimeout(focusScrollTimerRef.current);
+      }
     };
+  }, []);
+
+  const handleTextareaFocus = useCallback((event: React.FocusEvent<HTMLTextAreaElement>) => {
+    const el = event.currentTarget;
+    if (focusScrollTimerRef.current !== null) {
+      window.clearTimeout(focusScrollTimerRef.current);
+    }
+    focusScrollTimerRef.current = window.setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      focusScrollTimerRef.current = null;
+    }, 220);
   }, []);
 
   const handleStarTap = useCallback(
@@ -284,7 +299,7 @@ export function DeveloperReviewSection() {
     >
       <div
         ref={cardRef}
-        className="relative z-[2] mx-auto w-full overflow-hidden rounded-[var(--card-radius)] border border-[rgba(217,75,125,0.22)]"
+        className="card-container relative z-[2] mx-auto w-full overflow-hidden rounded-[var(--card-radius)] border border-[rgba(217,75,125,0.22)]"
         style={{
           margin: '26px auto 18px',
           padding: 'var(--card-pad-y) var(--card-pad-x)',
@@ -437,7 +452,7 @@ export function DeveloperReviewSection() {
                 key={`star-row-${shakeStarsKey}`}
                 role="radiogroup"
                 aria-label="Rate your birthday world from 1 to 5 stars"
-                className={`flex items-center justify-center gap-1.5 sm:gap-2.5 ${
+                className={`cq-star-row flex items-center justify-center gap-1.5 sm:gap-2.5 ${
                   shakeStarsKey > 0 && rating === 0 ? 'review-star-shake' : ''
                 }`}
               >
@@ -457,7 +472,7 @@ export function DeveloperReviewSection() {
                       }
                       data-testid={`review-star-${starVal}`}
                       onClick={() => handleStarTap(starVal)}
-                      className={`relative flex h-[clamp(46px,6.5vw,60px)] w-[clamp(46px,6.5vw,60px)] cursor-pointer items-center justify-center rounded-full transition-transform duration-150 active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] ${
+                      className={`relative flex h-[clamp(48px,6.5vw,62px)] w-[clamp(48px,6.5vw,62px)] cursor-pointer items-center justify-center rounded-full transition-transform duration-150 active:scale-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D] ${
                         isPopping ? 'review-star-pop' : ''
                       }`}
                     >
@@ -547,6 +562,7 @@ export function DeveloperReviewSection() {
                   rows={4}
                   maxLength={MAX_REVIEW_MESSAGE_LENGTH}
                   value={message}
+                  onFocus={handleTextareaFocus}
                   onChange={(e) => {
                     setMessage(e.target.value);
                     if (submitError) setSubmitError(null);

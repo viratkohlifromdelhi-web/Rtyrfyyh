@@ -111,7 +111,10 @@ export function TopBar({
     <>
       <header
         className="fixed top-0 right-0 left-0 z-40 border-b border-[#EFE0EE] bg-[#FFFDF8]/95 backdrop-blur-md"
-        style={{ height: 'clamp(56px, 7vw, 70px)' }}
+        style={{
+          height: 'calc(var(--header-h) + var(--safe-top))',
+          paddingTop: 'var(--safe-top)',
+        }}
       >
         <div className="mx-auto flex h-full w-full max-w-[var(--header-max)] lg:max-w-6xl items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6 lg:px-8">
           {/* Zone 1: Single-line Brand wordmark */}
@@ -240,7 +243,7 @@ export function TopBar({
           className={`pointer-events-none fixed left-1/2 z-[60] w-max max-w-[92vw] -translate-x-1/2 rounded-full border border-[#E7A8C2] bg-[#FFFDF8]/98 px-4 py-2 text-center text-[11.5px] font-semibold tracking-tight text-[#3A1233] shadow-[0_14px_30px_-10px_rgba(184,50,101,0.34)] backdrop-blur-md transition-opacity duration-[240ms] ease-out sm:text-[14px] ${
             toastFading ? 'opacity-0' : 'opacity-100'
           }`}
-          style={{ top: 'calc(clamp(56px, 7vw, 70px) + 10px)' }}
+          style={{ top: 'calc(var(--header-h) + var(--safe-top) + 10px)' }}
         >
           {HEADER_EASTER_EGG_MESSAGE}
         </div>

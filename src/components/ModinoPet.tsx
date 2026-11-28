@@ -743,7 +743,13 @@ export function ModinoPet({
   // Collapsed ear-peek tab on left viewport edge for clean card screenshots
   if (isTucked) {
     return (
-      <div className="pointer-events-none fixed left-0 bottom-[calc(24px+env(safe-area-inset-bottom,0px))] z-[36]">
+      <div
+        className="pointer-events-none fixed z-[36]"
+        style={{
+          left: 'var(--safe-left)',
+          bottom: 'calc(24px + var(--safe-bottom))',
+        }}
+      >
         <button
           type="button"
           data-testid="modino-peek-tab"
@@ -770,11 +776,15 @@ export function ModinoPet({
       data-modino-entered={hasEntered ? 'true' : 'false'}
       data-sleep-state={mood === 'sleepy_zzz' ? 'sleeping' : 'awake'}
       aria-hidden={!hasEntered || undefined}
-      className={`pointer-events-none fixed left-[12px] bottom-[calc(14px+env(safe-area-inset-bottom,0px))] sm:left-[20px] sm:bottom-[calc(22px+env(safe-area-inset-bottom,0px))] lg:left-[24px] lg:bottom-[calc(24px+env(safe-area-inset-bottom,0px))] z-[36] flex flex-col items-start ${
+      className={`pointer-events-none fixed z-[36] flex flex-col items-start ${
         hasEntered
           ? 'animate-modino-entrance opacity-100'
           : 'translate-y-[22px] opacity-0'
       }`}
+      style={{
+        left: 'calc(clamp(10px, 2.2vmin, 24px) + var(--safe-left))',
+        bottom: 'calc(clamp(12px, 2.2vmin, 24px) + var(--safe-bottom))',
+      }}
     >
       {/* Crisp Pastel Speech Bubble anchored above and to the right of Modino */}
       {bubbleText && (
@@ -785,9 +795,12 @@ export function ModinoPet({
           data-sleepy={isBubbleSleepy ? 'true' : 'false'}
           onClick={handleDismissBubble}
           aria-label="Dismiss Modino speech bubble"
-          className={`animate-modino-bubble pointer-events-auto absolute left-[4px] right-auto bottom-[88px] sm:bottom-[114px] lg:bottom-[128px] z-10 w-max max-w-[min(195px,calc(100vw-32px))] sm:max-w-[min(260px,calc(100vw-32px))] lg:max-w-[min(285px,calc(100vw-32px))] origin-bottom-left rounded-[18px] border-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB] px-3.5 py-2 sm:px-4 sm:py-2.5 text-left text-[12px] sm:text-[14px] lg:text-[14.5px] leading-[1.35] font-semibold text-[#3A1233] shadow-[0_10px_26px_-10px_rgba(176,62,106,0.24)] cursor-pointer transition-opacity duration-200 ${
+          className={`animate-modino-bubble pointer-events-auto absolute left-[4px] right-auto z-10 w-max max-w-[min(195px,calc(100vw-32px))] sm:max-w-[min(260px,calc(100vw-32px))] lg:max-w-[min(285px,calc(100vw-32px))] origin-bottom-left rounded-[18px] border-[1.2px] border-[rgba(217,75,125,0.24)] bg-[#FFFDFB] px-3.5 py-2 sm:px-4 sm:py-2.5 text-left text-[12px] sm:text-[14px] lg:text-[14.5px] leading-[1.35] font-semibold text-[#3A1233] shadow-[0_10px_26px_-10px_rgba(176,62,106,0.24)] cursor-pointer transition-opacity duration-200 ${
             isBubbleSleepy ? 'opacity-85' : 'opacity-100'
           }`}
+          style={{
+            bottom: 'calc(clamp(58px, 10.5vmin, 100px) + 28px)',
+          }}
         >
           <span className="block break-words">{bubbleText}</span>
           {/* Tiny rotated cream pointer tail aiming straight down toward Modino's head */}
@@ -854,7 +867,11 @@ export function ModinoPet({
           data-testid="modino-avatar-btn"
           onClick={handlePetTap}
           aria-label="Tap Modino companion pet"
-          className="relative flex h-[64px] w-[64px] sm:h-[84px] sm:w-[84px] lg:h-[96px] lg:w-[96px] items-center justify-center rounded-full border-0 bg-transparent p-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
+          className="relative flex items-center justify-center rounded-full border-0 bg-transparent p-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D94B7D]"
+          style={{
+            width: 'clamp(58px, 10.5vmin, 100px)',
+            height: 'clamp(58px, 10.5vmin, 100px)',
+          }}
         >
           <ModinoAvatarSvg mood={mood} tapRippleKey={tapRippleKey} paused={!isActive} />
         </button>

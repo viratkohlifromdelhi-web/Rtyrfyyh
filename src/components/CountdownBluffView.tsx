@@ -518,8 +518,9 @@ export function CountdownBluffView({
     >
       <div
         data-testid="countdown-bluff-card"
-        className="animate-bluff-reveal stage-short-landscape-card flex max-h-[88dvh] w-[min(90vw,480px)] flex-col items-center overflow-y-auto text-center"
+        className="animate-bluff-reveal stage-short-landscape-card flex w-[min(90vw,500px)] flex-col items-center overflow-y-auto overscroll-contain text-center"
         style={{
+          maxHeight: 'calc(88dvh - var(--safe-top) - var(--safe-bottom))',
           padding: 'var(--card-pad-y) var(--card-pad-x)',
           borderRadius: 'var(--card-radius)',
           background: 'linear-gradient(180deg, #FFFDF9 0%, #FFF5F8 100%)',

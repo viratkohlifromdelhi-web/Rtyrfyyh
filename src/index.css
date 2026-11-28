@@ -13,6 +13,12 @@
 }
 
 :root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --header-h: clamp(56px, 7vw, 72px);
+
   --card-max: min(94vw, 410px);
   --card-wide-max: min(94vw, 420px);
   --header-max: min(96vw, 430px);
@@ -27,99 +33,200 @@
   --text-h1: 30px;
   --btn-min-h: 44px;
   --stage-pad-y: 18px;
-  --origin-stage-h: clamp(280px, 48dvh, 380px);
+  --origin-stage-h: min(50dvh, 380px);
   --theatre-stage-w: min(92vw, 560px);
 }
 
+/* Priority #1A: Redmi Pad 2 Pro Portrait (640px to 1023px) */
 @media (min-width: 640px) {
   :root {
-    --card-max: min(86vw, 620px);
-    --card-wide-max: min(88vw, 660px);
-    --header-max: min(92vw, 720px);
-    --card-pad-y: 34px;
-    --card-pad-x: 32px;
-    --card-radius: 32px;
-    --section-gap: 36px;
-    --text-eyebrow: 12.5px;
-    --text-body: 16.5px;
-    --text-sub: 15px;
-    --text-h2: 30px;
-    --text-h1: 44px;
-    --btn-min-h: 52px;
-    --stage-pad-y: 24px;
-    --origin-stage-h: clamp(380px, 50dvh, 540px);
-    --theatre-stage-w: min(88vw, 760px);
-  }
-}
-
-@media (min-width: 1024px) {
-  :root {
-    --card-max: min(74vw, 700px);
-    --card-wide-max: min(80vw, 760px);
-    --header-max: min(90vw, 840px);
-    --card-pad-y: 38px;
-    --card-pad-x: 38px;
+    --card-max: min(88vw, 660px);
+    --card-wide-max: min(90vw, 700px);
+    --header-max: min(94vw, 760px);
+    --card-pad-y: 36px;
+    --card-pad-x: 34px;
     --card-radius: 34px;
-    --section-gap: 44px;
+    --section-gap: 38px;
     --text-eyebrow: 13px;
     --text-body: 17.5px;
-    --text-sub: 16px;
-    --text-h2: 34px;
-    --text-h1: 50px;
-    --btn-min-h: 54px;
+    --text-sub: 15.5px;
+    --text-h2: 32px;
+    --text-h1: 46px;
+    --btn-min-h: 52px;
     --stage-pad-y: 24px;
-    --origin-stage-h: clamp(360px, 54dvh, 520px);
-    --theatre-stage-w: min(84vw, 900px);
+    --origin-stage-h: min(52dvh, 520px);
+    --theatre-stage-w: min(90vw, 800px);
   }
 }
 
+/* Priority #1B: Redmi Pad 2 Pro Landscape & Desktops (>= 1024px) */
+@media (min-width: 1024px) {
+  :root {
+    --card-max: min(76vw, 720px);
+    --card-wide-max: min(82vw, 780px);
+    --header-max: min(92vw, 880px);
+    --card-pad-y: 38px;
+    --card-pad-x: 40px;
+    --card-radius: 36px;
+    --section-gap: 44px;
+    --text-eyebrow: 13.5px;
+    --text-body: 18px;
+    --text-sub: 16px;
+    --text-h2: 35px;
+    --text-h1: 52px;
+    --btn-min-h: 54px;
+    --stage-pad-y: 24px;
+    --origin-stage-h: min(52dvh, 520px);
+    --theatre-stage-w: min(94vw, 920px);
+  }
+}
+
+/* 2D Landscape In-App WebView Protection (e.g. Redmi Pad 2 Pro Landscape 1280x680) */
 @media (max-height: 760px) and (min-width: 768px) {
   :root {
     --stage-pad-y: 12px;
-    --origin-stage-h: clamp(250px, 46dvh, 360px);
-    --theatre-stage-w: min(88vw, calc((100dvh - 220px) * 16 / 9), 760px);
+    --origin-stage-h: min(44dvh, 360px);
+    --theatre-stage-w: min(90vw, calc((100dvh - 210px - var(--safe-top) - var(--safe-bottom)) * 16 / 9), 780px);
   }
 
   .stage-short-landscape-header {
-    margin-bottom: 12px !important;
+    margin-bottom: 10px !important;
   }
 
   .stage-short-landscape-footer {
-    margin-top: 12px !important;
-    min-height: 64px !important;
+    margin-top: 10px !important;
+    min-height: 60px !important;
   }
 
   .stage-short-landscape-card {
     padding-top: 20px !important;
     padding-bottom: 20px !important;
   }
+
+  .midnight-keypad-modal {
+    padding: 16px 22px !important;
+  }
+
+  .midnight-keypad-icon {
+    width: 38px !important;
+    height: 38px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .midnight-keypad-sub {
+    margin-bottom: 10px !important;
+  }
+
+  .midnight-keypad-digit {
+    width: 46px !important;
+    height: 48px !important;
+  }
+
+  .midnight-keypad-key {
+    height: 46px !important;
+  }
+}
+
+/* Ultra-short Landscape In-App WebView Protection (e.g. Redmi Pad 2 Pro 1066x600 Instagram Browser) */
+@media (max-height: 640px) and (min-width: 768px) {
+  :root {
+    --stage-pad-y: 8px;
+    --origin-stage-h: min(42dvh, 275px);
+    --theatre-stage-w: min(88vw, calc((100dvh - 180px - var(--safe-top) - var(--safe-bottom)) * 16 / 9), 700px);
+  }
+
+  .stage-short-landscape-card {
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+  }
+
+  .midnight-keypad-modal {
+    padding: 12px 18px !important;
+  }
+
+  .midnight-keypad-digit {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  .midnight-keypad-key {
+    height: 40px !important;
+  }
 }
 
 @media (max-height: 760px) and (min-width: 1024px) {
   .hero-short-landscape-section {
-    padding-top: 1.25rem !important;
-    padding-bottom: 2.25rem !important;
+    padding-top: 0.75rem !important;
+    padding-bottom: 1.5rem !important;
   }
 
   .hero-short-landscape-pills {
-    margin-bottom: 0.9rem !important;
+    margin-bottom: 0.65rem !important;
   }
 
   .hero-short-landscape-h1 {
-    font-size: clamp(2.15rem, 3.9vw, 3.05rem) !important;
+    font-size: clamp(2.05rem, 3.6vw, 2.85rem) !important;
   }
 
   .hero-short-landscape-sub {
-    margin-top: 0.75rem !important;
+    margin-top: 0.6rem !important;
     font-size: 0.95rem !important;
   }
 
   .hero-short-landscape-ctas {
-    margin-top: 1.15rem !important;
+    margin-top: 0.9rem !important;
   }
 
   .hero-short-landscape-photo {
-    max-width: 315px !important;
+    max-width: 275px !important;
+  }
+
+  .hero-short-landscape-grid {
+    align-items: start !important;
+  }
+
+  .hero-short-landscape-text {
+    padding-top: 1.15rem !important;
+  }
+}
+
+@media (max-height: 640px) and (min-width: 1024px) {
+  .hero-short-landscape-photo {
+    max-width: 242px !important;
+  }
+
+  .hero-short-landscape-text {
+    padding-top: 0.65rem !important;
+  }
+}
+
+/* Container Query Cards (strictly on non-sticky cards; never on Backstory ancestors) */
+.card-container {
+  container-type: inline-size;
+  container-name: card;
+}
+
+@container card (max-width: 340px) {
+  .cq-countdown-grid {
+    gap: 6px !important;
+  }
+
+  .cq-star-row {
+    gap: 4px !important;
+  }
+}
+
+@media (pointer: coarse) {
+  button,
+  a[role='button'],
+  [role='radio'] {
+    touch-action: manipulation;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .hover-lift-fine:hover {
+    transform: none !important;
   }
 }
 
@@ -129,19 +236,19 @@
     font-family: var(--font-sans);
     background-color: #FFF8FB;
     color: #3A1233;
-    scroll-padding-top: clamp(4.5rem, 8vw, 5.75rem);
+    scroll-padding-top: calc(var(--header-h) + var(--safe-top) + 12px);
     overflow-x: clip;
   }
 
   @media (min-width: 640px) {
     html {
-      font-size: 18px;
+      font-size: 19px;
     }
   }
 
   @media (min-width: 1024px) {
     html {
-      font-size: 19px;
+      font-size: 19.5px;
     }
   }
 

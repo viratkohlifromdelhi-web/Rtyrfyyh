@@ -156,7 +156,8 @@ export function KeepsakePreviewModal({ onClose }: KeepsakePreviewModalProps) {
       onClick={handleClose}
     >
       <div
-        className="animate-pop-in relative flex max-h-[88dvh] w-[min(92vw,540px)] flex-col overflow-hidden rounded-[28px] border border-[#EBC6D8] bg-[#FFFDF8] text-[#3A1233] shadow-[0_28px_70px_-20px_rgba(58,18,51,0.42)]"
+        className="animate-pop-in relative flex w-[min(92vw,540px)] flex-col overflow-hidden rounded-[28px] border border-[#EBC6D8] bg-[#FFFDF8] text-[#3A1233] shadow-[0_28px_70px_-20px_rgba(58,18,51,0.42)]"
+        style={{ maxHeight: 'calc(88dvh - var(--safe-top) - var(--safe-bottom))' }}
         onClick={(event) => event.stopPropagation()}
       >
         {/* Top Pastel Stationery Header */}
@@ -189,7 +190,7 @@ export function KeepsakePreviewModal({ onClose }: KeepsakePreviewModalProps) {
         </div>
 
         {/* Live 9:16 Rendered Poster Preview Stage */}
-        <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto bg-gradient-to-b from-[#FFFDF8] to-[#FFF5F9] px-5 py-4 sm:px-6 sm:py-5">
+        <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto overscroll-contain bg-gradient-to-b from-[#FFFDF8] to-[#FFF5F9] px-5 py-4 sm:px-6 sm:py-5">
           {isGenerating ? (
             <div
               data-testid="keepsake-preview-loading"

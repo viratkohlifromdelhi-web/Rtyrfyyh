@@ -358,7 +358,7 @@ export function BackstorySection({ isSiteRevealed = true }: BackstorySectionProp
                   data-testid={`backstory-chapter-${chapter.numeral}`}
                   className="sticky"
                   style={{
-                    top: `calc(${chapter.stickyTopPx}px + clamp(0px, 1.5vw, 18px))`,
+                    top: `calc(var(--header-h, 68px) + 12px + var(--safe-top) + ${index * 14}px)`,
                     zIndex: index + 1,
                   }}
                 >

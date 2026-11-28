@@ -859,7 +859,7 @@ function BirthdayWebsiteShell() {
         }`}
       >
         {/* CRITICAL: Keep <main> free of content-visibility / contain / overflow:hidden so Backstory sticky stacking never breaks */}
-        <main className="overflow-x-clip" style={{ paddingTop: 'clamp(56px, 7vw, 70px)' }}>
+        <main className="overflow-x-clip" style={{ paddingTop: 'calc(var(--header-h) + var(--safe-top))' }}>
           {/* Keep Main Page DOM pre-painting starting cleanly behind Stage 3 (after 450ms breather),
               never competing with Stage 2 Intro Video decoding — while benefiting from 100% pre-fetched
               JS chunks, GPU-decoded images, and buffered songs already warm in memory from Stage 2. */}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type FocusEvent } from 'react';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { ChevronDown, ChevronUp, Eye, EyeOff, Lock, Sparkles } from 'lucide-react';
 import { db } from '../firebase';
@@ -258,6 +258,7 @@ export function TimeCapsuleSection() {
   const [revealedIds, setRevealedIds] = useState<Record<string, boolean>>({});
 
   const sealTimerRef = useRef<number | null>(null);
+  const focusScrollTimerRef = useRef<number | null>(null);
   const countdownPillLabel = useMemo(() => formatUnlockCountdownPill(Date.now()), []);
 
   useEffect(() => {
@@ -266,7 +267,22 @@ export function TimeCapsuleSection() {
         window.clearTimeout(sealTimerRef.current);
         sealTimerRef.current = null;
       }
+      if (focusScrollTimerRef.current !== null) {
+        window.clearTimeout(focusScrollTimerRef.current);
+        focusScrollTimerRef.current = null;
+      }
     };
+  }, []);
+
+  const handleTextareaFocus = useCallback((event: FocusEvent<HTMLTextAreaElement>) => {
+    const el = event.currentTarget;
+    if (focusScrollTimerRef.current !== null) {
+      window.clearTimeout(focusScrollTimerRef.current);
+    }
+    focusScrollTimerRef.current = window.setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      focusScrollTimerRef.current = null;
+    }, 220);
   }, []);
 
   const handleSelectCategory = useCallback((nextCategory: TimeCapsuleCategory) => {
@@ -386,7 +402,7 @@ export function TimeCapsuleSection() {
       className="relative z-[2] mx-auto w-full max-w-[var(--card-max)] px-4 py-9 sm:px-6 sm:py-12"
     >
       <div
-        className="relative mx-auto w-full overflow-hidden rounded-[var(--card-radius)] border border-[#EBC6D8] text-left shadow-[0_22px_52px_-26px_rgba(122,42,84,0.28)]"
+        className="card-container relative mx-auto w-full overflow-hidden rounded-[var(--card-radius)] border border-[#EBC6D8] text-left shadow-[0_22px_52px_-26px_rgba(122,42,84,0.28)]"
         style={{
           padding: 'var(--card-pad-y) var(--card-pad-x)',
           background: 'linear-gradient(180deg, #FFFDF9 0%, #FFF4F8 100%)',
@@ -493,6 +509,7 @@ export function TimeCapsuleSection() {
                   rows={4}
                   maxLength={TIME_CAPSULE_MAX_CHARS}
                   value={letter}
+                  onFocus={handleTextareaFocus}
                   onChange={(e) => {
                     setLetter(e.target.value);
                     if (validationMsg) setValidationMsg(null);

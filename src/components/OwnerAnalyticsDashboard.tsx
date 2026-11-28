@@ -1186,7 +1186,10 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+      <div
+        className="flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-6"
+        style={{ paddingBottom: 'calc(24px + var(--safe-bottom))' }}
+      >
         {!pinUnlocked ? (
           /* Step 1: 4-Digit Owner PIN Gate (9876) */
           <div

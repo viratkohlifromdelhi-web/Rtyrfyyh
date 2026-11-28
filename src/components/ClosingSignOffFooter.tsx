@@ -509,7 +509,7 @@ export function ClosingSignOffFooter({ isSiteRevealed = true }: ClosingSignOffFo
               role="img"
               aria-label="Two pastel storybook best friends smiling and waving together"
               style={{
-                width: 'clamp(224px, 38vw, 340px)',
+                width: 'clamp(220px, 36vmin, 350px)',
                 height: 'auto',
                 overflow: 'visible',
               }}

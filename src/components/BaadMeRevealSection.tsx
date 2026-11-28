@@ -298,7 +298,7 @@ export function BaadMeRevealSection({ onLightboxChange }: BaadMeRevealSectionPro
                   type="button"
                   data-testid="baad-me-reveal-btn"
                   onClick={handleRevealAnswer}
-                  className="mt-3.5 inline-flex min-h-[var(--btn-min-h)] w-full max-w-[340px] cursor-pointer items-center justify-center gap-1.5 rounded-full bg-gradient-to-br from-[#E25B8B] to-[#C93B6B] px-6 py-3 text-[clamp(13.5px,1.75vw,16px)] font-bold text-[#FFFDFB] shadow-[0_10px_22px_-10px_rgba(201,59,107,0.58)] transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C93B6B]"
+                  className="mt-3.5 inline-flex min-h-[var(--btn-min-h)] w-full max-w-[340px] sm:max-w-[420px] cursor-pointer items-center justify-center gap-1.5 rounded-full bg-gradient-to-br from-[#E25B8B] to-[#C93B6B] px-6 py-3 text-[clamp(13.5px,1.75vw,16px)] font-bold text-[#FFFDFB] shadow-[0_10px_22px_-10px_rgba(201,59,107,0.58)] transition-transform duration-200 hover:-translate-y-0.5 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C93B6B]"
                 >
                   <span>Tap to Open the &ldquo;Baad Me&rdquo; Answer</span>
                 </button>
@@ -347,7 +347,8 @@ export function BaadMeRevealSection({ onLightboxChange }: BaadMeRevealSectionPro
           >
             <div
               onClick={(event) => event.stopPropagation()}
-              className="relative flex max-h-[94dvh] max-w-[96vw] flex-col items-center rounded-[24px] border border-[rgba(255,235,244,0.48)] bg-[#FFFDF9] p-3 shadow-[0_24px_60px_rgba(32,9,28,0.45)]"
+              className="relative flex max-w-[96vw] flex-col items-center overflow-y-auto overscroll-contain rounded-[24px] border border-[rgba(255,235,244,0.48)] bg-[#FFFDF9] p-3 shadow-[0_24px_60px_rgba(32,9,28,0.45)]"
+              style={{ maxHeight: 'calc(92dvh - var(--safe-top) - var(--safe-bottom))' }}
             >
               <div className="mb-2.5 flex w-full min-w-[240px] items-center justify-between gap-4 px-1">
                 <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#C93B6B]">
@@ -373,7 +374,7 @@ export function BaadMeRevealSection({ onLightboxChange }: BaadMeRevealSectionPro
                   className="block rounded-[16px]"
                   style={{
                     objectFit: 'contain',
-                    maxHeight: '84dvh',
+                    maxHeight: 'calc(80dvh - var(--safe-top) - var(--safe-bottom))',
                     maxWidth: '90vw',
                     width: 'auto',
                     height: 'auto',

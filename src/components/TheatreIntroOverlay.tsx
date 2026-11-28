@@ -1621,12 +1621,16 @@ export const TheatreIntroOverlay = forwardRef<TheatreIntroOverlayHandle, Theatre
             className={
               isAudioOnly
                 ? 'h-[1px] w-[1px] overflow-hidden'
-                : 'relative z-20 mx-auto max-h-[84dvh] will-change-[transform,opacity]'
+                : 'relative z-20 mx-auto will-change-[transform,opacity]'
             }
             style={
               isAudioOnly
                 ? undefined
-                : { width: 'var(--theatre-stage-w)', transformOrigin: 'center center' }
+                : {
+                    width: 'var(--theatre-stage-w)',
+                    maxHeight: 'calc(84dvh - var(--safe-top) - var(--safe-bottom))',
+                    transformOrigin: 'center center',
+                  }
             }
           >
             {/* 12.5s - 13.5s Outer Border Pastel Sparkle Glints (never cover the red mark) */}

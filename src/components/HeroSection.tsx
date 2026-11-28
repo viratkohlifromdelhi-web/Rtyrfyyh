@@ -442,11 +442,11 @@ export function HeroSection({
         </div>
 
         {/* Two-column balanced hero on desktop, clean stacked mobile-first */}
-        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-10">
+        <div className="hero-short-landscape-grid grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-10">
           {/* Left Column: Clean Uncluttered Center Safe-Zone for Headline, Subtitle & Tactile Stationery CTAs */}
           <div
             data-testid="hero-text-safe-zone"
-            className="relative z-[3] px-5 text-center sm:px-8 lg:col-span-7 lg:px-0 lg:text-left"
+            className="hero-short-landscape-text relative z-[3] px-5 text-center sm:px-8 lg:col-span-7 lg:px-0 lg:text-left"
           >
             <p
               data-testid="hero-eyebrow-date"

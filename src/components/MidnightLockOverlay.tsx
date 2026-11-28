@@ -497,7 +497,7 @@ export function MidnightLockOverlay({
 
       {/* Centered All-Device Glass Card */}
       <div
-        className="stage-short-landscape-card relative z-10 w-[min(92vw,400px)] sm:w-[min(88vw,580px)] rounded-[var(--card-radius)] border border-[#ECC0D2] bg-white/78 text-center shadow-[0_24px_60px_-24px_rgba(143,49,95,0.28)] backdrop-blur-md"
+        className="card-container stage-short-landscape-card relative z-10 w-[min(92vw,410px)] sm:w-[min(90vw,620px)] rounded-[var(--card-radius)] border border-[#ECC0D2] bg-white/78 text-center shadow-[0_24px_60px_-24px_rgba(143,49,95,0.28)] backdrop-blur-md"
         style={{
           padding: 'var(--card-pad-y) var(--card-pad-x)',
         }}
@@ -506,8 +506,8 @@ export function MidnightLockOverlay({
         <div
           className="mx-auto mb-3.5 sm:mb-4 flex items-center justify-center rounded-2xl border border-[#F3C4B8] bg-gradient-to-br from-[#FFF1EB] via-[#FFE2EC] to-[#F7C6D5] shadow-[0_10px_24px_-10px_rgba(217,75,125,0.45)]"
           style={{
-            width: 'clamp(56px, 8vw, 84px)',
-            height: 'clamp(56px, 8vw, 84px)',
+            width: 'clamp(60px, 8vmin, 88px)',
+            height: 'clamp(60px, 8vmin, 88px)',
           }}
         >
           <span
@@ -515,7 +515,7 @@ export function MidnightLockOverlay({
             className={`leading-none select-none transition-transform duration-300 ${
               isCelebrating ? 'scale-110' : 'animate-midnight-lock-sway'
             }`}
-            style={{ fontSize: 'clamp(28px, 4.2vw, 42px)' }}
+            style={{ fontSize: 'clamp(28px, 4.4vmin, 44px)' }}
             role="img"
             aria-label={isCelebrating ? 'Birthday cake' : 'Padlock'}
           >
@@ -537,7 +537,7 @@ export function MidnightLockOverlay({
             <div className="rounded-2xl border border-[#F3C58D]/70 bg-gradient-to-b from-[#FFFBF2] to-[#FFF0F6] px-4 py-3.5 shadow-[0_10px_24px_-14px_rgba(217,75,125,0.38)]">
               <h1
                 className="font-display font-bold leading-snug tracking-tight text-[#3A1233]"
-                style={{ fontSize: 'clamp(19px, 2.8vw, 28px)' }}
+                style={{ fontSize: 'clamp(19px, 3vmin, 28px)' }}
               >
                 {MIDNIGHT_AUTO_BANNER_HEADLINE}
               </h1>
@@ -567,7 +567,7 @@ export function MidnightLockOverlay({
           <>
             <h1
               className="font-display font-bold tracking-tight text-[#3A1233]"
-              style={{ fontSize: 'clamp(28px, 4.4vw, 44px)', lineHeight: 1.12 }}
+              style={{ fontSize: 'clamp(26px, 4.4vmin, 44px)', lineHeight: 1.12 }}
             >
               Not yet, Morgan 👀
             </h1>
@@ -583,7 +583,7 @@ export function MidnightLockOverlay({
         {/* Live 4-Unit Countdown Grid (Days, Hours, Mins, Secs) with tabular-nums */}
         <div
           data-testid="midnight-countdown-grid"
-          className="mt-5 sm:mt-6 grid grid-cols-4 gap-2 sm:gap-3.5"
+          className="cq-countdown-grid mt-5 sm:mt-6 grid grid-cols-4 gap-2 sm:gap-3.5"
           aria-live="off"
         >
           {units.map((unit) => {
@@ -603,13 +603,13 @@ export function MidnightLockOverlay({
                   className={`font-display font-bold leading-none tabular-nums ${
                     pulseSeconds ? 'text-[#D94B7D]' : 'text-[#3A1233]'
                   }`}
-                  style={{ fontSize: 'clamp(26px, 4.5vw, 46px)' }}
+                  style={{ fontSize: 'clamp(26px, 4.6vmin, 48px)' }}
                 >
                   {unit.value}
                 </span>
                 <span
                   className="mt-1.5 font-bold uppercase tracking-[0.12em] text-[#8E5673]"
-                  style={{ fontSize: 'clamp(10px, 1.3vw, 13px)' }}
+                  style={{ fontSize: 'clamp(10px, 1.4vmin, 13px)' }}
                 >
                   {unit.label}
                 </span>
@@ -631,11 +631,13 @@ export function MidnightLockOverlay({
           setErrorMsg(null);
           setModalOpen(true);
         }}
-        className="fixed right-4 sm:right-6 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] z-20 flex items-center justify-center rounded-full bg-white/50 opacity-35 transition-opacity duration-200 hover:opacity-80 focus:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D94B7D] cursor-pointer"
+        className="fixed z-20 flex items-center justify-center rounded-full bg-white/50 opacity-35 transition-opacity duration-200 hover:opacity-80 focus:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D94B7D] cursor-pointer"
         style={{
-          width: 'clamp(48px, 6vw, 60px)',
-          height: 'clamp(48px, 6vw, 60px)',
-          fontSize: 'clamp(18px, 2.2vw, 24px)',
+          right: 'calc(clamp(16px, 2.4vmin, 24px) + var(--safe-right))',
+          bottom: 'calc(clamp(16px, 2.4vmin, 24px) + var(--safe-bottom))',
+          width: 'clamp(52px, 6.5vmin, 62px)',
+          height: 'clamp(52px, 6.5vmin, 62px)',
+          fontSize: 'clamp(19px, 2.4vmin, 24px)',
         }}
       >
         <span aria-hidden="true">🔑</span>
@@ -652,7 +654,8 @@ export function MidnightLockOverlay({
           onClick={() => setModalOpen(false)}
         >
           <div
-            className="relative max-h-[88dvh] w-[min(90vw,460px)] overflow-y-auto rounded-[28px] border border-[#ECC0D2] bg-[#FFF8FB] p-5 sm:p-7 text-center text-[#3A1233] shadow-2xl"
+            className="midnight-keypad-modal relative w-[min(90vw,500px)] overflow-y-auto overscroll-contain rounded-[28px] border border-[#ECC0D2] bg-[#FFF8FB] p-5 sm:p-7 text-center text-[#3A1233] shadow-2xl"
+            style={{ maxHeight: 'calc(88dvh - var(--safe-top) - var(--safe-bottom))' }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -665,7 +668,7 @@ export function MidnightLockOverlay({
               <X className="h-4.5 w-4.5" aria-hidden="true" />
             </button>
 
-            <div className="mx-auto mb-2.5 flex h-12 w-12 items-center justify-center rounded-full border border-[#F5C2D7] bg-[#FCE7F0] text-xl">
+            <div className="midnight-keypad-icon mx-auto mb-2.5 flex h-12 w-12 items-center justify-center rounded-full border border-[#F5C2D7] bg-[#FCE7F0] text-xl">
               <span aria-hidden="true">🔑</span>
             </div>
             <h2
@@ -674,7 +677,7 @@ export function MidnightLockOverlay({
             >
               Secret Passcode
             </h2>
-            <p className="mt-1 mb-4 text-[#7A4A63]" style={{ fontSize: 'var(--text-sub)' }}>
+            <p className="midnight-keypad-sub mt-1 mb-4 text-[#7A4A63]" style={{ fontSize: 'var(--text-sub)' }}>
               Enter 4 digit code
             </p>
 
@@ -705,7 +708,7 @@ export function MidnightLockOverlay({
                     <div
                       key={slot}
                       data-testid={`midnight-digit-${slot}`}
-                      className={`flex items-center justify-center rounded-xl border text-xl font-extrabold transition-all duration-150 ${
+                      className={`midnight-keypad-digit flex items-center justify-center rounded-xl border text-xl font-extrabold transition-all duration-150 ${
                         errorMsg
                           ? 'border-[#D94B7D] bg-[#FFE6F0] text-[#D94B7D]'
                           : filled
@@ -745,7 +748,7 @@ export function MidnightLockOverlay({
                   type="button"
                   data-testid={`midnight-key-${key.toLowerCase()}`}
                   onClick={() => handleKeyTap(key)}
-                  className={`flex items-center justify-center rounded-xl border font-bold transition-all active:scale-92 cursor-pointer ${
+                  className={`midnight-keypad-key flex items-center justify-center rounded-xl border font-bold transition-all active:scale-92 cursor-pointer ${
                     key === 'CLEAR' || key === 'BACK'
                       ? 'border-[#F2CADB] bg-[#FCE7F0]/75 font-semibold text-[#7A4A63] hover:bg-[#FAD6E6]'
                       : 'border-[#F0C8D9] bg-white text-[#3A1233] hover:border-[#D94B7D]/60 hover:bg-[#FFF0F6]'

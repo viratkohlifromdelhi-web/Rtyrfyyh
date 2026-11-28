@@ -1047,7 +1047,7 @@ export function TapliArenaSection() {
                   style={{
                     left: '50%',
                     top: '24%',
-                    fontSize: '12px',
+                    fontSize: 'clamp(12px, 1.5vw, 15px)',
                     opacity: 0,
                     textShadow: '0 2px 6px rgba(255, 255, 255, 0.96)',
                     willChange: 'transform, opacity',
@@ -1061,7 +1061,7 @@ export function TapliArenaSection() {
               viewBox="0 0 220 212"
               role="img"
               aria-label={`Anamika looking ${stage.moodLabel.toLowerCase()}`}
-              className="block w-full max-w-[clamp(240px,38vw,324px)] select-none overflow-visible"
+              className="block h-[clamp(260px,42vmin,400px)] w-auto max-w-full select-none overflow-visible"
             >
               <defs>
                 {/* Soft ambient aura behind Anamika */}
