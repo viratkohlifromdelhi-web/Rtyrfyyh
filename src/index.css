@@ -3431,7 +3431,7 @@
 }
 
 .stage-bridge-veil-parting {
-  animation: stage-bridge-veil-parting 740ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: stage-bridge-veil-parting 1440ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .stage-bridge-curtain-gather {
@@ -3439,21 +3439,21 @@
 }
 
 .stage-bridge-curtain-left-open {
-  animation: stage-bridge-curtain-left-open 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: stage-bridge-curtain-left-open 1400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .stage-bridge-curtain-right-open {
-  animation: stage-bridge-curtain-right-open 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: stage-bridge-curtain-right-open 1400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .stage-bridge-particle {
   opacity: 0;
-  animation: stage-bridge-particle-float var(--bp-dur, 920ms) cubic-bezier(0.16, 1, 0.3, 1) var(--bp-delay, 0ms) forwards;
+  animation: stage-bridge-particle-float var(--bp-dur, 1560ms) cubic-bezier(0.16, 1, 0.3, 1) var(--bp-delay, 0ms) forwards;
 }
 
 .stage-bridge-hero-settle {
   transform-origin: 50% 18%;
-  animation: stage-bridge-hero-settle 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: stage-bridge-hero-settle 1200ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .stage-bridge-crossfade-in {

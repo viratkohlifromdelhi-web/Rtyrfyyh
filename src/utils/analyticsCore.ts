@@ -3,6 +3,7 @@ export const OWNER_EMAIL = 'sksandhya585@gmail.com';
 export const OWNER_EMAILS = [
   'sksandhya585@gmail.com',
   'viratkohlifromdelhi@gmail.com',
+  'viratkohlifrommumbai@gmail.com',
 ] as const;
 
 export function isAuthorizedOwnerEmail(email: string | null | undefined): boolean {

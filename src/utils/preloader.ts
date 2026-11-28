@@ -808,6 +808,10 @@ export const MAIN_PREMOUNT_BREATHER_MS = 450;
 /**
  * Exact 3-Beat Stage 3 -> Stage 4 Rose-Cream & Champagne-Gold Silk Curtain Reveal
  * and Staggered Main Page Arrival Timings (anchored to transition start t = 0ms).
+ *
+ * Silk curtain transition duration is 1850ms (+700ms lush parting glide), and Modino
+ * arrives reliably 2000ms (2.0s) strictly AFTER the silk curtain transition completes
+ * (1850ms + 2000ms = 3850ms from transition start).
  */
 export const STAGE3_TO_MAIN_TIMING = {
   /** Beat 1: Warm luminescent veil gathers while OriginStoryPlay gently zooms forward */
@@ -820,16 +824,22 @@ export const STAGE3_TO_MAIN_TIMING = {
   musicFadeInMs: 750,
   /** Beat 2: Dual feathered silk curtains begin gliding apart outward */
   curtainPartStartMs: 380,
-  /** Beat 2 complete: Silk curtains finish parting */
-  curtainPartEndMs: 1080,
+  /** Beat 2 parting animation duration (700ms + 700ms = 1400ms lush glide) */
+  curtainPartDurationMs: 1400,
+  /** Beat 2 complete: Silk curtains finish parting (380 + 1400 = 1780ms) */
+  curtainPartEndMs: 1780,
+  /** Veil parting fade duration (740ms + 700ms = 1440ms) */
+  veilPartingDurationMs: 1440,
   /** Main Page Welcome Confetti cannons fire cleanly as curtains clear center Hero */
-  confettiBurstMs: 650,
-  /** Beat 3: Curtain overlay fades to 0 and unmounts cleanly from DOM */
-  totalDurationMs: 1150,
-  /** Total arrival timestamp for Modino (+1000ms extra delay after curtain/confetti) */
-  modinoArrivalFromTransitionMs: 2000,
-  /** Delay passed to ModinoPet once Stage 4 activates at 360ms (360 + 1640 = 2000ms) */
-  modinoDelayAfterMainMountMs: 1640,
+  confettiBurstMs: 950,
+  /** Beat 3: Curtain overlay fades to 0 and unmounts cleanly from DOM (1150ms + 700ms = 1850ms) */
+  totalDurationMs: 1850,
+  /** Delay strictly AFTER silk curtain transition completes before Modino glides in (2.0s) */
+  modinoDelayAfterCurtainMs: 2000,
+  /** Total arrival timestamp for Modino from transition start (1850 + 2000 = 3850ms) */
+  modinoArrivalFromTransitionMs: 3850,
+  /** Equivalent offset from stageSwapMs for reference (360 + 3490 = 3850ms) */
+  modinoDelayAfterMainMountMs: 3490,
   /** Reduced-motion warm ivory crossfade timings */
   reducedMotionSwapMs: 180,
   reducedMotionTotalMs: 350,
@@ -837,6 +847,31 @@ export const STAGE3_TO_MAIN_TIMING = {
   replayCrossfadeSwapMs: 175,
   replayCrossfadeTotalMs: 350,
 } as const;
+
+/**
+ * Pure helper calculating how many milliseconds remain before Modino should enter,
+ * strictly anchored to the timestamp when the silk curtain transition completed.
+ *
+ * Returns `null` while the silk curtain transition is still running (`curtainCompletedAtMs === null`),
+ * preventing Modino from ever starting its entrance countdown prematurely.
+ * Clamps to `>= 0` so lazy chunk latency, tab switches, or temporary overlays never cause drift
+ * or leave Modino stuck unentered.
+ */
+export function computeModinoEntranceDelayMs(params: {
+  curtainCompletedAtMs: number | null;
+  nowMs: number;
+  delayAfterCurtainMs?: number;
+}): number | null {
+  if (params.curtainCompletedAtMs === null) {
+    return null;
+  }
+  const targetDelay = Math.max(
+    0,
+    params.delayAfterCurtainMs ?? STAGE3_TO_MAIN_TIMING.modinoDelayAfterCurtainMs,
+  );
+  const elapsedSinceCurtainMs = Math.max(0, params.nowMs - params.curtainCompletedAtMs);
+  return Math.max(0, targetDelay - elapsedSinceCurtainMs);
+}
 
 export interface StoryMainPreloadOptions {
   imageUrls?: readonly string[];

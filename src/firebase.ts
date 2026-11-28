@@ -6,7 +6,26 @@ import {
   getFirestore,
   type Firestore,
 } from 'firebase/firestore';
-import firebaseConfig from '../firebase-applet-config.json';
+import {
+  parseFirestoreErrorSummary,
+  type FirestoreDiagnosticStatus,
+} from './utils/firestoreDiagnostics';
+
+/**
+ * Bundled production Firebase config (intentionally zero reliance on `.env` or
+ * gitignored files so GitHub/Vercel deployments always connect cleanly).
+ */
+export const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyDwScfpdKJcP5YQOhatdRiqntUMqrlx31k',
+  authDomain: 'gen-lang-client-0754090753.firebaseapp.com',
+  projectId: 'gen-lang-client-0754090753',
+  storageBucket: 'gen-lang-client-0754090753.firebasestorage.app',
+  messagingSenderId: '92833088079',
+  appId: '1:92833088079:web:f3aeb721437a6384aea03a',
+} as const;
+
+export const FIRESTORE_DATABASE_ID =
+  'ai-studio-sparklebirth-a0b84cb4-d4cc-4884-8dcf-d62c60302c42';
 
 export const OperationType = {
   CREATE: 'create',
@@ -39,12 +58,17 @@ export interface FirestoreErrorInfo {
 let appInstance: FirebaseApp | null = null;
 let dbInstance: Firestore | null = null;
 let authInstance: Auth | null = null;
+let initError: unknown = null;
 
 try {
-  appInstance = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-  dbInstance = getFirestore(appInstance, firebaseConfig.firestoreDatabaseId);
+  appInstance = getApps().length > 0 ? getApp() : initializeApp(FIREBASE_CONFIG);
+  dbInstance = getFirestore(
+    appInstance,
+    'ai-studio-sparklebirth-a0b84cb4-d4cc-4884-8dcf-d62c60302c42',
+  );
   authInstance = getAuth(appInstance);
-} catch {
+} catch (error) {
+  initError = error;
   appInstance = null;
   dbInstance = null;
   authInstance = null;
@@ -53,7 +77,8 @@ try {
 export const app = appInstance;
 export const db = dbInstance;
 export const auth = authInstance;
-export const firebaseProjectId = firebaseConfig.projectId;
+export const firebaseProjectId = FIREBASE_CONFIG.projectId;
+export const firebaseDatabaseId = FIRESTORE_DATABASE_ID;
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
@@ -96,13 +121,58 @@ export function handleFirestoreError(
   throw new Error(JSON.stringify(errInfo));
 }
 
+/**
+ * Live server-roundtrip diagnostic check used exclusively inside `?insights=9876`.
+ * Probes publicly readable `site_config/gift_vault` on the named database to confirm
+ * live Firestore reachability and rules access, or returns the exact Firestore error code.
+ */
+export async function checkFirestoreConnection(): Promise<FirestoreDiagnosticStatus> {
+  const checkedAtMs = Date.now();
+  if (!db) {
+    const parsed = parseFirestoreErrorSummary(initError ?? 'Firestore SDK failed to initialize');
+    return {
+      status: 'error',
+      code: parsed.code ?? 'init-failed',
+      label: parsed.label,
+      detail: parsed.detail,
+      projectId: firebaseProjectId,
+      databaseId: firebaseDatabaseId,
+      checkedAtMs,
+    };
+  }
+
+  try {
+    await getDocFromServer(doc(db, 'site_config', 'gift_vault'));
+    return {
+      status: 'connected',
+      code: null,
+      label: 'Connected',
+      detail: `Connected to ${firebaseProjectId} (${firebaseDatabaseId})`,
+      projectId: firebaseProjectId,
+      databaseId: firebaseDatabaseId,
+      checkedAtMs: Date.now(),
+    };
+  } catch (error) {
+    const parsed = parseFirestoreErrorSummary(error);
+    return {
+      status: 'error',
+      code: parsed.code,
+      label: parsed.label,
+      detail: parsed.detail,
+      projectId: firebaseProjectId,
+      databaseId: firebaseDatabaseId,
+      checkedAtMs: Date.now(),
+    };
+  }
+}
+
 let connectionTested = false;
 
 export async function testFirestoreConnection(): Promise<void> {
   if (connectionTested || !db || typeof window === 'undefined') return;
   connectionTested = true;
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    await getDocFromServer(doc(db, 'site_config', 'gift_vault'));
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
       console.error('Please check your Firebase configuration.');

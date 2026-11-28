@@ -17,6 +17,10 @@ import {
   type ModinoReaction,
 } from '../utils/modinoReactions';
 import { playUiSfx } from '../utils/uiSoundEngine';
+import {
+  STAGE3_TO_MAIN_TIMING,
+  computeModinoEntranceDelayMs,
+} from '../utils/preloader';
 import { ModinoAvatarSvg } from './ModinoAvatarSvg';
 
 function prefersReducedMotion(): boolean {
@@ -30,11 +34,10 @@ function prefersReducedMotion(): boolean {
 
 export const MODINO_INACTIVITY_SLEEP_MS = 3500;
 /**
- * Default entrance delay after Stage 4 mounts (360ms veil swap + 1640ms = 2000ms total
- * from Stage 3 -> Stage 4 transition start, giving Milky audio & confetti a full +1000ms
- * extra breathing moment before Modino glides in and greets).
+ * Default entrance delay strictly AFTER the Stage 3 -> Stage 4 silk curtain transition completes
+ * (1850ms silk curtain reveal + 2000ms post-curtain breathing window = 3850ms from transition start).
  */
-export const MODINO_DEFAULT_ENTRANCE_DELAY_MS = 1640;
+export const MODINO_DEFAULT_ENTRANCE_DELAY_MS = STAGE3_TO_MAIN_TIMING.modinoDelayAfterCurtainMs;
 const BUBBLE_DURATION_MS = 3400;
 const SLEEP_BUBBLE_DURATION_MS = 1800;
 const SLEEP_MUTTER_CYCLE_MS = 4600;
@@ -44,8 +47,12 @@ const ANALYTICS_THROTTLE_MS = 4000;
 
 interface ModinoPetProps {
   isSiteRevealed: boolean;
+  /** True strictly once the Stage 3 -> Stage 4 silk curtain / crossfade transition has finished */
+  isCurtainComplete?: boolean;
+  /** Epoch ms timestamp recorded when the silk curtain transition completed (`null` while still running) */
+  curtainCompletedAtMs?: number | null;
   isBlockedByOverlay: boolean;
-  /** Delay before Modino glides into view and delivers its welcome greeting */
+  /** Delay after silk curtain completion before Modino glides into view and delivers its welcome greeting */
   entranceDelayMs?: number;
 }
 
@@ -64,6 +71,8 @@ const SECTION_OBSERVER_MAP: ReadonlyArray<{
 
 export function ModinoPet({
   isSiteRevealed,
+  isCurtainComplete = true,
+  curtainCompletedAtMs,
   isBlockedByOverlay,
   entranceDelayMs = MODINO_DEFAULT_ENTRANCE_DELAY_MS,
 }: ModinoPetProps) {
@@ -87,7 +96,8 @@ export function ModinoPet({
     setMood(nextMood);
   }, []);
 
-  const isActive = isSiteRevealed && !isBlockedByOverlay && !isTabHidden;
+  const isReadyAfterCurtain = isCurtainComplete && curtainCompletedAtMs !== null;
+  const isActive = isSiteRevealed && isReadyAfterCurtain && !isBlockedByOverlay && !isTabHidden;
   const isActiveRef = useRef(isActive);
   isActiveRef.current = isActive;
 
@@ -422,8 +432,19 @@ export function ModinoPet({
     };
   }, []);
 
-  // Staggered entrance + signature welcome greeting after the +1000ms post-curtain grace delay.
-  // Keeps Modino strictly invisible with zero sleep countdown during the grace window.
+  // Reset entrance state cleanly whenever a full Replay Intro clears `curtainCompletedAtMs` back to `null`
+  useEffect(() => {
+    if (curtainCompletedAtMs === null) {
+      clearTimer(greetingTimerRef);
+      hasGreetedRef.current = false;
+      hasEnteredRef.current = false;
+      setHasEntered(false);
+    }
+  }, [curtainCompletedAtMs]);
+
+  // Staggered entrance + signature welcome greeting strictly 2.0s AFTER silk curtain completion.
+  // Anchored to `curtainCompletedAtMs` so lazy-chunk mount timing, brief lightboxes, or tab switches
+  // never cause timing drift or leave Modino stuck invisible.
   useEffect(() => {
     if (!isActive) {
       clearAllTimers();
@@ -434,7 +455,19 @@ export function ModinoPet({
     }
 
     if (!hasGreetedRef.current && !isTucked) {
-      const safeDelay = Math.max(0, entranceDelayMs);
+      const remainingDelayMs =
+        typeof curtainCompletedAtMs === 'number'
+          ? computeModinoEntranceDelayMs({
+              curtainCompletedAtMs,
+              nowMs: Date.now(),
+              delayAfterCurtainMs: entranceDelayMs,
+            })
+          : Math.max(0, entranceDelayMs);
+
+      if (remainingDelayMs === null) {
+        return;
+      }
+
       greetingTimerRef.current = window.setTimeout(() => {
         greetingTimerRef.current = null;
         if (!isActiveRef.current || isTuckedRef.current) return;
@@ -448,7 +481,7 @@ export function ModinoPet({
           heartMood: greeting.mood,
           category: 'greeting',
         });
-      }, safeDelay);
+      }, remainingDelayMs);
     } else if (hasEnteredRef.current) {
       scheduleSleepCountdown();
     }
@@ -460,6 +493,7 @@ export function ModinoPet({
     isActive,
     isTucked,
     entranceDelayMs,
+    curtainCompletedAtMs,
     applyMood,
     clearAllTimers,
     scheduleSleepCountdown,
@@ -683,7 +717,7 @@ export function ModinoPet({
     scheduleSleepCountdown();
   }, [scheduleSleepCountdown, wakeUpStartled]);
 
-  if (!isSiteRevealed || isBlockedByOverlay) {
+  if (!isSiteRevealed || !isReadyAfterCurtain || isBlockedByOverlay) {
     return null;
   }
 

@@ -41,11 +41,17 @@ import {
 import {
   auth,
   buildFirestoreErrorInfo,
+  checkFirestoreConnection,
   db,
+  firebaseDatabaseId,
   firebaseProjectId,
   googleProvider,
   OperationType,
 } from '../firebase';
+import {
+  parseFirestoreErrorSummary,
+  type FirestoreDiagnosticStatus,
+} from '../utils/firestoreDiagnostics';
 import {
   isOwnerDeviceIgnoredFlag,
   setOwnerAnalyticsIgnored,
@@ -430,9 +436,32 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
   const [feedError, setFeedError] = useState<string | null>(null);
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [dbDiagnostic, setDbDiagnostic] = useState<FirestoreDiagnosticStatus>(() => ({
+    status: 'checking',
+    code: null,
+    label: 'Checking...',
+    detail: `Probing ${firebaseProjectId} (${firebaseDatabaseId})`,
+    projectId: firebaseProjectId,
+    databaseId: firebaseDatabaseId,
+    checkedAtMs: Date.now(),
+  }));
 
   const resetPinTimerRef = useRef<number | null>(null);
   const copiedDomainTimerRef = useRef<number | null>(null);
+
+  const runDbDiagnostic = useCallback(async () => {
+    setDbDiagnostic((prev) => ({
+      ...prev,
+      status: 'checking',
+      label: 'Checking...',
+    }));
+    const result = await checkFirestoreConnection();
+    setDbDiagnostic(result);
+  }, []);
+
+  useEffect(() => {
+    void runDbDiagnostic();
+  }, [runDbDiagnostic]);
 
   // Lock background scroll & bind Escape key while dashboard overlay is open
   useEffect(() => {
@@ -712,6 +741,22 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
 
   const summary = useMemo(() => computeDashboardSummary(visits), [visits]);
 
+  const diagnosticBadge = useMemo(() => {
+    if (feedError) {
+      const parsed = parseFirestoreErrorSummary(feedError);
+      return {
+        status: 'error' as const,
+        label: parsed.label,
+        detail: `${parsed.detail} · Project: ${firebaseProjectId} · DB: ${firebaseDatabaseId}`,
+      };
+    }
+    return {
+      status: dbDiagnostic.status,
+      label: dbDiagnostic.label,
+      detail: `${dbDiagnostic.detail} · Project: ${dbDiagnostic.projectId} · DB: ${dbDiagnostic.databaseId}`,
+    };
+  }, [dbDiagnostic, feedError]);
+
   return (
     <div
       role="dialog"
@@ -722,12 +767,12 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
     >
       {/* Top Bar */}
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#E6C690]/20 bg-[#150F1A] px-4 py-3.5 sm:px-6">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#E6C690]/30 bg-[#E6C690]/10 text-[#E6C690]">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#E6C690]/30 bg-[#E6C690]/10 text-[#E6C690]">
             <Activity className="h-4 w-4" aria-hidden="true" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-base font-semibold tracking-tight text-[#FAF3EA] sm:text-lg">
                 Owner Live Insights
               </h1>
@@ -740,6 +785,35 @@ export function OwnerAnalyticsDashboard({ onClose }: OwnerAnalyticsDashboardProp
                   LIVE
                 </span>
               )}
+              <button
+                type="button"
+                data-testid="firestore-diagnostic-badge"
+                data-status={diagnosticBadge.status}
+                onClick={() => void runDbDiagnostic()}
+                title={`${diagnosticBadge.detail} (click to re-test)`}
+                className={`inline-flex max-w-[230px] cursor-pointer items-center gap-1.5 truncate rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide transition-colors ${
+                  diagnosticBadge.status === 'connected'
+                    ? 'border-emerald-400/35 bg-emerald-500/12 text-emerald-300 hover:bg-emerald-500/20'
+                    : diagnosticBadge.status === 'checking'
+                      ? 'border-[#E6C690]/30 bg-[#E6C690]/10 text-[#E6C690] hover:bg-[#E6C690]/18'
+                      : 'border-rose-400/45 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25'
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                    diagnosticBadge.status === 'connected'
+                      ? 'bg-emerald-400'
+                      : diagnosticBadge.status === 'checking'
+                        ? 'bg-[#E6C690] animate-pulse'
+                        : 'bg-rose-400'
+                  }`}
+                />
+                <span className="truncate">
+                  {diagnosticBadge.status === 'connected'
+                    ? 'Connected'
+                    : diagnosticBadge.label}
+                </span>
+              </button>
             </div>
             <p className="text-[11px] text-[#A998B0]">
               Live Firestore visitor telemetry &amp; interaction stream

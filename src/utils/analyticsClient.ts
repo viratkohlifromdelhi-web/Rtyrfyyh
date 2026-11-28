@@ -270,6 +270,28 @@ async function readBatteryDetails(): Promise<{
   }
 }
 
+async function withTimeoutFallback<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  fallback: T,
+): Promise<T> {
+  let timer: number | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timer = window.setTimeout(() => resolve(fallback), timeoutMs);
+      }),
+    ]);
+  } catch {
+    return fallback;
+  } finally {
+    if (timer !== null) {
+      window.clearTimeout(timer);
+    }
+  }
+}
+
 async function readHighEntropyUA(): Promise<HighEntropyUAValues | null> {
   try {
     const nav = navigator as NavigatorExtended;
@@ -413,8 +435,8 @@ async function writeSingleEvent(ev: QueuedEvent): Promise<void> {
   try {
     await addDoc(collection(db, 'site_visits', sessionId, 'events'), {
       eventTime: serverTimestamp(),
-      eventTimeMs: ev.eventTimeMs,
-      eventTimeIST: formatISTTime(ev.eventTimeMs),
+      eventTimeMs: Math.floor(ev.eventTimeMs),
+      eventTimeIST: sanitizeString(formatISTTime(ev.eventTimeMs), 40, '00:00:00'),
       elapsedSeconds: sanitizeInt(ev.elapsedSeconds, 0, 604800, 0),
       eventType: ev.eventType,
       elementName: ev.elementName,
@@ -558,8 +580,13 @@ export function initAnalyticsClient(
     try {
       const { visitorId, visitNumber } = getOrCreateVisitorIdentity();
       const [highEntropy, battery] = await Promise.all([
-        readHighEntropyUA(),
-        readBatteryDetails(),
+        withTimeoutFallback(readHighEntropyUA(), 1500, null),
+        withTimeoutFallback(readBatteryDetails(), 1500, {
+          batteryLevel: null,
+          batteryCharging: null,
+          batteryChargingTime: null,
+          batteryDischargingTime: null,
+        }),
       ]);
 
       const ua = navigator.userAgent || '';
@@ -614,9 +641,9 @@ export function initAnalyticsClient(
         visitorId,
         visitNumber,
         openedAt: serverTimestamp(),
-        openedAtMs: sessionStartMs,
-        openedAtIST: formatISTDateTime(sessionStartMs),
-        lastActiveAtMs: sessionStartMs,
+        openedAtMs: Math.floor(sessionStartMs),
+        openedAtIST: sanitizeString(formatISTDateTime(sessionStartMs), 80, 'Unknown'),
+        lastActiveAtMs: Math.floor(sessionStartMs),
         durationSeconds: 0,
         maxScrollPct: 0,
         totalInteractions: 0,

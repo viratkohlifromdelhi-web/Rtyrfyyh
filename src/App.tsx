@@ -168,6 +168,9 @@ function BirthdayWebsiteShell() {
   const [originStoryRunId, setOriginStoryRunId] = useState(0);
   const [siteRevealed, setSiteRevealed] = useState<boolean>(() => initialBypassIntro);
   const [visualExitDone, setVisualExitDone] = useState<boolean>(() => initialBypassIntro);
+  const [curtainCompletedAtMs, setCurtainCompletedAtMs] = useState<number | null>(() =>
+    initialBypassIntro ? Date.now() : null,
+  );
   const [hasReachedMainStage, setHasReachedMainStage] = useState<boolean>(
     () => initialBypassIntro,
   );
@@ -515,11 +518,12 @@ function BirthdayWebsiteShell() {
 
         scheduleBridgeTimer(() => {
           setBridgeTransition(null);
+          setCurtainCompletedAtMs((prev) => prev ?? Date.now());
         }, STAGE3_TO_MAIN_TIMING.replayCrossfadeTotalMs);
         return;
       }
 
-      // Pipeline Mode (Initial Watch): 1150ms 3-Beat Rose-Cream & Champagne-Gold Silk Curtain Reveal
+      // Pipeline Mode (Initial Watch): 1850ms 3-Beat Rose-Cream & Champagne-Gold Silk Curtain Reveal
       try {
         haptics.celebrate();
       } catch {
@@ -568,6 +572,7 @@ function BirthdayWebsiteShell() {
         scheduleBridgeTimer(() => {
           setVisualExitDone(true);
           setBridgeTransition(null);
+          setCurtainCompletedAtMs(Date.now());
         }, STAGE3_TO_MAIN_TIMING.reducedMotionTotalMs);
         return;
       }
@@ -609,20 +614,21 @@ function BirthdayWebsiteShell() {
         }
       }, STAGE3_TO_MAIN_TIMING.stageSwapMs);
 
-      // Beat 2 (+380ms -> +1080ms): Dual feathered Rose-Cream & Champagne-Gold Silk Curtains glide apart
+      // Beat 2 (+380ms -> +1780ms): Dual feathered Rose-Cream & Champagne-Gold Silk Curtains glide apart
       scheduleBridgeTimer(() => {
         setBridgeTransition({ mode: 'curtain', phase: 'parting' });
       }, STAGE3_TO_MAIN_TIMING.curtainPartStartMs);
 
-      // +650ms: Main Page Welcome Confetti cannons fire cleanly as curtains finish clearing center Hero
+      // +950ms: Main Page Welcome Confetti cannons fire cleanly as curtains clear center Hero
       scheduleBridgeTimer(() => {
         confettiRef.current?.fireCannons();
       }, STAGE3_TO_MAIN_TIMING.confettiBurstMs);
 
-      // Beat 3 (+1150ms): Curtain overlay unmounts cleanly from DOM; Hero settle transform clears so sticky stays unbroken
+      // Beat 3 (+1850ms): Curtain overlay unmounts cleanly from DOM; Hero settle transform clears & Modino 2.0s post-curtain countdown starts
       scheduleBridgeTimer(() => {
         setVisualExitDone(true);
         setBridgeTransition(null);
+        setCurtainCompletedAtMs(Date.now());
       }, STAGE3_TO_MAIN_TIMING.totalDurationMs);
     },
     [clearBridgeTimers, scheduleBridgeTimer],
@@ -691,6 +697,7 @@ function BirthdayWebsiteShell() {
     setShowOriginStory(false);
     setSiteRevealed(false);
     setVisualExitDone(false);
+    setCurtainCompletedAtMs(null);
     setIntroRunId((n) => n + 1);
     setShowIntro(true);
   }, [clearBridgeTimers]);
@@ -1017,10 +1024,13 @@ function BirthdayWebsiteShell() {
         <Suspense fallback={null}>
           <ModinoPet
             isSiteRevealed={isMainStageActive}
-            entranceDelayMs={STAGE3_TO_MAIN_TIMING.modinoDelayAfterMainMountMs}
+            isCurtainComplete={visualExitDone && bridgeTransition === null}
+            curtainCompletedAtMs={curtainCompletedAtMs}
+            entranceDelayMs={STAGE3_TO_MAIN_TIMING.modinoDelayAfterCurtainMs}
             isBlockedByOverlay={
               isIntroVisualActive ||
               showOriginStory ||
+              bridgeTransition !== null ||
               isPhotoLightboxOpen ||
               isCaseFileLightboxOpen ||
               isBaadMeLightboxOpen ||

@@ -291,23 +291,84 @@ test('preloadMainPageDuringStory runs Tier 1 after 350ms, then Tier 2 in 180ms i
   ]);
   assert.equal(executed.includes('duplicate'), false);
 
-  // Verify exact Stage 3 -> Stage 4 staggered arrival timing contract
+  // Verify exact Stage 3 -> Stage 4 staggered arrival timing contract (+700ms curtain = 1850ms, +2000ms post-curtain Modino = 3850ms)
   assert.equal(STAGE3_TO_MAIN_TIMING.musicStartMs, 280);
   assert.equal(STAGE3_TO_MAIN_TIMING.musicFadeInMs, 750);
   assert.equal(STAGE3_TO_MAIN_TIMING.stageSwapMs, 360);
   assert.equal(STAGE3_TO_MAIN_TIMING.curtainPartStartMs, 380);
-  assert.equal(STAGE3_TO_MAIN_TIMING.confettiBurstMs, 650);
-  assert.equal(STAGE3_TO_MAIN_TIMING.totalDurationMs, 1150);
+  assert.equal(STAGE3_TO_MAIN_TIMING.curtainPartDurationMs, 1400);
+  assert.equal(STAGE3_TO_MAIN_TIMING.curtainPartEndMs, 1780);
+  assert.equal(STAGE3_TO_MAIN_TIMING.veilPartingDurationMs, 1440);
+  assert.equal(STAGE3_TO_MAIN_TIMING.confettiBurstMs, 950);
+  assert.equal(STAGE3_TO_MAIN_TIMING.totalDurationMs, 1850);
+  assert.equal(STAGE3_TO_MAIN_TIMING.modinoDelayAfterCurtainMs, 2000);
+  assert.equal(
+    STAGE3_TO_MAIN_TIMING.totalDurationMs + STAGE3_TO_MAIN_TIMING.modinoDelayAfterCurtainMs,
+    STAGE3_TO_MAIN_TIMING.modinoArrivalFromTransitionMs,
+  );
+  assert.equal(STAGE3_TO_MAIN_TIMING.modinoArrivalFromTransitionMs, 3850);
   assert.equal(
     STAGE3_TO_MAIN_TIMING.stageSwapMs + STAGE3_TO_MAIN_TIMING.modinoDelayAfterMainMountMs,
     STAGE3_TO_MAIN_TIMING.modinoArrivalFromTransitionMs,
   );
-  assert.ok(
-    STAGE3_TO_MAIN_TIMING.modinoArrivalFromTransitionMs >= 1950 &&
-      STAGE3_TO_MAIN_TIMING.modinoArrivalFromTransitionMs <= 2100,
-  );
 
   resetStoryMainPreloadForTesting();
+});
+
+test('computeModinoEntranceDelayMs anchors strictly to silk curtain completion and prevents drift or stuck states', async () => {
+  const { STAGE3_TO_MAIN_TIMING, computeModinoEntranceDelayMs } = await import('./preloader');
+
+  // While silk curtain is still running (curtainCompletedAtMs === null), never start countdown
+  assert.equal(
+    computeModinoEntranceDelayMs({
+      curtainCompletedAtMs: null,
+      nowMs: 10_000,
+    }),
+    null,
+  );
+
+  // Immediately on curtain completion: exact 2000ms delay
+  assert.equal(
+    computeModinoEntranceDelayMs({
+      curtainCompletedAtMs: 50_000,
+      nowMs: 50_000,
+    }),
+    STAGE3_TO_MAIN_TIMING.modinoDelayAfterCurtainMs,
+  );
+  assert.equal(
+    computeModinoEntranceDelayMs({
+      curtainCompletedAtMs: 50_000,
+      nowMs: 50_000,
+    }),
+    2000,
+  );
+
+  // Lazy mount or overlay dismissal 650ms after curtain completion: remaining 1350ms (zero drift)
+  assert.equal(
+    computeModinoEntranceDelayMs({
+      curtainCompletedAtMs: 50_000,
+      nowMs: 50_650,
+    }),
+    1350,
+  );
+
+  // Overlay dismissed past the 2000ms mark: clamps cleanly to 0ms so Modino arrives immediately
+  assert.equal(
+    computeModinoEntranceDelayMs({
+      curtainCompletedAtMs: 50_000,
+      nowMs: 53_500,
+    }),
+    0,
+  );
+
+  // Negative clock skew stays safely bounded to full target delay
+  assert.equal(
+    computeModinoEntranceDelayMs({
+      curtainCompletedAtMs: 50_000,
+      nowMs: 49_900,
+    }),
+    2000,
+  );
 });
 
 test('Stage 3 preload decodes all 5 friend PFPs in staggered idle slices and retains bitmaps in module cache', async () => {
