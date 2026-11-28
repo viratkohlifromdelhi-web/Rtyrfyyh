@@ -37,20 +37,21 @@ service cloud.firestore {
         ];
     }
 
-    function isOptString(data, key, maxLen) {
-      return !(key in data) || data[key] == null || (data[key] is string && data[key].size() <= maxLen);
+    // Single-lookup optional primitives (keeps CEL expression count well below 1,000 limit)
+    function optStr(v, maxLen) {
+      return v == null || (v is string && v.size() <= maxLen);
     }
 
-    function isOptInt(data, key, minVal, maxVal) {
-      return !(key in data) || data[key] == null || (data[key] is int && data[key] >= minVal && data[key] <= maxVal);
+    function optInt(v, minVal, maxVal) {
+      return v == null || (v is int && v >= minVal && v <= maxVal);
     }
 
-    function isOptNumber(data, key, minVal, maxVal) {
-      return !(key in data) || data[key] == null || ((data[key] is int || data[key] is float) && data[key] >= minVal && data[key] <= maxVal);
+    function optNum(v, minVal, maxVal) {
+      return v == null || ((v is int || v is float) && v >= minVal && v <= maxVal);
     }
 
-    function isOptBool(data, key) {
-      return !(key in data) || data[key] == null || data[key] is bool;
+    function optBool(v) {
+      return v == null || v is bool;
     }
 
     // =========================================================================
@@ -72,21 +73,9 @@ service cloud.firestore {
       ];
     }
 
-    function siteVisitRequiredKeys() {
-      return [
-        'sessionId', 'visitorId', 'visitNumber',
-        'openedAt', 'openedAtMs', 'openedAtIST',
-        'lastActiveAtMs', 'durationSeconds', 'maxScrollPct', 'totalInteractions',
-        'deviceName', 'deviceType', 'osName', 'osVersion', 'browserName', 'inAppBrowser',
-        'screenResolution', 'viewportSize', 'pixelRatio', 'colorDepth',
-        'touchPoints', 'orientation', 'colorScheme', 'reducedMotion',
-        'language', 'timezone', 'referrer', 'entryUrl', 'userAgent'
-      ];
-    }
-
-    function isValidSiteVisitFields(data) {
-      return data.keys().hasAll(siteVisitRequiredKeys())
-        && data.keys().hasOnly(siteVisitAllowedKeys())
+    // Split into compact sub-validators to stay comfortably under Firestore's 1,000-expression cap
+    function isValidSiteVisitCore(data) {
+      return data.keys().hasOnly(siteVisitAllowedKeys())
         && isValidId(data.sessionId)
         && isValidId(data.visitorId)
         && data.visitNumber is int && data.visitNumber >= 1 && data.visitNumber <= 100000
@@ -96,8 +85,11 @@ service cloud.firestore {
         && data.lastActiveAtMs is int && data.lastActiveAtMs >= data.openedAtMs && data.lastActiveAtMs < 4102444800000
         && data.durationSeconds is int && data.durationSeconds >= 0 && data.durationSeconds <= 604800
         && data.maxScrollPct is int && data.maxScrollPct >= 0 && data.maxScrollPct <= 100
-        && data.totalInteractions is int && data.totalInteractions >= 0 && data.totalInteractions <= 50000
-        && data.deviceName is string && data.deviceName.size() <= 160
+        && data.totalInteractions is int && data.totalInteractions >= 0 && data.totalInteractions <= 50000;
+    }
+
+    function isValidSiteVisitDevice(data) {
+      return data.deviceName is string && data.deviceName.size() <= 160
         && data.deviceType in ['Mobile', 'Tablet', 'Desktop']
         && data.osName is string && data.osName.size() <= 80
         && data.osVersion is string && data.osVersion.size() <= 80
@@ -107,9 +99,6 @@ service cloud.firestore {
         && data.viewportSize is string && data.viewportSize.size() <= 40
         && (data.pixelRatio is int || data.pixelRatio is float) && data.pixelRatio > 0 && data.pixelRatio <= 16
         && data.colorDepth is int && data.colorDepth >= 0 && data.colorDepth <= 64
-        && isOptInt(data, 'cpuCores', 0, 256)
-        && isOptNumber(data, 'ramGb', 0, 1024)
-        && isOptString(data, 'gpuRenderer', 240)
         && data.touchPoints is int && data.touchPoints >= 0 && data.touchPoints <= 64
         && data.orientation in ['portrait', 'landscape']
         && data.colorScheme in ['dark', 'light']
@@ -118,35 +107,39 @@ service cloud.firestore {
         && data.timezone is string && data.timezone.size() <= 80
         && data.referrer is string && data.referrer.size() <= 512
         && data.entryUrl is string && data.entryUrl.size() <= 512
-        && data.userAgent is string && data.userAgent.size() <= 600
-        && isOptInt(data, 'batteryLevel', 0, 100)
-        && isOptBool(data, 'batteryCharging')
-        && isOptNumber(data, 'batteryChargingTime', 0, 10000000)
-        && isOptNumber(data, 'batteryDischargingTime', 0, 10000000)
-        && isOptString(data, 'connectionType', 60)
-        && isOptString(data, 'effectiveType', 40)
-        && isOptNumber(data, 'downlinkMbps', 0, 100000)
-        && isOptNumber(data, 'rttMs', 0, 100000)
-        && isOptBool(data, 'saveData')
-        && isOptString(data, 'ipAddress', 80)
-        && isOptString(data, 'city', 120)
-        && isOptString(data, 'region', 120)
-        && isOptString(data, 'postal', 40)
-        && isOptString(data, 'country', 120)
-        && isOptString(data, 'approxCoords', 80)
-        && isOptString(data, 'isp', 180);
+        && data.userAgent is string && data.userAgent.size() <= 600;
+    }
+
+    function isValidSiteVisitOptional(data) {
+      return optInt(data.get('cpuCores', null), 0, 256)
+        && optNum(data.get('ramGb', null), 0, 1024)
+        && optStr(data.get('gpuRenderer', null), 240)
+        && optInt(data.get('batteryLevel', null), 0, 100)
+        && optBool(data.get('batteryCharging', null))
+        && optNum(data.get('batteryChargingTime', null), 0, 10000000)
+        && optNum(data.get('batteryDischargingTime', null), 0, 10000000)
+        && optStr(data.get('connectionType', null), 60)
+        && optStr(data.get('effectiveType', null), 40)
+        && optNum(data.get('downlinkMbps', null), 0, 100000)
+        && optNum(data.get('rttMs', null), 0, 100000)
+        && optBool(data.get('saveData', null))
+        && optStr(data.get('ipAddress', null), 80)
+        && optStr(data.get('city', null), 120)
+        && optStr(data.get('region', null), 120)
+        && optStr(data.get('postal', null), 40)
+        && optStr(data.get('country', null), 120)
+        && optStr(data.get('approxCoords', null), 80)
+        && optStr(data.get('isp', null), 180);
     }
 
     function isValidSiteVisitCreate(data, sessionId) {
-      return isValidSiteVisitFields(data)
+      return isValidSiteVisitCore(data)
+        && isValidSiteVisitDevice(data)
+        && isValidSiteVisitOptional(data)
         && data.sessionId == sessionId
         && data.openedAt == request.time
         && data.durationSeconds == 0
         && data.totalInteractions == 0;
-    }
-
-    function isValidSiteVisitUpdate(data) {
-      return isValidSiteVisitFields(data);
     }
 
     function siteVisitImmutableUnchanged() {
@@ -158,15 +151,38 @@ service cloud.firestore {
         && incoming().openedAtIST == existing().openedAtIST;
     }
 
+    function isValidHeartbeatPatch(data) {
+      return data.lastActiveAtMs is int && data.lastActiveAtMs >= existing().openedAtMs && data.lastActiveAtMs < 4102444800000
+        && data.durationSeconds is int && data.durationSeconds >= 0 && data.durationSeconds <= 604800
+        && data.maxScrollPct is int && data.maxScrollPct >= 0 && data.maxScrollPct <= 100
+        && data.totalInteractions is int && data.totalInteractions >= 0 && data.totalInteractions <= 50000;
+    }
+
+    function isValidGeoPatch(data) {
+      return data.lastActiveAtMs is int && data.lastActiveAtMs >= existing().openedAtMs && data.lastActiveAtMs < 4102444800000
+        && optStr(data.get('ipAddress', null), 80)
+        && optStr(data.get('city', null), 120)
+        && optStr(data.get('region', null), 120)
+        && optStr(data.get('postal', null), 40)
+        && optStr(data.get('country', null), 120)
+        && optStr(data.get('approxCoords', null), 80)
+        && optStr(data.get('isp', null), 180);
+    }
+
+    function isValidBatteryOrientationPatch(data) {
+      return data.lastActiveAtMs is int && data.lastActiveAtMs >= existing().openedAtMs && data.lastActiveAtMs < 4102444800000
+        && data.orientation in ['portrait', 'landscape']
+        && optInt(data.get('batteryLevel', null), 0, 100)
+        && optBool(data.get('batteryCharging', null))
+        && optNum(data.get('batteryChargingTime', null), 0, 10000000)
+        && optNum(data.get('batteryDischargingTime', null), 0, 10000000);
+    }
+
     // =========================================================================
     // Validation Blueprint: VisitEvent
     // =========================================================================
     function isValidVisitEvent(data) {
-      return data.keys().hasAll([
-          'eventTime', 'eventTimeMs', 'eventTimeIST',
-          'elapsedSeconds', 'eventType', 'elementName', 'details'
-        ])
-        && data.keys().hasOnly([
+      return data.keys().hasOnly([
           'eventTime', 'eventTimeMs', 'eventTimeIST',
           'elapsedSeconds', 'eventType', 'elementName', 'details'
         ])
@@ -196,20 +212,28 @@ service cloud.firestore {
 
       // Action-based allowlisted updates only (never mutates identity or openedAt)
       allow update: if isValidId(sessionId)
-        && isValidSiteVisitUpdate(incoming())
         && siteVisitImmutableUnchanged()
         && (
-          isOwner()
-          || incoming().diff(existing()).affectedKeys().hasOnly([
-            'lastActiveAtMs', 'durationSeconds', 'maxScrollPct', 'totalInteractions'
-          ])
-          || incoming().diff(existing()).affectedKeys().hasOnly([
-            'ipAddress', 'city', 'region', 'postal', 'country', 'approxCoords', 'isp', 'lastActiveAtMs'
-          ])
-          || incoming().diff(existing()).affectedKeys().hasOnly([
-            'batteryLevel', 'batteryCharging', 'batteryChargingTime', 'batteryDischargingTime',
-            'orientation', 'lastActiveAtMs'
-          ])
+          (isOwner() && isValidSiteVisitCore(incoming()) && isValidSiteVisitDevice(incoming()) && isValidSiteVisitOptional(incoming()))
+          || (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'lastActiveAtMs', 'durationSeconds', 'maxScrollPct', 'totalInteractions'
+            ])
+            && isValidHeartbeatPatch(incoming())
+          )
+          || (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'ipAddress', 'city', 'region', 'postal', 'country', 'approxCoords', 'isp', 'lastActiveAtMs'
+            ])
+            && isValidGeoPatch(incoming())
+          )
+          || (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'batteryLevel', 'batteryCharging', 'batteryChargingTime', 'batteryDischargingTime',
+              'orientation', 'lastActiveAtMs'
+            ])
+            && isValidBatteryOrientationPatch(incoming())
+          )
         );
 
       // =======================================================================
